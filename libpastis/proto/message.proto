@@ -1,0 +1,117 @@
+syntax = "proto3";
+package libpastiscomm;
+
+/* -------------- Common --------------- */
+
+enum State {
+    // READY = 0;  ?? is it really needed
+    RUNNING = 0;
+    IDLE = 1;
+}
+
+enum FuzzingEngine {
+    HONGGFUZZ = 0;
+    TRITONEXPL = 1;
+    // Add support for other tools
+}
+
+message InputSeedMsg {
+    enum SeedType {
+        INPUT = 0;
+        CRASH = 1;
+    }
+    bytes seed = 1;     // bytes of the seed
+    SeedType type = 2;  // whether it yielded a crash or is just an input
+    FuzzingEngine origin = 3;
+}
+
+
+
+/* ------------- Broker -> Agent ----------- */
+
+message StartMsg {
+    enum ExecMode {
+        SINGLE_EXEC = 0;
+        PERSISTENT = 1;
+    }
+    enum CheckMode {
+        CHECK_ALL = 0;
+        ALERT_ONLY = 1;
+    }
+    enum CoverageMode {
+        BLOCK = 0;
+        PATH = 1;
+        STATE = 2;
+    }
+    enum SeedInjectLoc {
+        STDIN = 0;
+        ARGV = 1;
+    }
+    string binary_filename = 1;      // name of the binary file
+    bytes binary = 2;                // binary file (ELF) to fuzz
+    string klocwork_report = 3;      // klocwork report (JSON serialized)
+    FuzzingEngine engine = 4;        // fuzzing engine (when client support multiple of them)
+    ExecMode exec_mode = 5;          // mode of execution
+    CheckMode check_mode = 6;        // check mode for Triton (ignored by Honggfuzz)
+    CoverageMode coverage_mode = 7;  // coverage strategy for Triton (ignored by Triton)
+    SeedInjectLoc seed_location = 8;
+    string engine_args = 9;                 // Serialized JSON of engine parameters
+    repeated string program_argv = 10;
+}
+
+message StopMsg {
+    // Nothing specific to transmit
+}
+
+
+/* ------------- Agent -> Broker ----------- */
+
+
+message HelloMsg {
+
+    enum Arch {
+        X86 = 0;
+        X86_64 = 1;
+        ARMV7 = 2;
+        AARCH64 = 3;
+    }
+    repeated Arch architecture = 1;
+    uint32 threads = 2;
+    uint32 memory = 3;
+    repeated FuzzingEngine engines = 4;
+    repeated string versions = 5;
+}
+
+message LogMsg {
+    enum LogLevel {
+        DEBUG = 0;
+        INFO = 1;
+        WARNING = 2;
+        ERROR = 3;
+        CRITICAL = 4;
+    }
+    string message = 1;
+    LogLevel level = 2;
+}
+
+message TelemetryMsg {
+    State state = 1;
+    uint32 exec_per_sec = 2;
+    uint32 total_exec   = 3;
+    uint32 cycle        = 4;  // number of seed pool loop since last cov update
+    uint32 iterations   = 5;
+    uint32 timeout      = 6;
+    uint32 coverage_block = 7;
+    uint32 coverage_edge = 8;
+    uint32 coverage_path = 9;
+    uint32 last_cov_update = 10;
+
+    // Monitoring fields
+    uint32 cpu_usage = 11;  // total percentage of CPUs usage
+    uint32 mem_usage = 12;  // total RAM usage
+}
+
+message StopCoverageCriteria {
+
+    //  Nothing specific to transmit
+}
