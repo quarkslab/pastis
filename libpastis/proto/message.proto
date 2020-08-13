@@ -68,16 +68,15 @@ message StopMsg {
 
 
 message HelloMsg {
-
     enum Arch {
         X86 = 0;
         X86_64 = 1;
         ARMV7 = 2;
         AARCH64 = 3;
     }
-    repeated Arch architecture = 1;
-    uint32 threads = 2;
-    uint32 memory = 3;
+    Arch architecture = 1;
+    uint32 cpus = 2;
+    uint64 memory = 3;
     repeated FuzzingEngine engines = 4;
     repeated string versions = 5;
 }
@@ -97,18 +96,17 @@ message LogMsg {
 message TelemetryMsg {
     State state = 1;
     uint32 exec_per_sec = 2;
-    uint32 total_exec   = 3;
+    uint64 total_exec   = 3;
     uint32 cycle        = 4;  // number of seed pool loop since last cov update
-    uint32 iterations   = 5;
-    uint32 timeout      = 6;
-    uint32 coverage_block = 7;
-    uint32 coverage_edge = 8;
-    uint32 coverage_path = 9;
-    uint32 last_cov_update = 10;
+    uint32 timeout      = 5;
+    uint32 coverage_block = 6;
+    uint32 coverage_edge = 7;
+    uint32 coverage_path = 8;
+    uint64 last_cov_update = 9; // timestamp in second
 
     // Monitoring fields
-    uint32 cpu_usage = 11;  // total percentage of CPUs usage
-    uint32 mem_usage = 12;  // total RAM usage
+    uint32 cpu_usage = 10;  // total percentage of CPUs usage
+    uint32 mem_usage = 11;  // total RAM usage
 }
 
 message StopCoverageCriteria {
