@@ -105,8 +105,8 @@ message TelemetryMsg {
     uint64 last_cov_update = 9; // timestamp in second
 
     // Monitoring fields
-    uint32 cpu_usage = 10;  // total percentage of CPUs usage
-    uint32 mem_usage = 11;  // total RAM usage
+    float cpu_usage = 10;  // total percentage of CPUs usage
+    float mem_usage = 11;  // total RAM usage
 }
 
 message StopCoverageCriteria {
