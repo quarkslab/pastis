@@ -147,7 +147,7 @@ class NetworkAgent(object):
     def _unpack_message(self, topic: MessageType, message: bytes):
         if topic == MessageType.INPUT_SEED:
             msg = InputSeedMsg.FromString(message)
-            return [SeedInjectLoc(msg.type), msg.seed, FuzzingEngine(msg.origin)]
+            return [SeedType(msg.type), msg.seed, FuzzingEngine(msg.origin)]
         elif topic == MessageType.LOG:
             msg = LogMsg.FromString(message)
             return [LogLevel(msg.level), msg.message]
