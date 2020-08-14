@@ -229,7 +229,7 @@ class ClientAgent(NetworkAgent):
         self.send(msg, msg_type=MessageType.HELLO)
 
     def send_log(self, level: LogLevel, message: str):
-        self.send(LogMsg(level=level, message=message), MessageType.LOG)
+        self.send(LogMsg(level=level.value, message=message), MessageType.LOG)
 
     def debug(self, message: str):
         self.send_log(LogLevel.DEBUG, message)
@@ -253,7 +253,7 @@ class ClientAgent(NetworkAgent):
         msg.cpu_usage = psutil.cpu_percent()
         msg.mem_usage = psutil.virtual_memory().percent
         if state:
-            msg.state = state
+            msg.state = state.value
         if exec_per_sec:
             msg.exec_per_sec = exec_per_sec
         if total_exec:

@@ -12,10 +12,11 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 def seed_received(cli_id: bytes, typ: SeedType, seed: bytes, origin: FuzzingEngine):
     global agent
     logging.info(f"[{cli_id.hex()}] [SEED] [{origin.name}] {seed.hex()} ({typ.name})")
-    agent.send_seed(cli_id, typ, seed, origin)
+    agent.send_seed(cli_id, typ, seed[::-1], origin)
 
 
 def hello_received(cli_id: bytes, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):
+    global agent
     logging.info(f"[{cli_id.hex()}] [HELLO] Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
 
 
