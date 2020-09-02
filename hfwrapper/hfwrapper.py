@@ -50,7 +50,7 @@ class HonggfuzzProcess():
 
         # Build fuzzer arguments.
         hfuzz_arguments = ' '.join([
-            f"--statsfile statsfile.log",
+            f"--statsfile {workspace['stats']}/statsfile.log",
             f"--stdin_input",
             f"--logfile logfile.log",
             f"--timeout {self.__timeout}",
@@ -82,7 +82,7 @@ class HonggfuzzJobManager():
         self.__path = path
         self.__workspace = workspace
 
-    def start(self, target, arguments, seeds):
+    def start(self, target, arguments, seeds=None):
         # Make sure the target exists.
         target = pathlib.Path(target)
 
@@ -93,7 +93,8 @@ class HonggfuzzJobManager():
 
         workspace = self.__create_workspace(job_id)
 
-        self.__copy_seeds(workspace['inputs'], seeds)
+        if seeds:
+            self.__copy_seeds(workspace['inputs'], seeds)
 
         hfuzz_instance = HonggfuzzProcess(self.__path, self.__workspace)
 
@@ -104,6 +105,9 @@ class HonggfuzzJobManager():
         return job_id
 
     def stop(self, job_id):
+        if job_id not in self.__jobs:
+            raise Exception('Invalid job ID.')
+
         hfuzz_instance = self.__jobs[job_id]
         hfuzz_instance.stop()
 
@@ -146,6 +150,7 @@ class HonggfuzzJobManager():
         workspace['outputs'] = job_workspace / 'outputs'
         workspace['coverage'] = job_workspace / 'outputs' / 'coverage'
         workspace['crashes'] = job_workspace / 'outputs' / 'crashes'
+        workspace['stats'] = job_workspace / 'stats'
 
         for _, path in workspace.items():
             path.mkdir(parents=True)
