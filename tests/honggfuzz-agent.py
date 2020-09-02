@@ -49,20 +49,36 @@ class Honggfuzz():
 
         self.__terminate = False
 
-    def start(self, binary, argv):
-        # Write target to disk.
-        target = HFUZZ_CONFIG['HFUZZ_WS'] / f'target-{self.__generate_id()}.bin'
+        self.__target_path = None
+        self.__coverage_path = None
+        self.__crashes_path = None
+        self.__stats_path = None
 
-        target.write_bytes(binary)
+    def start(self, binary, argv):
+        # Make sure to create the workspace.
+        HFUZZ_CONFIG['HFUZZ_WS'].mkdir(parents=True, exist_ok=True)
+
+        # Write target to disk.
+        target_path = HFUZZ_CONFIG['HFUZZ_WS'] / f'target-{self.__generate_id()}.bin'
+
+        target_path.write_bytes(binary)
 
         # Change target mode to execute.
-        target.chmod(stat.S_IRWXU)
+        target_path.chmod(stat.S_IRWXU)
 
         # Prepare target arguments.
         target_arguments = ' '.join(argv)
 
         # Start fuzzing job.
-        self.__job_id = self.__job_manager.start(target.absolute(), target_arguments)
+        self.__job_id = self.__job_manager.start(target_path.absolute(), target_arguments)
+
+        # Set workspace paths.
+        self.__coverage_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'coverage')
+        self.__crashes_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'crashes')
+        self.__stats_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'stats')
+
+        # Set termination flag.
+        self.__terminate = False
 
         # Start coverage monitor.
         self.__coverage_monitor = threading.Thread(target=self.__monitor_coverage, daemon=True)
@@ -81,16 +97,13 @@ class Honggfuzz():
 
         self.__terminate = True
 
-        coverage_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'coverage')
-        self.__inotify.remove_watch(str(coverage_path))
+        self.__inotify.remove_watch(str(self.__coverage_path))
         self.__coverage_monitor.join()
 
-        crashes_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'crashes')
-        self.__inotify.remove_watch(str(crashes_path))
+        self.__inotify.remove_watch(str(self.__crashes_path))
         self.__crashes_monitor.join()
 
-        stats_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'stats')
-        self.__inotify.remove_watch(str(stats_path))
+        self.__inotify.remove_watch(str(self.__stats_path))
         self.__stats_monitor.join()
 
     def add_seed(self, seed):
@@ -103,9 +116,7 @@ class Honggfuzz():
     def __monitor_coverage(self):
         global agent
 
-        coverage_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'coverage')
-
-        self.__inotify.add_watch(str(coverage_path))
+        self.__inotify.add_watch(str(self.__coverage_path))
 
         for event in self.__inotify.event_gen():
             if self.__terminate:
@@ -115,18 +126,17 @@ class Honggfuzz():
                 (header, type_names, watch_path, filename) = event
 
                 if 'IN_CLOSE_WRITE' in type_names:
+                    logging.debug(f'[SEED] Sending new seed: {filename}')
+
                     file = pathlib.Path(watch_path) / filename
                     bts = file.read_bytes()
-                    print(f"send seed: {filename}")
 
                     agent.send_seed(SeedType.INPUT, bts, FuzzingEngine.HONGGFUZZ)
 
     def __monitor_crashes(self):
         global agent
 
-        crashes_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'crashes')
-
-        self.__inotify.add_watch(str(crashes_path))
+        self.__inotify.add_watch(str(self.__crashes_path))
 
         for event in self.__inotify.event_gen():
             if self.__terminate:
@@ -136,18 +146,17 @@ class Honggfuzz():
                 (header, type_names, watch_path, filename) = event
 
                 if 'IN_CLOSE_WRITE' in type_names:
+                    logging.debug(f'[SEED] Sending new crash: {filename}')
+
                     file = pathlib.Path(watch_path) / filename
                     bts = file.read_bytes()
-                    print(f"send crash: {filename}")
 
                     agent.send_seed(SeedType.CRASH, bts, FuzzingEngine.HONGGFUZZ)
 
     def __monitor_stats(self):
         global agent
 
-        stats_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'stats')
-
-        self.__inotify.add_watch(str(stats_path))
+        self.__inotify.add_watch(str(self.__stats_path))
 
         for event in self.__inotify.event_gen():
             if self.__terminate:
@@ -157,30 +166,29 @@ class Honggfuzz():
                 (header, type_names, watch_path, filename) = event
 
                 if 'IN_MODIFY' in type_names:
+                    logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
+
                     file = pathlib.Path(watch_path) / filename
-                    print(f"modified file: {filename}")
+
+                    stats = ''
+                    # TODO: Lock file before reading it.
+                    with open(file, 'r') as stats_file:
+                        try:
+                            stats = stats_file.readlines()[-1]
+                        except:
+                            logging.error(f'Error reading stats file!')
+
+                    if not stats or stats.startswith("#"):
+                        continue
+
+                    # unix_time, thread_no, mutations, crashes, unique_crashes, hangs, current (i,b,hw,ed,ip,cmp), total (i,b,hw,ed,ip,cmp)
                     try:
-                        with open(str(file), 'r', encoding='latin1') as stats_file:
-                            lines = stats_file.readlines()
-                            # print(f"lines: {lines}")
-                            last = lines[-1]
+                        mutations = int(stats[2])
+                        hangs = int(stats[5])
 
-                            if last.startswith("#"):
-                                continue
-
-                            print(f"last: {last}")
-
-        # def send_telemetry(self, state: State = None, exec_per_sec: int = None, total_exec: int = None, cycle: int = None,
-        #                    timeout: int = None, coverage_block: int = None, coverage_edge: int = None,
-        #                    coverage_path: int = None, last_cov_update: int = None):
-
-                            # unix_time, thread_no, mutations, crashes, unique_crashes, hangs, current (i,b,hw,ed,ip,cmp), total (i,b,hw,ed,ip,cmp)
-                            mutations = int(last[2])
-                            hangs = int(last[5])
-
-                            agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
+                        agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
                     except:
-                        print(f'Error opening stats file!')
+                            logging.error(f'Error parsing stats!')
 
 
 def start_received(fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
