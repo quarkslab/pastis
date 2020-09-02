@@ -1,14 +1,17 @@
+# built-ins
+import time
 from typing import Callable, Optional, Tuple, List, Union, Dict
 from enum import Enum
 import logging
 import threading
 import abc
 from pathlib import Path
-import inspect
 
+# third-party libs
 import zmq
 import psutil
 
+# local imports
 from libpastis.proto import InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, \
                             TelemetryMsg, StopCoverageCriteria
 from libpastis.types import SeedType, Arch, FuzzingEngine, PathLike, ExecMode, CheckMode, CoverageMode, SeedInjectLoc, \
@@ -290,3 +293,63 @@ class ClientAgent(NetworkAgent):
 
     def register_seed_callback(self, cb: Callable):
         self.register_callback(MessageType.INPUT_SEED, cb)
+
+
+
+class FileAgent(ClientAgent):
+    """
+    Mock agent that will mimick all APIs function of a network agent
+    but which will never receive any incoming messages. All messages
+    sent are logged to a file
+    """
+
+    def __init__(self, level=logging.INFO, log_file: str = None):
+        super(FileAgent, self).__init__()
+        del self.ctx    # Remove network related attributes
+        del self.socket
+        self.logger = logging.getLogger('FileAgent')
+
+        # create file handler
+        if log_file is not None:
+            ch = logging.FileHandler(log_file)
+            ch.setLevel(level)
+            ch.setFormatter(logging.Formatter('%(asctime)s - [%(name)s] [%(levelname)s]: %(message)s'))
+            self.logger.addHandler(ch)
+
+    def bind(self, port: int = 5555):
+        raise RuntimeError("FileAgent is not meant to be used as broker")
+
+    def connect(self, remote: str = "localhost", port: int = 5555) -> bool:
+        return True  # Do nothing
+
+    def _recv_loop(self):
+        while 1:
+            if self._stop:
+                return
+            time.sleep(0.05)
+
+    def send_to(self, id: bytes, msg: Message, msg_type: MessageType = None):
+        raise RuntimeError("FileAgent is not meant to be used as broker")
+
+    def send(self, msg: Message, msg_type: MessageType = None):
+        if self.mode == AgentMode.BROKER:
+            logging.error(f"cannot use sento() as {AgentMode.BROKER.name}")
+            return
+        if msg_type is None:
+            msg_type = self.msg_to_type(msg)
+
+        if isinstance(msg, InputSeedMsg):
+            msg = f"{FuzzingEngine(msg.origin).name} {SeedType(msg.type).name}: {msg.seed[:20]}.."
+        elif isinstance(msg, HelloMsg):
+            msg = f"{Arch(msg.architecture)} CPU:{msg.cpus} engines:{[FuzzingEngine(x).name for x in msg.engines]}"
+        elif isinstance(msg, TelemetryMsg):
+            msg = f"{State(msg.state).name} exec/s: {msg.exec_per_sec} total:{msg.total_exec}"
+        elif isinstance(msg, LogMsg):
+            msg = f"{LogLevel(msg.level).name}: {msg.message}"
+        elif isinstance(msg, StopCoverageCriteria):
+            msg = ""
+        else:
+            logging.error(f"invalid message type: {type(msg)} as client")
+            return
+
+        self.logger.info(f"send {msg_type.name} {msg}")
