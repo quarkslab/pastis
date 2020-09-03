@@ -3,9 +3,7 @@
 import hfwrapper
 import inotify.adapters
 import logging
-import os
 import pathlib
-import random
 import stat
 import threading
 import time
@@ -13,7 +11,6 @@ import time
 from typing import List
 
 from libpastis.agent import ClientAgent
-from libpastis.agent import FileAgent
 from libpastis.types import Arch
 from libpastis.types import CheckMode
 from libpastis.types import CoverageMode
@@ -25,7 +22,7 @@ from libpastis.types import SeedType
 from libpastis.types import State
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 
 
 HFUZZ_CONFIG = {
@@ -37,12 +34,13 @@ HFUZZ_CONFIG = {
 
 class Honggfuzz():
 
-    def __init__(self):
+    def __init__(self, agent):
+        self.__agent = agent
+
         self.__job_id = None
 
         self.__job_manager = hfwrapper.HonggfuzzJobManager(HFUZZ_CONFIG['HFUZZ_PATH'] / 'honggfuzz', HFUZZ_CONFIG['HFUZZ_WS'])
 
-        self.__inotify = inotify.adapters.Inotify()
         self.__coverage_monitor = None
         self.__crashes_monitor = None
         self.__stats_monitor = None
@@ -53,6 +51,8 @@ class Honggfuzz():
         self.__coverage_path = None
         self.__crashes_path = None
         self.__stats_path = None
+
+        self.__setup_agent()
 
     def start(self, binary, argv):
         # Make sure to create the workspace.
@@ -93,32 +93,52 @@ class Honggfuzz():
         self.__stats_monitor.start()
 
     def stop(self):
+        # TODO: Make sure every Honggfuzz instance has been stopped.
         self.__job_manager.stop(self.__job_id)
 
         self.__terminate = True
 
-        self.__inotify.remove_watch(str(self.__coverage_path))
         self.__coverage_monitor.join()
-
-        self.__inotify.remove_watch(str(self.__crashes_path))
         self.__crashes_monitor.join()
-
-        self.__inotify.remove_watch(str(self.__stats_path))
         self.__stats_monitor.join()
+
+        self.__agent.send_stop_coverage_criteria()
 
     def add_seed(self, seed):
         # TODO: Implement.
         pass
 
+    def run(self):
+        # Connect with the Broker.
+        self.__agent.connect()
+
+        # Start main loop.
+        self.__agent.start()
+
+        # Send initial HELLO message, whick will make the Broker send the START message.
+        self.__agent.send_hello([(FuzzingEngine.HONGGFUZZ, HFUZZ_CONFIG['HFUZZ_VERSION'])], Arch.X86_64)
+
+        # Send Alive message.
+        while True:
+            self.__agent.send_log(LogLevel.DEBUG, f"Alive: {int(time.time())}")
+
+            time.sleep(2)
+
+    def __setup_agent(self):
+        # Register callbacks.
+        self.__agent.register_seed_callback(self.__seed_received)
+        self.__agent.register_start_callback(self.__start_received)
+        self.__agent.register_stop_callback(self.__stop_received)
+
     def __generate_id(self):
         return int(time.time())
 
     def __monitor_coverage(self):
-        global agent
+        i = inotify.adapters.Inotify()
 
-        self.__inotify.add_watch(str(self.__coverage_path))
+        i.add_watch(str(self.__coverage_path))
 
-        for event in self.__inotify.event_gen():
+        for event in i.event_gen():
             if self.__terminate:
                 break
 
@@ -131,14 +151,16 @@ class Honggfuzz():
                     file = pathlib.Path(watch_path) / filename
                     bts = file.read_bytes()
 
-                    agent.send_seed(SeedType.INPUT, bts, FuzzingEngine.HONGGFUZZ)
+                    self.__agent.send_seed(SeedType.INPUT, bts, FuzzingEngine.HONGGFUZZ)
+
+        i.remove_watch(str(self.__coverage_path))
 
     def __monitor_crashes(self):
-        global agent
+        i = inotify.adapters.Inotify()
 
-        self.__inotify.add_watch(str(self.__crashes_path))
+        i.add_watch(str(self.__crashes_path))
 
-        for event in self.__inotify.event_gen():
+        for event in i.event_gen():
             if self.__terminate:
                 break
 
@@ -151,14 +173,16 @@ class Honggfuzz():
                     file = pathlib.Path(watch_path) / filename
                     bts = file.read_bytes()
 
-                    agent.send_seed(SeedType.CRASH, bts, FuzzingEngine.HONGGFUZZ)
+                    self.__agent.send_seed(SeedType.CRASH, bts, FuzzingEngine.HONGGFUZZ)
+
+        i.remove_watch(str(self.__crashes_path))
 
     def __monitor_stats(self):
-        global agent
+        i = inotify.adapters.Inotify()
 
-        self.__inotify.add_watch(str(self.__stats_path))
+        i.add_watch(str(self.__stats_path))
 
-        for event in self.__inotify.event_gen():
+        for event in i.event_gen():
             if self.__terminate:
                 break
 
@@ -171,7 +195,6 @@ class Honggfuzz():
                     file = pathlib.Path(watch_path) / filename
 
                     stats = ''
-                    # TODO: Lock file before reading it.
                     with open(file, 'r') as stats_file:
                         try:
                             stats = stats_file.readlines()[-1]
@@ -186,62 +209,40 @@ class Honggfuzz():
                         mutations = int(stats[2])
                         hangs = int(stats[5])
 
-                        agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
+                        self.__agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
                     except:
                             logging.error(f'Error parsing stats!')
 
+        i.remove_watch(str(self.__stats_path))
 
-def start_received(fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
-                   covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
-    global hfuzz
+    def __start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
+                       covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
+        logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
 
-    logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
+        self.start(binary, argv)
 
-    hfuzz.start(binary, argv)
+    def __seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+        logging.info(f"[SEED] [{origin.name}] {seed.hex()} ({typ})")
 
+        self.add_seed(seed)
 
-def seed_received(typ: SeedType, seed: bytes, origin: FuzzingEngine):
-    global hfuzz
+    def __stop_received(self):
+        logging.info(f"[STOP]")
 
-    logging.info(f"[SEED] [{origin.name}] {seed.hex()} ({typ})")
-
-    hfuzz.add_seed(seed)
-
-
-def stop_received():
-    global hfuzz
-
-    logging.info(f"[STOP]")
-
-    hfuzz.stop()
+        self.stop()
 
 
-if __name__ == "__main__":
-    hfuzz = Honggfuzz()
-
+def main():
     agent = ClientAgent()
-
-    agent.connect()
-
-    agent.register_seed_callback(seed_received)
-    agent.register_start_callback(start_received)
-    agent.register_stop_callback(stop_received)
-
-    agent.start()
-
-    # Send initial HELLO message.
-    agent.send_hello([(FuzzingEngine.HONGGFUZZ, HFUZZ_CONFIG['HFUZZ_VERSION'])], Arch.X86_64)
+    hfuzz = Honggfuzz(agent)
 
     try:
-        # Send Alive message.
-        while True:
-            agent.send_log(LogLevel.DEBUG, f"Alive: {int(time.time())}")
-
-            time.sleep(2)
+        hfuzz.run()
     except KeyboardInterrupt:
         print("[!] CTRL+C detected! Aborting...")
 
-    # TODO: Make sure every honggfuzz instance has been stopped before exiting.
-    hfuzz.stop()
+        hfuzz.stop()
 
-    agent.send_stop_coverage_criteria()
+
+if __name__ == "__main__":
+    main()
