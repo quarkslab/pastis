@@ -7,6 +7,7 @@ setup(
     version="0.1",
     description="Honggfuzz wrapper",
     packages=find_packages(),
-    setup_requires=[],
-    install_requires=[]
+    install_requires=[
+        "inotify"
+    ]
 )
