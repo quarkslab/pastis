@@ -14,9 +14,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 def init_arg_parser():
     description = "Honggfuzz explorer."
 
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        description=description)
+    parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument("--target", required=True,
                         type=pathlib.Path, help="Target path")
