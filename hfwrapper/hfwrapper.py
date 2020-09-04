@@ -2,6 +2,7 @@ import inotify.adapters
 import logging
 import os
 import pathlib
+import random
 import shutil
 import signal
 import stat
@@ -74,6 +75,7 @@ class HonggfuzzProcess:
             f"--stdin_input",
             f"--logfile logfile.log",
             f"--input {workspace['inputs']}",
+            f"--dynamic_input {workspace['dynamic-inputs']}",
             f"--output {workspace['coverage']}",
             f"--crashdir {workspace['crashes']}",
             f"--workspace {workspace['outputs']}"
@@ -164,7 +166,8 @@ class HonggfuzzJobManager:
 
         workspace = {
             'workspace': job_workspace,
-            'inputs': job_workspace / 'inputs',
+            'inputs': job_workspace / 'inputs' / 'initial',
+            'dynamic-inputs': job_workspace / 'inputs' / 'dynamic',
             'outputs': job_workspace / 'outputs',
             'coverage': job_workspace / 'outputs' / 'coverage',
             'crashes': job_workspace / 'outputs' / 'crashes',
@@ -260,8 +263,10 @@ class Honggfuzz:
         self.__agent.send_stop_coverage_criteria()
 
     def add_seed(self, seed):
-        # TODO: Implement.
-        pass
+        # Write seed to disk.
+        seed_path = HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'inputs' / 'dynamic' / f'seed-{self.__generate_id()}'
+
+        seed_path.write_bytes(seed)
 
     def run(self, target='', target_arguments=''):
         # Connect with the Broker.
@@ -274,8 +279,6 @@ class Honggfuzz:
         self.__agent.send_hello([(FuzzingEngine.HONGGFUZZ, HFUZZ_CONFIG['HFUZZ_VERSION'])], Arch.X86_64)
 
         if isinstance(self.__agent, FileAgent):
-            # def __start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
-            #                    covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
             target_path = pathlib.Path(target)
             binary = target_path.read_bytes()
 
@@ -286,6 +289,10 @@ class Honggfuzz:
         # Send Alive message.
         while True:
             self.__agent.send_log(LogLevel.DEBUG, f"Alive: {int(time.time())}")
+
+            # TODO: REMOVE. This is just for testing purposes.
+            logging.debug(f'[SEED] Sending fake new seed...')
+            self.__seed_received(SeedType.INPUT, os.urandom(random.randint(1, 100)), FuzzingEngine.TRITON)
 
             time.sleep(2)
 
