@@ -8,7 +8,7 @@ python ./setup.py {develop,install}
 
 ## Examples
 
-**TODO** Add the Honggfuzz branch that is needed to run the examples.
+**NOTE** Use the following Honggfuzz version: [`2.1/pastis/master`](https://gitlab.qb/pastis/honggfuzz/-/tree/2.1/pastis/master).
 
 ### Running it as `FileAgent` (aka offline mode)
 
