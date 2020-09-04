@@ -1,16 +1,12 @@
-import hfwrapper
 import inotify.adapters
 import logging
-import logging
 import os
-import pathlib
 import pathlib
 import shutil
 import signal
 import stat
 import subprocess
 import threading
-import time
 import time
 
 from typing import List
@@ -37,50 +33,46 @@ HFUZZ_CONFIG = {
 }
 
 
-class ManagedProcess():
+class ManagedProcess:
 
     def __init__(self):
         self.__process = None
 
     def kill(self):
         if self.__process:
+            logging.debug(f'Killing process with pid: {self.__process.pid}')
             os.killpg(os.getpgid(self.__process.pid), signal.SIGTERM)
 
-    def start(self, command, workspace):
-        logging.debug(f'Command: {command}')
-        logging.debug(f'Workspace: {workspace}')
+    def start(self, command, workspace='.'):
+        logging.debug(f'Starting process...')
+        logging.debug(f'\tCommand: {command}')
+        logging.debug(f'\tWorkspace: {workspace}')
 
         # NOTE: Make sure to remove empty strings when converting the command
         # from a string to a list.
         command = list(filter(None, command.split(' ')))
 
         # Create a new fuzzer process and set it apart into a new process group.
-        logging.info(f'Starting process: {command}')
         self.__process = subprocess.Popen(command, cwd=str(workspace), preexec_fn=os.setsid)
 
-        logging.info('Command pid: {}'.format(self.__process.pid))
+        logging.debug(f'Process pid: {self.__process.pid}')
 
 
-class HonggfuzzProcess():
+class HonggfuzzProcess:
 
     def __init__(self, path, workspace):
         self.__path = path
         self.__workspace = workspace
-        self.__timeout = 15
         self.__process = ManagedProcess()
 
     def start(self, target, target_arguments, workspace, job_id):
         # NOTE: Assuming the target receives inputs from stdin.
-
-        # TODO: Find out why it is not terminating given the `--timeout` option
-        # is passed correctly.
 
         # Build fuzzer arguments.
         hfuzz_arguments = ' '.join([
             f"--statsfile {workspace['stats']}/statsfile.log",
             f"--stdin_input",
             f"--logfile logfile.log",
-            f"--timeout {self.__timeout}",
             f"--input {workspace['inputs']}",
             f"--output {workspace['coverage']}",
             f"--crashdir {workspace['crashes']}",
@@ -100,7 +92,7 @@ class HonggfuzzProcess():
         self.__process.kill()
 
 
-class HonggfuzzJobManager():
+class HonggfuzzJobManager:
 
     def __init__(self, path, workspace):
         # Job Id -> HFuzz instance map.
@@ -170,14 +162,14 @@ class HonggfuzzJobManager():
         if job_workspace.exists():
             raise Exception('Job workspace already exists.')
 
-        workspace = {}
-
-        workspace['workspace'] = job_workspace
-        workspace['inputs'] = job_workspace / 'inputs'
-        workspace['outputs'] = job_workspace / 'outputs'
-        workspace['coverage'] = job_workspace / 'outputs' / 'coverage'
-        workspace['crashes'] = job_workspace / 'outputs' / 'crashes'
-        workspace['stats'] = job_workspace / 'stats'
+        workspace = {
+            'workspace': job_workspace,
+            'inputs': job_workspace / 'inputs',
+            'outputs': job_workspace / 'outputs',
+            'coverage': job_workspace / 'outputs' / 'coverage',
+            'crashes': job_workspace / 'outputs' / 'crashes',
+            'stats': job_workspace / 'stats',
+        }
 
         for _, path in workspace.items():
             path.mkdir(parents=True)
@@ -195,14 +187,14 @@ class HonggfuzzJobManager():
             shutil.copyfile(seed, destination / seed.name)
 
 
-class Honggfuzz():
+class Honggfuzz:
 
     def __init__(self, agent):
         self.__agent = agent
 
         self.__job_id = None
 
-        self.__job_manager = hfwrapper.HonggfuzzJobManager(HFUZZ_CONFIG['HFUZZ_PATH'] / 'honggfuzz', HFUZZ_CONFIG['HFUZZ_WS'])
+        self.__job_manager = HonggfuzzJobManager(HFUZZ_CONFIG['HFUZZ_PATH'] / 'honggfuzz', HFUZZ_CONFIG['HFUZZ_WS'])
 
         self.__coverage_monitor = None
         self.__crashes_monitor = None
@@ -384,7 +376,7 @@ class Honggfuzz():
 
                         self.__agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
                     except:
-                            logging.error(f'Error parsing stats!')
+                        logging.error(f'Error parsing stats!')
 
         i.remove_watch(str(self.__stats_path))
 
