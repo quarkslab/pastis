@@ -190,6 +190,43 @@ class HonggfuzzJobManager:
             shutil.copyfile(seed, destination / seed.name)
 
 
+class DirectoryEventWatcher:
+
+    def __init__(self, path, event_type, callback):
+        self.__path = path
+        self.__event_type = event_type
+        self.__callback = callback
+        self.__inotify = inotify.adapters.Inotify()
+        self.__thread = None
+        self.__terminate = False
+
+    def start(self):
+        self.__terminate = False
+
+        self.__thread = threading.Thread(target=self.__handler, daemon=True)
+        self.__thread.start()
+
+    def stop(self):
+        self.__terminate = True
+
+        self.__thread.join()
+
+    def __handler(self):
+        self.__inotify.add_watch(str(self.__path))
+
+        for event in self.__inotify.event_gen():
+            if self.__terminate:
+                break
+
+            if event is not None:
+                (header, type_names, watch_path, filename) = event
+
+                if self.__event_type in type_names:
+                    self.__callback(pathlib.Path(watch_path) / filename)
+
+        self.__inotify.remove_watch(str(self.__path))
+
+
 class Honggfuzz:
 
     def __init__(self, agent):
@@ -199,11 +236,9 @@ class Honggfuzz:
 
         self.__job_manager = HonggfuzzJobManager(HFUZZ_CONFIG['HFUZZ_PATH'] / 'honggfuzz', HFUZZ_CONFIG['HFUZZ_WS'])
 
-        self.__coverage_monitor = None
-        self.__crashes_monitor = None
-        self.__stats_monitor = None
-
-        self.__terminate = False
+        self.__coverage_watcher = None
+        self.__crashes_watcher = None
+        self.__stats_watcher = None
 
         self.__target_path = None
         self.__coverage_path = None
@@ -235,30 +270,16 @@ class Honggfuzz:
         self.__crashes_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'crashes')
         self.__stats_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'stats')
 
-        # Set termination flag.
-        self.__terminate = False
+        # Setup watchers.
+        self.__setup_watchers()
 
-        # Start coverage monitor.
-        self.__coverage_monitor = threading.Thread(target=self.__monitor_coverage, daemon=True)
-        self.__coverage_monitor.start()
-
-        # Start crashes monitor.
-        self.__crashes_monitor = threading.Thread(target=self.__monitor_crashes, daemon=True)
-        self.__crashes_monitor.start()
-
-        # Start stats monitor.
-        self.__stats_monitor = threading.Thread(target=self.__monitor_stats, daemon=True)
-        self.__stats_monitor.start()
+        # Start watchers.
+        self.__start_watchers()
 
     def stop(self):
-        # TODO: Make sure every Honggfuzz instance has been stopped.
         self.__job_manager.stop(self.__job_id)
 
-        self.__terminate = True
-
-        self.__coverage_monitor.join()
-        self.__crashes_monitor.join()
-        self.__stats_monitor.join()
+        self.__stop_watchers()
 
         self.__agent.send_stop_coverage_criteria()
 
@@ -302,90 +323,56 @@ class Honggfuzz:
         self.__agent.register_start_callback(self.__start_received)
         self.__agent.register_stop_callback(self.__stop_received)
 
+    def __setup_watchers(self):
+        self.__coverage_watcher = DirectoryEventWatcher(self.__coverage_path, 'IN_CLOSE_WRITE', self.__send_seed)
+        self.__crashes_watcher = DirectoryEventWatcher(self.__crashes_path, 'IN_CLOSE_WRITE', self.__send_crash)
+        self.__stats_watcher = DirectoryEventWatcher(self.__stats_path, 'IN_MODIFY', self.__send_telemetry)
+
+    def __start_watchers(self):
+        self.__coverage_watcher.start()
+        self.__crashes_watcher.start()
+        self.__stats_watcher.start()
+
+    def __stop_watchers(self):
+        self.__coverage_watcher.stop()
+        self.__crashes_watcher.stop()
+        self.__stats_watcher.stop()
+
     def __generate_id(self):
         return int(time.time())
 
-    def __monitor_coverage(self):
-        i = inotify.adapters.Inotify()
+    def __send_seed(self, filename):
+        logging.debug(f'[SEED] Sending new seed: {filename}')
 
-        i.add_watch(str(self.__coverage_path))
+        content = pathlib.Path(filename).read_bytes()
 
-        for event in i.event_gen():
-            if self.__terminate:
-                break
+        self.__agent.send_seed(SeedType.INPUT, content, FuzzingEngine.HONGGFUZZ)
 
-            if event is not None:
-                (header, type_names, watch_path, filename) = event
+    def __send_crash(self, filename):
+        logging.debug(f'[SEED] Sending new crash: {filename}')
 
-                if 'IN_CLOSE_WRITE' in type_names:
-                    logging.debug(f'[SEED] Sending new seed: {filename}')
+        content = pathlib.Path(filename).read_bytes()
 
-                    file = pathlib.Path(watch_path) / filename
-                    bts = file.read_bytes()
+        self.__agent.send_seed(SeedType.CRASH, content, FuzzingEngine.HONGGFUZZ)
 
-                    self.__agent.send_seed(SeedType.INPUT, bts, FuzzingEngine.HONGGFUZZ)
+    def __send_telemetry(self, filename):
+        logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
 
-        i.remove_watch(str(self.__coverage_path))
+        with open(filename, 'r') as stats_file:
+            try:
+                stats = stats_file.readlines()[-1]
 
-    def __monitor_crashes(self):
-        i = inotify.adapters.Inotify()
+                if not stats or stats.startswith("#"):
+                    return
 
-        i.add_watch(str(self.__crashes_path))
+                # unix_time, thread_no, mutations, crashes, unique_crashes,
+                # hangs, current (i,b,hw,ed,ip,cmp), total (i,b,hw,ed,ip,cmp)
+                mutations = int(stats[2])
+                hangs = int(stats[5])
 
-        for event in i.event_gen():
-            if self.__terminate:
-                break
-
-            if event is not None:
-                (header, type_names, watch_path, filename) = event
-
-                if 'IN_CLOSE_WRITE' in type_names:
-                    logging.debug(f'[SEED] Sending new crash: {filename}')
-
-                    file = pathlib.Path(watch_path) / filename
-                    bts = file.read_bytes()
-
-                    self.__agent.send_seed(SeedType.CRASH, bts, FuzzingEngine.HONGGFUZZ)
-
-        i.remove_watch(str(self.__crashes_path))
-
-    def __monitor_stats(self):
-        i = inotify.adapters.Inotify()
-
-        i.add_watch(str(self.__stats_path))
-
-        for event in i.event_gen():
-            if self.__terminate:
-                break
-
-            if event is not None:
-                (header, type_names, watch_path, filename) = event
-
-                if 'IN_MODIFY' in type_names:
-                    logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
-
-                    file = pathlib.Path(watch_path) / filename
-
-                    stats = ''
-                    with open(file, 'r') as stats_file:
-                        try:
-                            stats = stats_file.readlines()[-1]
-                        except:
-                            logging.error(f'Error reading stats file!')
-
-                    if not stats or stats.startswith("#"):
-                        continue
-
-                    # unix_time, thread_no, mutations, crashes, unique_crashes, hangs, current (i,b,hw,ed,ip,cmp), total (i,b,hw,ed,ip,cmp)
-                    try:
-                        mutations = int(stats[2])
-                        hangs = int(stats[5])
-
-                        self.__agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
-                    except:
-                        logging.error(f'Error parsing stats!')
-
-        i.remove_watch(str(self.__stats_path))
+                self.__agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
+            except:
+                logging.error(f'Error reading stats file!')
 
     def __start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
