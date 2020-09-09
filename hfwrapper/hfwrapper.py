@@ -3,7 +3,6 @@ import logging
 import os
 import pathlib
 import random
-import shutil
 import signal
 import stat
 import subprocess
@@ -27,30 +26,17 @@ from libpastis.types import State
 logging.basicConfig(level=logging.INFO)
 
 
-HFUZZ_CONFIG = {
-    'HFUZZ_PATH': pathlib.Path('/mnt/hdd/workspace/missions/pastis/repositories/honggfuzz'),
-    'HFUZZ_VERSION': '2.1',
-    'HFUZZ_WS': pathlib.Path('/tmp/hfuzz-workspace'),
-}
-
-
 class ManagedProcess:
 
     def __init__(self):
         self.__process = None
-
-    def kill(self):
-        if self.__process:
-            logging.debug(f'Killing process with pid: {self.__process.pid}')
-            os.killpg(os.getpgid(self.__process.pid), signal.SIGTERM)
 
     def start(self, command, workspace='.'):
         logging.debug(f'Starting process...')
         logging.debug(f'\tCommand: {command}')
         logging.debug(f'\tWorkspace: {workspace}')
 
-        # NOTE: Make sure to remove empty strings when converting the command
-        # from a string to a list.
+        # Remove empty strings when converting the command to a list.
         command = list(filter(None, command.split(' ')))
 
         # Create a new fuzzer process and set it apart into a new process group.
@@ -58,136 +44,52 @@ class ManagedProcess:
 
         logging.debug(f'Process pid: {self.__process.pid}')
 
+    def stop(self):
+        if self.__process:
+            logging.debug(f'Stopping process with pid: {self.__process.pid}')
+            os.killpg(os.getpgid(self.__process.pid), signal.SIGTERM)
+
+    def wait(self):
+        self.__process.wait()
+
 
 class HonggfuzzProcess:
 
-    def __init__(self, path, workspace):
-        self.__path = path
-        self.__workspace = workspace
+    def __init__(self, path):
+        self.__path = pathlib.Path(path) / 'honggfuzz'
         self.__process = ManagedProcess()
 
-    def start(self, target, target_arguments, workspace, job_id):
-        # NOTE: Assuming the target receives inputs from stdin.
+        if not self.__path.exists():
+            raise Exception('Invalid Honggfuzz path!')
 
-        # Build fuzzer arguments.
-        hfuzz_arguments = ' '.join([
-            f"--statsfile {workspace['stats']}/statsfile.log",
-            f"--stdin_input",
-            f"--logfile logfile.log",
-            f"--input {workspace['inputs']}",
-            f"--dynamic_input {workspace['dynamic-inputs']}",
-            f"--output {workspace['coverage']}",
-            f"--crashdir {workspace['crashes']}",
-            f"--workspace {workspace['outputs']}"
-        ])
-
+    def start(self, target, target_arguments, target_workspace):
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
+
+        # Build fuzzer arguments.
+        # NOTE: Assuming the target receives inputs from stdin.
+        hfuzz_arguments = ' '.join([
+            f"--statsfile {target_workspace['stats']}/statsfile.log",
+            f"--stdin_input",
+            f"--logfile logfile.log",
+            f"--input {target_workspace['inputs']}",
+            f"--dynamic_input {target_workspace['dynamic-inputs']}",
+            f"--output {target_workspace['coverage']}",
+            f"--crashdir {target_workspace['crashes']}",
+            f"--workspace {target_workspace['outputs']}"
+        ])
 
         # Build fuzzer command line.
         hfuzz_cmdline = f'{self.__path} {hfuzz_arguments} -- {target_cmdline}'
 
         # Start fuzzer.
-        self.__process.start(hfuzz_cmdline, self.__workspace / f'{job_id}')
+        self.__process.start(hfuzz_cmdline, target_workspace['main'])
 
     def stop(self):
-        self.__process.kill()
+        self.__process.stop()
 
-
-class HonggfuzzJobManager:
-
-    def __init__(self, path, workspace):
-        # Job Id -> HFuzz instance map.
-        self.__jobs = {}
-
-        self.__path = path
-        self.__workspace = workspace
-
-    def start(self, target, arguments, seeds=None):
-        # Make sure the target exists.
-        target = pathlib.Path(target)
-
-        if not target.exists():
-            raise Exception('The target does not exists.')
-
-        job_id = self.__generate_id()
-
-        workspace = self.__create_workspace(job_id)
-
-        if seeds:
-            self.__copy_seeds(workspace['inputs'], seeds)
-
-        hfuzz_instance = HonggfuzzProcess(self.__path, self.__workspace)
-
-        hfuzz_instance.start(target, arguments, workspace, job_id)
-
-        self.__jobs[job_id] = hfuzz_instance
-
-        return job_id
-
-    def stop(self, job_id):
-        if job_id not in self.__jobs:
-            raise Exception('Invalid job ID.')
-
-        hfuzz_instance = self.__jobs[job_id]
-        hfuzz_instance.stop()
-
-    def get_stats_file(self, job_id):
-        return pathlib.Path(self.__workspace / f'{job_id}' / 'statsfile.log')
-
-    def get_coverage_files(self, job_id):
-        files = []
-        coverage_path = pathlib.Path(self.__workspace / f'{job_id}' / 'outputs' / 'coverage')
-
-        for file in coverage_path.glob('**/*.cov'):
-            files.append(file.name)
-
-        return files
-
-    def get_crash_files(self, job_id):
-        files = []
-        crashes_path = pathlib.Path(self.__workspace / f'{job_id}' / 'outputs' / 'crashes')
-
-        for file in crashes_path.glob('**/*.hfuzz'):
-            files.append(file.name)
-
-        return files
-
-    def __generate_id(self):
-        return int(time.time())
-
-    def __create_workspace(self, job_id):
-        general_workspace = self.__workspace
-        job_workspace = general_workspace / f'{job_id}'
-
-        # Make sure there's no directory for the job id.
-        if job_workspace.exists():
-            raise Exception('Job workspace already exists.')
-
-        workspace = {
-            'workspace': job_workspace,
-            'inputs': job_workspace / 'inputs' / 'initial',
-            'dynamic-inputs': job_workspace / 'inputs' / 'dynamic',
-            'outputs': job_workspace / 'outputs',
-            'coverage': job_workspace / 'outputs' / 'coverage',
-            'crashes': job_workspace / 'outputs' / 'crashes',
-            'stats': job_workspace / 'stats',
-        }
-
-        for _, path in workspace.items():
-            path.mkdir(parents=True)
-
-        return workspace
-
-    def __copy_seeds(self, destination, seeds):
-        # Make sure the destination exists.
-        if not destination.exists():
-            raise Exception('Destination does not exist.')
-
-        for seed in seeds.glob('**/*'):
-            logging.debug('Copying {seed} to {destination}')
-
-            shutil.copyfile(seed, destination / seed.name)
+    def wait(self):
+        self.__process.wait()
 
 
 class DirectoryEventWatcher:
@@ -232,52 +134,33 @@ class Honggfuzz:
     def __init__(self, agent):
         self.__agent = agent
 
-        self.__job_id = None
-
-        self.__job_manager = HonggfuzzJobManager(HFUZZ_CONFIG['HFUZZ_PATH'] / 'honggfuzz', HFUZZ_CONFIG['HFUZZ_WS'])
-
         self.__coverage_watcher = None
         self.__crashes_watcher = None
         self.__stats_watcher = None
 
+        self.__hfuzz_path = os.environ['HFUZZ_PATH']
+        self.__hfuzz_version = '2.1'
+        self.__hfuzz_workspace = pathlib.Path(os.environ.get('HFUZZ_WS', '/tmp/hfuzz_workspace'))
+        self.__hfuzz_process = HonggfuzzProcess(self.__hfuzz_path)
+
+        self.__target_id = self.__generate_id()
         self.__target_path = None
-        self.__coverage_path = None
-        self.__crashes_path = None
-        self.__stats_path = None
+        self.__target_workspace = None
+
+        self.__setup_target_workspace()
 
         self.__setup_agent()
 
     def start(self, binary, argv):
-        # Make sure to create the workspace.
-        HFUZZ_CONFIG['HFUZZ_WS'].mkdir(parents=True, exist_ok=True)
-
-        # Write target to disk.
-        target_path = HFUZZ_CONFIG['HFUZZ_WS'] / f'target-{self.__generate_id()}.bin'
-
-        target_path.write_bytes(binary)
-
-        # Change target mode to execute.
-        target_path.chmod(stat.S_IRWXU)
-
-        # Prepare target arguments.
-        target_arguments = ' '.join(argv)
-
-        # Start fuzzing job.
-        self.__job_id = self.__job_manager.start(target_path.absolute(), target_arguments)
-
-        # Set workspace paths.
-        self.__coverage_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'coverage')
-        self.__crashes_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'outputs' / 'crashes')
-        self.__stats_path = pathlib.Path(HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'stats')
-
-        # Setup watchers.
+        self.__setup_target(binary)
         self.__setup_watchers()
 
-        # Start watchers.
+        self.__hfuzz_process.start(self.__target_path.absolute(), ' '.join(argv), self.__target_workspace)
+
         self.__start_watchers()
 
     def stop(self):
-        self.__job_manager.stop(self.__job_id)
+        self.__hfuzz_process.stop()
 
         self.__stop_watchers()
 
@@ -285,7 +168,7 @@ class Honggfuzz:
 
     def add_seed(self, seed):
         # Write seed to disk.
-        seed_path = HFUZZ_CONFIG['HFUZZ_WS'] / f'{self.__job_id}' / 'inputs' / 'dynamic' / f'seed-{self.__generate_id()}'
+        seed_path = self.__target_workspace['dynamic-inputs'] / f'seed-{self.__generate_id()}'
 
         seed_path.write_bytes(seed)
 
@@ -297,7 +180,7 @@ class Honggfuzz:
         self.__agent.start()
 
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self.__agent.send_hello([(FuzzingEngine.HONGGFUZZ, HFUZZ_CONFIG['HFUZZ_VERSION'])], Arch.X86_64)
+        self.__agent.send_hello([(FuzzingEngine.HONGGFUZZ, self.__hfuzz_version)], Arch.X86_64)
 
         if isinstance(self.__agent, FileAgent):
             target_path = pathlib.Path(target)
@@ -307,15 +190,53 @@ class Honggfuzz:
                 ExecMode.SINGLE_EXEC, CheckMode.CHECK_ALL, CoverageMode.BLOCK,
                 SeedInjectLoc.STDIN, '', target_arguments.split(' '), "")
 
-        # Send Alive message.
-        while True:
-            self.__agent.send_log(LogLevel.DEBUG, f"Alive: {int(time.time())}")
+        # # TODO: Remove.
+        # # Send Alive message.
+        # while True:
+        #     self.__agent.send_log(LogLevel.DEBUG, f"Alive: {int(time.time())}")
 
-            # TODO: REMOVE. This is just for testing purposes.
-            logging.debug(f'[SEED] Sending fake new seed...')
-            self.__seed_received(SeedType.INPUT, os.urandom(random.randint(1, 100)), FuzzingEngine.TRITON)
+        #     # TODO: REMOVE. This is just for testing purposes.
+        #     logging.debug(f'[SEED] Sending fake new seed...')
+        #     self.__seed_received(SeedType.INPUT, os.urandom(random.randint(1, 100)), FuzzingEngine.TRITON)
 
-            time.sleep(2)
+        #     time.sleep(2)
+
+        # TODO: Do something better here. We have to wait until the Honggfuzz
+        # process has started.
+        # Wait until the START message is received and the process starts.
+        time.sleep(5)
+
+        self.__hfuzz_process.wait()
+
+    def __setup_target_workspace(self):
+        target_main_workspace = self.__hfuzz_workspace / f'{self.__target_id}'
+
+        # Make sure there's no directory for the job id.
+        if target_main_workspace.exists():
+            raise Exception('Target workspace already exists.')
+
+        self.__target_workspace = {
+            'main': target_main_workspace,
+            'target': target_main_workspace / 'target',
+            'inputs': target_main_workspace / 'inputs' / 'initial',
+            'dynamic-inputs': target_main_workspace / 'inputs' / 'dynamic',
+            'outputs': target_main_workspace / 'outputs',
+            'coverage': target_main_workspace / 'outputs' / 'coverage',
+            'crashes': target_main_workspace / 'outputs' / 'crashes',
+            'stats': target_main_workspace / 'stats',
+        }
+
+        for _, path in self.__target_workspace.items():
+            path.mkdir(parents=True)
+
+    def __setup_target(self, binary):
+        # Write target to disk.
+        self.__target_path = self.__target_workspace['target'] / f'target.bin'
+
+        self.__target_path.write_bytes(binary)
+
+        # Change target mode to execute.
+        self.__target_path.chmod(stat.S_IRWXU)
 
     def __setup_agent(self):
         # Register callbacks.
@@ -324,9 +245,9 @@ class Honggfuzz:
         self.__agent.register_stop_callback(self.__stop_received)
 
     def __setup_watchers(self):
-        self.__coverage_watcher = DirectoryEventWatcher(self.__coverage_path, 'IN_CLOSE_WRITE', self.__send_seed)
-        self.__crashes_watcher = DirectoryEventWatcher(self.__crashes_path, 'IN_CLOSE_WRITE', self.__send_crash)
-        self.__stats_watcher = DirectoryEventWatcher(self.__stats_path, 'IN_MODIFY', self.__send_telemetry)
+        self.__coverage_watcher = DirectoryEventWatcher(self.__target_workspace['coverage'], 'IN_CLOSE_WRITE', self.__send_seed)
+        self.__crashes_watcher = DirectoryEventWatcher(self.__target_workspace['crashes'], 'IN_CLOSE_WRITE', self.__send_crash)
+        self.__stats_watcher = DirectoryEventWatcher(self.__target_workspace['stats'], 'IN_MODIFY', self.__send_telemetry)
 
     def __start_watchers(self):
         self.__coverage_watcher.start()
