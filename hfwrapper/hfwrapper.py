@@ -286,14 +286,27 @@ class Honggfuzz:
                 if not stats or stats.startswith("#"):
                     return
 
-                # unix_time, thread_no, mutations, crashes, unique_crashes,
-                # hangs, current (i,b,hw,ed,ip,cmp), total (i,b,hw,ed,ip,cmp)
-                mutations = int(stats[2])
-                hangs = int(stats[5])
+                stats = stats.split(',')
 
-                self.__agent.send_telemetry(state=State.RUNNING, total_exec=mutations, timeout=hangs)
+                # unix_time, thread_no, tot_exec_per_sec, mutations, crashes,
+                # unique_crashes, hangs, current (i/b/hw/ed/ip/cmp),
+                # total (i/b/hw/ed/ip/cmp)
+                # NOTE: `cycle` and `coverage_path` does not apply here.
+                state = State.RUNNING
+                exec_per_sec = int(stats[2])                    # aka tot_exec_per_sec
+                total_exec = int(stats[3])                      # aka mutations
+                timeout = int(stats[6])                         # aka hangs
+                coverage_block = int(stats[8].split('/')[4])    # aka total.ip
+                coverage_edge = int(stats[8].split('/')[3])     # aka total.ed
+                last_cov_update = int(stats[0])                 # aka unix_time
+
+                self.__agent.send_telemetry(state=state, exec_per_sec=exec_per_sec,
+                                            total_exec=total_exec, timeout=timeout,
+                                            coverage_block=coverage_block,
+                                            coverage_edge= coverage_edge,
+                                            last_cov_update=last_cov_update)
             except:
-                logging.error(f'Error reading stats file!')
+                logging.error(f'Error retrieving stats!')
 
     def __start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
