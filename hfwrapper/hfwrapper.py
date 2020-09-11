@@ -288,18 +288,18 @@ class Honggfuzz:
 
                 stats = stats.split(',')
 
-                # unix_time, thread_no, tot_exec_per_sec, mutations, crashes,
-                # unique_crashes, hangs, current (i/b/hw/ed/ip/cmp),
-                # total (i/b/hw/ed/ip/cmp)
-                # NOTE: `cycle` and `coverage_path` does not apply here.
+                # Stats format:
+                #   unix_time, last_cov_update, total_exec, exec_per_sec,
+                #   crashes, unique_crashes, hangs, edge_cov, block_cov
                 state = State.RUNNING
-                exec_per_sec = int(stats[2])                    # aka tot_exec_per_sec
-                total_exec = int(stats[3])                      # aka mutations
-                timeout = int(stats[6])                         # aka hangs
-                coverage_block = int(stats[8].split('/')[4])    # aka total.ip
-                coverage_edge = int(stats[8].split('/')[3])     # aka total.ed
-                last_cov_update = int(stats[0])                 # aka unix_time
+                last_cov_update = int(stats[1])
+                total_exec = int(stats[2])
+                exec_per_sec = int(stats[3])
+                timeout = int(stats[6])             # aka hangs.
+                coverage_edge = int(stats[7])       # aka edge_cov.
+                coverage_block = int(stats[8])      # aka block_cov.
 
+                # NOTE: `cycle` and `coverage_path` does not apply for Honggfuzz.
                 self.__agent.send_telemetry(state=state, exec_per_sec=exec_per_sec,
                                             total_exec=total_exec, timeout=timeout,
                                             coverage_block=coverage_block,
