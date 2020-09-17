@@ -9,9 +9,11 @@ import subprocess
 import threading
 import time
 
+from typing import Callable
 from typing import List
 
 from libpastis.agent import FileAgent
+from libpastis.agent import NetworkAgent
 from libpastis.types import Arch
 from libpastis.types import CheckMode
 from libpastis.types import CoverageMode
@@ -31,7 +33,7 @@ class ManagedProcess:
     def __init__(self):
         self.__process = None
 
-    def start(self, command, workspace='.'):
+    def start(self, command: str, workspace: str='.'):
         logging.debug(f'Starting process...')
         logging.debug(f'\tCommand: {command}')
         logging.debug(f'\tWorkspace: {workspace}')
@@ -55,14 +57,14 @@ class ManagedProcess:
 
 class HonggfuzzProcess:
 
-    def __init__(self, path):
+    def __init__(self, path: pathlib.Path):
         self.__path = pathlib.Path(path) / 'honggfuzz'
         self.__process = ManagedProcess()
 
         if not self.__path.exists():
             raise Exception('Invalid Honggfuzz path!')
 
-    def start(self, target, target_arguments, target_workspace):
+    def start(self, target: str, target_arguments: str, target_workspace: str):
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
 
@@ -94,7 +96,7 @@ class HonggfuzzProcess:
 
 class DirectoryEventWatcher:
 
-    def __init__(self, path, event_type, callback):
+    def __init__(self, path: pathlib.Path, event_type: str, callback: Callable):
         self.__path = path
         self.__event_type = event_type
         self.__callback = callback
@@ -131,7 +133,7 @@ class DirectoryEventWatcher:
 
 class Honggfuzz:
 
-    def __init__(self, agent):
+    def __init__(self, agent: NetworkAgent):
         self.__agent = agent
 
         self.__coverage_watcher = None
@@ -151,7 +153,7 @@ class Honggfuzz:
 
         self.__setup_agent()
 
-    def start(self, binary, argv):
+    def start(self, binary: bytes, argv: List[str]):
         self.__setup_target(binary)
         self.__setup_watchers()
 
@@ -166,13 +168,13 @@ class Honggfuzz:
 
         self.__agent.send_stop_coverage_criteria()
 
-    def add_seed(self, seed):
+    def add_seed(self, seed: bytes):
         # Write seed to disk.
         seed_path = self.__target_workspace['dynamic-inputs'] / f'seed-{self.__generate_id()}'
 
         seed_path.write_bytes(seed)
 
-    def run(self, target='', target_arguments=''):
+    def run(self, target: str='', target_arguments: str=''):
         # Connect with the Broker.
         self.__agent.connect()
 
@@ -229,7 +231,7 @@ class Honggfuzz:
         for _, path in self.__target_workspace.items():
             path.mkdir(parents=True)
 
-    def __setup_target(self, binary):
+    def __setup_target(self, binary: bytes):
         # Write target to disk.
         self.__target_path = self.__target_workspace['target'] / f'target.bin'
 
@@ -262,21 +264,21 @@ class Honggfuzz:
     def __generate_id(self):
         return int(time.time())
 
-    def __send_seed(self, filename):
+    def __send_seed(self, filename: pathlib.Path):
         logging.debug(f'[SEED] Sending new seed: {filename}')
 
         content = pathlib.Path(filename).read_bytes()
 
         self.__agent.send_seed(SeedType.INPUT, content, FuzzingEngine.HONGGFUZZ)
 
-    def __send_crash(self, filename):
+    def __send_crash(self, filename: pathlib.Path):
         logging.debug(f'[SEED] Sending new crash: {filename}')
 
         content = pathlib.Path(filename).read_bytes()
 
         self.__agent.send_seed(SeedType.CRASH, content, FuzzingEngine.HONGGFUZZ)
 
-    def __send_telemetry(self, filename):
+    def __send_telemetry(self, filename: pathlib.Path):
         logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
 
         with open(filename, 'r') as stats_file:
