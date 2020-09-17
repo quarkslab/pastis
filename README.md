@@ -24,7 +24,7 @@ export HFUZZ_WS=</path/to/workspace>    # for instance, /tmp/hfuzz-workspace.
 ```bash
 ./scripts/honggfuzz-explore.py \
     --target ../programme_etalon_final/micro_http_server/micro_http_server_hf_fuzz_single_without_vuln \
-    --target-arguments "wlp0s20f3 5c:80:b6:96:d7:3c 192.168.43.127 255.255.255.0 192.168.43.255"
+    --target-arguments "wlp0s20f3 48:e2:44:f5:9b:01 10.0.13.86 255.255.255.0 10.0.13.254"
 ```
 
 ### Running it as `ClientAgent`
@@ -41,7 +41,7 @@ export HFUZZ_WS=</path/to/workspace>    # for instance, /tmp/hfuzz-workspace.
 ```bash
 ./examples/broker-agent.py \
     --target ../programme_etalon_final/micro_http_server/micro_http_server_hf_fuzz_single_without_vuln \
-    --target-arguments "wlp0s20f3 5c:80:b6:96:d7:3c 192.168.43.127 255.255.255.0 192.168.43.255"
+    --target-arguments "wlp0s20f3 48:e2:44:f5:9b:01 10.0.13.86 255.255.255.0 10.0.13.254"
 ```
 
 3. Run Client:
