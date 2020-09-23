@@ -18,6 +18,7 @@ class FuzzingEngine(Enum):
 class SeedType(Enum):
     INPUT = 0
     CRASH = 1
+    HANG = 2
 
 
 class ExecMode(Enum):
