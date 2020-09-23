@@ -19,6 +19,7 @@ message InputSeedMsg {
     enum SeedType {
         INPUT = 0;
         CRASH = 1;
+        HANG = 2;
     }
     bytes seed = 1;     // bytes of the seed
     SeedType type = 2;  // whether it yielded a crash or is just an input

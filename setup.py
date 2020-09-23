@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # coding: utf-8
-"""Installation script for libpastis-comm module."""
+"""Installation script for the libpastis module."""
 
 import sys
 from setuptools import setup, find_packages
 
 setup(
-    name="pastis-comm",
+    name="libpastis",
     version="0.1",
     description="Python API to enable communication between PASTIS components",
     packages=find_packages(),
