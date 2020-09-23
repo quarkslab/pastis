@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+# built-in imports
+import click
+
+# Local imports
+from pastisbroker import PastisBroker
+
+
+def main():
+    # Instanciate the broker
+    broker = PastisBroker()
+
+    # Bind it and start listening (clients can connect)
+    broker.bind()
+    broker.start()
+
+    # Send the binary to all already connected clients and start broking
+    broker.run()
+
+
+
+if __name__ == "__main__":
+    main()
