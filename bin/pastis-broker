@@ -2,23 +2,38 @@
 
 # built-in imports
 import click
-
+import sys
+import logging
 # Local imports
-from pastisbroker import PastisBroker
+from pastisbroker import PastisBroker, BrokingMode
+from libpastis.types import CheckMode
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def main():
     # Instanciate the broker
-    broker = PastisBroker()
+    workspace = sys.argv.pop(0)
+    kl_report = sys.argv.pop(0)
+    binaries_dir = sys.argv.pop(0)
+    bmode = BrokingMode.FULL
+    ckmode = CheckMode.ALERT_ONLY
+    pargv = sys.argv
+    broker = PastisBroker(workspace, kl_report, binaries_dir, bmode, ckmode, pargv)
 
     # Bind it and start listening (clients can connect)
     broker.bind()
-    broker.start()
-
-    # Send the binary to all already connected clients and start broking
+    #broker.start()
     broker.run()
-
+    # Send the binary to all already connected clients and start broking
+    # broker.run()
+    return broker
 
 
 if __name__ == "__main__":
-    main()
+    sys.argv.pop(0)
+    if len(sys.argv) < 3:
+        print("Usage: ./pastis-broker workspace klocwork_report binaries_dir **argv")
+        sys.exit(1)
+
+    broker = main()
