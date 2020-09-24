@@ -32,12 +32,17 @@ if __name__ == "__main__":
     agent.register_stop_callback(stop_received)
 
     agent.start()
+    agent.send_hello([(FuzzingEngine.TRITON, "v0.8")])
+    logging.info("Hello sent!")
+    # agent.run()
+    # exit(0)
 
     while True:
         #  Do some 'work'
-        time.sleep(2)
+        time.sleep(3)
+        #continue
 
-        v = random.randint(0, 3)
+        v = random.randint(0, 2)
         if v == 0:
             seed = bytes(random.getrandbits(8) for _ in range(16))
             agent.send_seed(SeedType.INPUT, seed, FuzzingEngine.HONGGFUZZ)
@@ -48,5 +53,5 @@ if __name__ == "__main__":
         elif v == 2:
             r1, r2, r3 = [random.randint(0, 100) for _ in range(3)]
             agent.send_telemetry(State.RUNNING, exec_per_sec=r1, total_exec=r2, timeout=r3)
-        elif v == 3:
-            agent.send_stop_coverage_criteria()
+        # elif v == 3:
+        #     agent.send_stop_coverage_criteria()

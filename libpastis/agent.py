@@ -4,7 +4,6 @@ from typing import Callable, Optional, Tuple, List, Union, Dict
 from enum import Enum
 import logging
 import threading
-import abc
 from pathlib import Path
 
 # third-party libs
@@ -16,6 +15,7 @@ from libpastis.proto import InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, \
                             TelemetryMsg, StopCoverageCriteria
 from libpastis.types import SeedType, Arch, FuzzingEngine, PathLike, ExecMode, CheckMode, CoverageMode, SeedInjectLoc, \
                             LogLevel, State
+from libpastis.utils import get_local_architecture
 
 Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg, StopCoverageCriteria]
 
@@ -222,8 +222,13 @@ class BrokerAgent(NetworkAgent):
 
 class ClientAgent(NetworkAgent):
 
-    def send_hello(self, engines: List[Tuple[FuzzingEngine, str]], arch: Arch = None):
+    def send_hello(self, engines: List[Tuple[FuzzingEngine, str]], arch: Arch = None) -> bool:
         msg = HelloMsg()
+        arch = get_local_architecture() if arch is None else arch
+        if arch is None:
+            logging.error(f"current architecture: {psutil.os.uname().machine} is not supported")
+            return False
+        msg.architecture = arch.value
         msg.cpus = psutil.cpu_count()
         msg.memory = psutil.virtual_memory().total
         for eng, version in engines:
