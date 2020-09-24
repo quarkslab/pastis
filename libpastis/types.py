@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 from pathlib import Path
 from typing import Union
 
@@ -31,7 +31,7 @@ class CheckMode(Enum):
     ALERT_ONLY = 1
 
 
-class CoverageMode(Enum):
+class CoverageMode(IntEnum):
     BLOCK = 0
     EDGE = 1
     PATH = 2

@@ -182,7 +182,7 @@ class BrokerAgent(NetworkAgent):
 
     def send_start(self, id: bytes, program: PathLike, argv: List[str], exmode: ExecMode, ckmode: CheckMode,
                    covmode: CoverageMode, engine: FuzzingEngine, engine_args: str,
-                   seed_type: SeedInjectLoc, kl_report: str=None):
+                   seed_loc: SeedInjectLoc, kl_report: str=None):
         msg = StartMsg()
         if isinstance(program, str):
             program = Path(program)
@@ -192,7 +192,7 @@ class BrokerAgent(NetworkAgent):
         msg.exec_mode = exmode.value
         msg.check_mode = ckmode.value
         msg.coverage_mode = covmode.value
-        msg.seed_location = seed_type.value
+        msg.seed_location = seed_loc.value
         msg.engine_args = engine_args
         if kl_report is not None:
             msg.klocwork_report = kl_report
