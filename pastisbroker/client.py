@@ -1,6 +1,5 @@
 # Built-in imports
-from distutils.log import Log
-from typing import Tuple
+from typing import Tuple, List
 from pathlib import Path
 import logging
 
@@ -14,7 +13,7 @@ class PastisClient(object):
     a client connected to the broker.
     """
 
-    def __init__(self, id: int, netid: bytes, log_dir: Path, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):
+    def __init__(self, id: int, netid: bytes, log_dir: Path, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int):
         self.id = id
         self.netid = netid
         self.engines = engines
@@ -52,14 +51,14 @@ class PastisClient(object):
         self.vuln_first = 0
 
     def _configure_logging(self, log_dir):
-        hldr = logging.FileHandler(log_dir/f"client-{id}")
+        hldr = logging.FileHandler(log_dir/f"client-{self.id}")
         hldr.setLevel(logging.DEBUG)
-        hldr.setFormatter("%(asctime) - %(levelname)s %(name)s - %(message)s")
+        hldr.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s %(name)s - %(message)s"))
         self.logger.addHandler(hldr)
 
     @property
     def strid(self):
-        return f"Cli-{self.id}{self._engine()}"
+        return f"Cli-{self.id}{self._engine_short()}"
 
     def _engine_short(self):
         if self._engine:

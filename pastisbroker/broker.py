@@ -1,6 +1,6 @@
 # built-in imports
 import logging
-from typing import Tuple, Generator, List
+from typing import Tuple, Generator, List, Optional
 from pathlib import Path
 import time
 from hashlib import md5
@@ -38,8 +38,11 @@ class PastisBroker(BrokerAgent):
         self.workspace = Path(workspace)
         self._init_workspace()
 
+        # Register all agent callbacks
+        self._register_all()
+
         # Init internal state
-        self.mode = broker_mode
+        self.broker_mode = broker_mode
         self.ck_mode = check_mode
         self.inject = SeedInjectLoc.STDIN  # At the moment injection location is hardcoded
         self.argv = p_argv
@@ -99,8 +102,17 @@ class PastisBroker(BrokerAgent):
         self.register_telemetry_callback(self.telemetry_received)
         self.register_stop_coverage_callback(self.stop_coverage_received)
 
+    def get_client(self, cli_id: bytes) -> Optional[PastisClient]:
+        cli = self.clients.get(cli_id)
+        if not cli:
+            logging.warning(f"[broker] client '{cli_id}' unknown (send stop)")
+            self.send_stop(cli_id)
+        return cli
+
     def seed_received(self, cli_id: bytes, typ: SeedType, seed: bytes, origin: FuzzingEngine):
-        cli = self.clients[cli_id]
+        cli = self.get_client(cli_id)
+        if not cli:
+            return
         is_new = seed not in self._seed_pool
         self.statmanager.update_seed_stat(cli, typ, is_new)
 
@@ -111,7 +123,7 @@ class PastisBroker(BrokerAgent):
             self._seed_pool[seed] = (typ, origin)  # Save it in the local pool
 
         # Iterate on all clients and send it to whomever never received it
-        if self.mode == BrokingMode.FULL:
+        if self.broker_mode == BrokingMode.FULL:
             for c in self.iter_other_clients(cli):
                 if c.is_new_seed(seed):
                     self.send_seed(c.netid, typ, seed, origin)  # send the seed to the client
@@ -124,7 +136,7 @@ class PastisBroker(BrokerAgent):
         p = self.workspace / self._seed_typ_to_dir(typ) / fname
         p.write_bytes(seed)
 
-    def hello_received(self, cli_id: bytes, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):
+    def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int):
         uid = self.new_uid()
         client = PastisClient(uid, cli_id, self.workspace/self.LOG_DIR, engines, arch, cpus, memory)
         logging.info(f"[{client.strid}] [HELLO] Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
@@ -133,14 +145,16 @@ class PastisBroker(BrokerAgent):
         if self.running: # A client is coming in the middle of a session
             self.start_client(client)
             # Iterate all the seed pool and send it to the client
-            if self.mode == BrokingMode.FULL:
+            if self.broker_mode == BrokingMode.FULL:
                 for seed, (typ, orig) in self._seed_pool.items():
                     self.send_seed(client.netid, typ, seed, orig)  # necessarily a new seed
                     client.add_seed(seed)  # Add it in its list of seed
                 # TODO: Implementing BrokingMode.COVERAGE_ORDERED
 
     def log_received(self, cli_id: bytes, level: LogLevel, message: str):
-        client = self.clients[cli_id]
+        client = self.get_client(cli_id)
+        if not client:
+            return
         logging.info(f"[{client.strid}] [LOG] [{level.name}] {message}")
         client.log(level, message)
         if message.startswith(self.KL_MAGIC):
@@ -150,10 +164,12 @@ class PastisBroker(BrokerAgent):
         state: State = None, exec_per_sec: int = None, total_exec: int = None,
         cycle: int = None, timeout: int = None, coverage_block: int = None, coverage_edge: int = None,
         coverage_path: int = None, last_cov_update: int = None):
-        client = self.clients[cli_id]
+        client = self.get_client(cli_id)
+        if not client:
+            return
         # NOTE: ignore state (shall we do something of it?)
         args = [('-' if not x else x) for x in [exec_per_sec, total_exec, cycle, timeout, coverage_block, coverage_edge, coverage_path, last_cov_update]]
-        client.log(LogLevel.INFO, "exec/s:{} tot_exec:{} cycle:{} To:{} CovB:{} CovE:{} CovP:{} last_up:{}".format(args))
+        client.log(LogLevel.INFO, "exec/s:{} tot_exec:{} cycle:{} To:{} CovB:{} CovE:{} CovP:{} last_up:{}".format(*args))
 
         # Update all stats in the stat manager (for later UI update)
         self.statmanager.set_exec_per_sec(client, exec_per_sec)
@@ -167,7 +183,9 @@ class PastisBroker(BrokerAgent):
         # NOTE: Send an update signal for future UI ?
 
     def stop_coverage_received(self, cli_id: bytes):
-        client = self.clients[cli_id]
+        client = self.get_client(cli_id)
+        if not client:
+            return
         logging.info(f"[{client.strid}] [STOP_COVERAGE]")
         for c in self.iter_other_clients(client):
             c.set_stopped()
@@ -218,6 +236,7 @@ class PastisBroker(BrokerAgent):
             return
 
         # Update internal client info and send him the message
+        logging.info(f"[broker] send start client {client.id}: {engine.name} {covmode.name} {exmode.name}")
         client.set_running(engine, covmode, exmode, self.ck_mode)
         self.send_start(client.netid,
                         program,
@@ -230,20 +249,30 @@ class PastisBroker(BrokerAgent):
                         self.inject,
                         self.kl_report.to_json())
 
-    def run(self):
+    def start(self):
+        super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.localtime()
+        self._running = True
+        logging.info("[broker] start broking")
 
         # Send the start message to all clients
         for c in self.clients.values():
             if not c.is_running():
                 self.start_client(c)
 
+
+    def run(self):
+        self.start()
+
         # Start infinite loop
-        while True:
-            time.sleep(0.1)
-            if self._stop:
-                logging.info("broker terminate")
-                break
+        try:
+            while True:
+                time.sleep(0.1)
+                if self._stop:
+                    logging.info("broker terminate")
+                    break
+        except KeyboardInterrupt:
+            logging.info("[broker] stop")
 
     def _find_binary_workspace(self, binaries_dir) -> None:
         """
@@ -273,7 +302,7 @@ class PastisBroker(BrokerAgent):
                     if '__sanitizer' in name:
                         honggfuzz = True
                 if not good:
-                    logging.info(f"ignore binary: {file} (does not contain klocwork intrinsics)")
+                    logging.debug(f"ignore binary: {file} (does not contain klocwork intrinsics)")
                     continue
                 if 'HF_ITER' in (x.name for x in p.imported_functions):
                     exmode = ExecMode.PERSISTENT
