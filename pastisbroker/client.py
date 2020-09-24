@@ -1,10 +1,11 @@
 # Built-in imports
+from distutils.log import Log
 from typing import Tuple
 from pathlib import Path
 import logging
 
 # Third-party imports
-from libpastis.types import FuzzingEngine, Arch
+from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode
 
 
 class PastisClient(object):
@@ -27,7 +28,28 @@ class PastisClient(object):
         # Runtime properties
         self._running = False
         self._engine = None
+        self._coverage_mode = None
+        self._exec_mode = None
+        self._check_mode = None
         self._seeds_received = set()
+
+        # Runtime stats
+        self.exec_per_sec = None
+        self.total_exec = None
+        self.cycle = None
+        self.timeout = None
+        self.coverage_block = None
+        self.coverage_edge = None
+        self.coverage_path = None
+        self.last_cov_update = None
+
+        # Stats properties
+        self.seed_submitted_count = 0
+        self.seed_first = 0
+        self.defaut_count = 0
+        self.defaut_first = 0
+        self.vuln_count = 0
+        self.vuln_first = 0
 
     def _configure_logging(self, log_dir):
         hldr = logging.FileHandler(log_dir/f"client-{id}")
@@ -62,3 +84,44 @@ class PastisClient(object):
 
     def is_idle(self) -> bool:
         return not self._running
+
+    def log(self, level: LogLevel, message: str):
+        # Get the function in the logger (warning, debug, info) and call it with message
+        getattr(self.logger, level.name.lower())(message)
+
+    @property
+    def engine(self):
+        return self._engine
+
+    @property
+    def coverage_mode(self):
+        return self._coverage_mode
+
+    @property
+    def exec_mode(self):
+        return self._exec_mode
+
+    @property
+    def check_mode(self):
+        return self._check_mode
+
+    def set_stopped(self):
+        """ Flush runtime data (keep stats) """
+        self._running = False
+        self._engine = None
+        self._coverage_mode = None
+        self._exec_mode = None
+        self._check_mode = None
+
+    def set_running(self, engine: FuzzingEngine, covmode: CoverageMode, exmode: ExecMode, ckmode: CheckMode):
+        self._running = True
+        self._engine = engine
+        self._coverage_mode = covmode
+        self._exec_mode = exmode
+        self._check_mode = ckmode
+
+    def is_supported_engine(self, engine: FuzzingEngine) -> bool:
+        for e, v in self.engines:
+            if e == engine:
+                return True
+        return False
