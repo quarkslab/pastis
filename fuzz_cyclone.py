@@ -111,6 +111,7 @@ class PastisDSE(object):
         logging.info(f"[STOP]")
         if self.dse:
             self.dse.stop = True
+        self.agent.stop()
 
 
     # FIXME: failed to deepcopy when it's not static
