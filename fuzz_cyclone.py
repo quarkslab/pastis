@@ -87,7 +87,6 @@ class PastisDSE(object):
             self.agent.stop()
             return
 
-        # FIXME: Maybe (argv) returning bytes could be avoid this step
         self.config.program_argv.append(b'/tmp/' + fname.encode('utf-8'))
         for arg in argv:
             self.config.program_argv.append(arg.encode('utf-8'))
@@ -103,6 +102,7 @@ class PastisDSE(object):
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
         logging.info(f"[SEED] [{origin.name}] {seed.hex()} ({typ})")
+        # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
             self.dse.seeds_manager.add_seed(Seed(seed))
 
