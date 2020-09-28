@@ -113,13 +113,14 @@ class PastisDSE(object):
             self.dse.stop = True
 
 
+    # FIXME: failed to deepcopy when it's not static
     @staticmethod
     def checksum_callback(se: SymbolicExecutor, state: ProcessState, new_input_generated: Input):
         """
         This callback is called each time a model is returned by the SMT solver. In this function
         we compute the checksum of the packets using scapy.
         """
-        global agent
+        global agent # FIXME
         base = 0
         pkt_len = 600
         for i in range(int(len(new_input_generated) / pkt_len)): # number of packet with our initial seed
@@ -137,6 +138,7 @@ class PastisDSE(object):
                 new_input_generated[base+count] = b
                 count += 1
             base += pkt_len # the size of a packet in our fuzzing_driver
+        # FIXME: self.agent
         agent.send_seed(SeedType.INPUT, bytes(new_input_generated), FuzzingEngine.TRITON)
         return new_input_generated
 
