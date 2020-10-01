@@ -118,7 +118,7 @@ class PastisBroker(BrokerAgent):
 
         # Show log message and save seed to file
         if is_new:
-            logging.info(f"[{cli.strid}] [SEED] [{origin.name}] {seed.hex()} ({typ.name})")
+            logging.info(f"[{cli.strid}] [SEED] [{origin.name}] {md5(seed).hexdigest()} ({typ.name})")
             self.write_seed(typ, cli, seed) # Write seed to file
             self._seed_pool[seed] = (typ, origin)  # Save it in the local pool
 
