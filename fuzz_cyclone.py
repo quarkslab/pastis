@@ -10,6 +10,7 @@ from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, 
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
 from typing             import List
+from hashlib            import md5
 
 
 
@@ -20,11 +21,12 @@ class PastisDSE(object):
         self.config  = Config(debug=False)
         self.dse     = None
         self.program = None
+        self.stop    = False
 
         # Default config
         self.config.execution_timeout    = 0     # unlimited
         self.config.smt_timeout          = 5000  # 5 seconds
-        self.config.smt_queries_limit    = 0
+        self.config.smt_queries_limit    = 400
         self.config.thread_scheduling    = 300
         self.config.time_inc_coefficient = 0.00001
         self.config.execution_timeout    = 240
@@ -44,22 +46,18 @@ class PastisDSE(object):
 
         # When the start_received callback is triggered, the dse should be
         # initialized. So, let's start the exploration
-        self.dse.explore()
+        while not self.stop:
+            self.dse.explore()
+            time.sleep(1)
 
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
-        logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
-
-        if engine != FuzzingEngine.TRITON:
-            logging.info(f"Invalid engine for this instance")
-            self.agent.stop()
-            return
+        logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
 
         # TODO ExecMode
         # TODO ALERT_ONLY
 
-        # TODO: Maybe we can update the tritondse to take as Program input a sequence of bytes
         with open('/tmp/' + fname, 'wb+') as f:
             f.write(binary)
         try:
@@ -91,9 +89,10 @@ class PastisDSE(object):
         for arg in argv:
             self.config.program_argv.append(arg.encode('utf-8'))
 
-        init_seed = SeedFile('../programme_etalon_final/micro_http_server/misc/frame.seed')
+        init_seed = SeedFile('../../programme_etalon_final/micro_http_server/misc/frame.seed')
         self.dse = SymbolicExplorator(self.config, self.program, init_seed)
-        self.dse.callback_manager.register_new_input_callback(self.checksum_callback)
+        self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
+        self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         #self.dse.callback_manager.register_probe_callback(UAFSanitizer())
         #self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
         #self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
@@ -101,27 +100,25 @@ class PastisDSE(object):
 
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
-        logging.info(f"[SEED] [{origin.name}] {seed.hex()} ({typ})")
+        logging.info(f"[BROKER] [SEED RCV] [{origin.name}] {md5(seed).hexdigest()} ({typ})")
         # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
             self.dse.seeds_manager.add_seed(Seed(seed))
 
 
     def stop_received(self):
-        logging.info(f"[STOP]")
+        logging.info(f"[BROKER] [STOP]")
         if self.dse:
             self.dse.stop = True
+        self.stop = True
         self.agent.stop()
 
 
-    # FIXME: failed to deepcopy when it's not static
-    @staticmethod
-    def checksum_callback(se: SymbolicExecutor, state: ProcessState, new_input_generated: Input):
+    def checksum_callback(self, se: SymbolicExecutor, state: ProcessState, new_input_generated: Input):
         """
         This callback is called each time a model is returned by the SMT solver. In this function
         we compute the checksum of the packets using scapy.
         """
-        global agent # FIXME
         base = 0
         pkt_len = 600
         for i in range(int(len(new_input_generated) / pkt_len)): # number of packet with our initial seed
@@ -139,10 +136,13 @@ class PastisDSE(object):
                 new_input_generated[base+count] = b
                 count += 1
             base += pkt_len # the size of a packet in our fuzzing_driver
-        # FIXME: self.agent
-        agent.send_seed(SeedType.INPUT, bytes(new_input_generated), FuzzingEngine.TRITON)
         return new_input_generated
 
-agent = ClientAgent()
-pastis = PastisDSE(agent)
+
+    def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Input):
+        self.agent.send_seed(SeedType.INPUT, bytes(seed), FuzzingEngine.TRITON)
+        return
+
+
+pastis = PastisDSE(ClientAgent())
 pastis.run()
