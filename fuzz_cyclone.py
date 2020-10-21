@@ -24,12 +24,11 @@ class PastisDSE(object):
         self.stop    = False
 
         # Default config
-        self.config.execution_timeout    = 0     # unlimited
+        self.config.execution_timeout    = 120   # 2 minutes
         self.config.smt_timeout          = 5000  # 5 seconds
         self.config.smt_queries_limit    = 400
         self.config.thread_scheduling    = 300
         self.config.time_inc_coefficient = 0.00001
-        self.config.execution_timeout    = 240
 
 
     def run(self):
@@ -54,9 +53,6 @@ class PastisDSE(object):
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
         logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
-
-        # TODO ExecMode
-        # TODO ALERT_ONLY
 
         with open('/tmp/' + fname, 'wb+') as f:
             f.write(binary)
@@ -91,12 +87,18 @@ class PastisDSE(object):
 
         init_seed = SeedFile('../../programme_etalon_final/micro_http_server/misc/frame.seed')
         self.dse = SymbolicExplorator(self.config, self.program, init_seed)
-        self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
+        #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
-        #self.dse.callback_manager.register_probe_callback(UAFSanitizer())
-        #self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
-        #self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
-        #self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
+        self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
+
+        #if chkmode == CheckMode.CHECK_ALL:
+        #    self.dse.callback_manager.register_probe_callback(UAFSanitizer())
+        #    self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
+        #    self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
+        #    self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
+        #    # TODO Buffer overflow
+        #elif chkmode == CheckMode.ALERT_ONLY:
+        #    self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
@@ -141,6 +143,14 @@ class PastisDSE(object):
 
     def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Input):
         self.agent.send_seed(SeedType.INPUT, bytes(seed), FuzzingEngine.TRITON)
+        return
+
+
+    def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
+        alert_id = state.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(0))
+        logging.info(f"[INTRINSIC] id {alert_id} triggered")
+        with open('./id', 'a+') as f:
+            f.write(f'{alert_id}\n')
         return
 
 
