@@ -6,6 +6,7 @@ import time
 from hashlib import md5
 from enum import Enum
 from collections import Counter
+import re
 
 # Third-party imports
 from libpastis import BrokerAgent, do_engine_support_coverage_strategy
@@ -66,6 +67,9 @@ class PastisBroker(BrokerAgent):
         self._seed_pool = {}  # Seed bytes -> (SeedType, origin)
         self._start_time = None
         self._stop = False
+
+        # Load the workspace seeds
+        self._load_workspace()
 
         # Create the stat manager
         self.statmanager = StatManager()
@@ -326,6 +330,23 @@ class PastisBroker(BrokerAgent):
             p = self.workspace / s
             if not p.exists():
                 p.mkdir()
+
+    def _load_workspace(self):
+        """ Load all the seeds in the workspace"""
+        mapping = {"HF": FuzzingEngine.HONGGFUZZ, "TT": FuzzingEngine.TRITON}
+        for typ, d in [(SeedType.INPUT, self.INPUT_DIR), (SeedType.CRASH, self.CRASH_DIR), (SeedType.HANG, self.HANGS_DIR)]:
+            directory = self.workspace / d
+            for file in directory.iterdir():
+                logging.info(f"Load seed in pool: {file.name}")
+                match = re.match(r"\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}_Cli-\d-+([THF]+)_[0-9a-z]+.cov", file.name)
+                if match:
+                    origin = mapping[match.groups()[0]]
+                else:
+                    origin = FuzzingEngine.HONGGFUZZ  # FIXME: shall be manual
+                content = file.read_bytes()
+                self._seed_pool[content] = (typ, origin)
+        # TODO: Also dumping the current state to a file in case
+        # TODO: of exit. And being able to reload it. (not to resend all seeds to clients)
 
     def _seed_typ_to_dir(self, typ: SeedType):
         return {SeedType.INPUT: self.INPUT_DIR,
