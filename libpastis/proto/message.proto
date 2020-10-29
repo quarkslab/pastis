@@ -23,7 +23,7 @@ message InputSeedMsg {
     }
     bytes seed = 1;     // bytes of the seed
     SeedType type = 2;  // whether it yielded a crash or is just an input
-    FuzzingEngine origin = 3;
+    FuzzingEngine origin = 3; // TODO: Changing to encompass manual seeds + covmode
 }
 
 
