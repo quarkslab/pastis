@@ -1,23 +1,26 @@
-#!/usr/bin/env python3
-
-import sys
-import logging
+# built-in imports
+from typing  import List
+from hashlib import md5
 import time
+import logging
 
-from tritondse          import *
-from libpastis.agent    import ClientAgent
-from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
+# third-party imports
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
-from typing             import List
-from hashlib            import md5
 
+from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SeedFile, SymbolicExplorator, \
+                               SymbolicExecutor, Seed, ProcessState
+from tritondse.types    import Addr, Input
+from libpastis.agent    import ClientAgent
+from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
 
 
 class PastisDSE(object):
 
     def __init__(self, agent: ClientAgent):
-        self.agent   = agent
+        self.agent = agent
+        self._init_callbacks()  # register callbacks on the given agent
+
         self.config  = Config(debug=False)
         self.dse     = None
         self.program = None
@@ -31,14 +34,19 @@ class PastisDSE(object):
         self.config.time_inc_coefficient = 0.00001
 
 
-    def run(self):
-        self.agent.connect()
+    def _init_callbacks(self):
         self.agent.register_start_callback(self.start_received)
         self.agent.register_seed_callback(self.seed_received)
         self.agent.register_stop_callback(self.stop_received)
-        self.agent.start()
-        self.agent.send_hello([(FuzzingEngine.TRITON, "v0.9")])
 
+
+    def init_agent(self, remote: str = "localhost", port: int = 5555):
+        self.agent.connect(remote, port)
+        self.agent.start()
+        self.agent.send_hello([(FuzzingEngine.TRITON, TRITON_VERSION)])
+
+
+    def run(self):
         # Just wait until the broker says let's go
         while self.dse is None:
             time.sleep(0.10)
@@ -85,8 +93,7 @@ class PastisDSE(object):
         for arg in argv:
             self.config.program_argv.append(arg.encode('utf-8'))
 
-        init_seed = SeedFile('../../programme_etalon_final/micro_http_server/misc/frame.seed')
-        self.dse = SymbolicExplorator(self.config, self.program, init_seed)
+        self.dse = SymbolicExplorator(self.config, self.program)
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
@@ -103,6 +110,7 @@ class PastisDSE(object):
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
         logging.info(f"[BROKER] [SEED RCV] [{origin.name}] {md5(seed).hexdigest()} ({typ})")
+        # TODO: Handle whether the seed is already known or not
         # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
             self.dse.seeds_manager.add_seed(Seed(seed))
@@ -152,7 +160,3 @@ class PastisDSE(object):
         with open('./id', 'a+') as f:
             f.write(f'{alert_id}\n')
         return
-
-
-pastis = PastisDSE(ClientAgent())
-pastis.run()

@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+# built-in imports
+import logging
+from pathlib import Path
+from typing import List, Tuple, Optional
+
+# Third-party imports
+import click
+from libpastis import ClientAgent, FileAgent
+from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine, SeedType
+
+# Local imports
+from pastisdse import PastisDSE
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+def api():
+    pass
+    # Create the network client agent
+    # register de start_receive callback
+    # send the hello_msg
+    # start_receive_triggered
+    # instanciate PastisDSE or Honggfuzz (and register additional callbacks)
+    # forward the start_received to pastisdse or honggfuzz
+    # Call function run()
+
+
+@cli.command()
+@click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
+@click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
+def online(host: str, port: int):
+    # Create the network agent and connect to the broker
+    agent = ClientAgent()
+
+    # Instanciate the pastis that will register the appropriate callbacks
+    pastis = PastisDSE(agent)
+
+    pastis.init_agent(host, port)
+    pastis.run()
+
+
+@cli.command()
+@click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
+@click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
+@click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
+@click.option('-x', '--exmode', type=click.Choice([x.name for x in ExecMode]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
+@click.option('-chk', '--chkmode', type=click.Choice([x.name for x in CheckMode]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
+@click.option('-cov', '--covmode', type=click.Choice([x.name for x in CoverageMode]), help="Coverage strategy", default=CoverageMode.EDGE.name)
+@click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
+@click.argument('pargvs', nargs=-1)
+def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
+
+    # Transform the type of parameters
+    program = Path(program)
+    exmode = ExecMode[exmode]
+    chkmode = CheckMode[chkmode]
+    covmode = CoverageMode[covmode]
+    seedinj = SeedInjectLoc[seedinj]
+    pargvs = list(pargvs)
+
+    # Create a dummy FileAgent
+    agent = FileAgent()
+
+    # Instanciate the pastis that will register the appropriate callbacks
+    pastis = PastisDSE(agent)
+
+    #pastis.init_agent(host, port)  # Does not even call init_agent as it does nothing for the FileAgent
+
+    # Mimick a callback to start_received
+    pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, "", pargvs, kl_report)
+
+    # Provide it all our seeds
+    for s in seed:
+        s_path = Path(s)
+        if s_path.is_file():  # Add the seed file
+            pastis.seed_received(SeedType.INPUT, Path(s).read_bytes(), origin=FuzzingEngine.HONGGFUZZ)
+        elif s_path.is_dir():  # Add all file contained in the directory as seeds
+            for sub_s in s_path.iterdir():
+                pastis.seed_received(SeedType.INPUT, sub_s.read_bytes(), origin=FuzzingEngine.HONGGFUZZ)
+
+    # Call run to start exploration
+    pastis.run()
+
+
+if __name__ == "__main__":
+    cli()
+
+
+
