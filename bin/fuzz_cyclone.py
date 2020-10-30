@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# PYTHONPATH=. ./bin/fuzz_cyclone.py offline -s out.frames micro_http_server_tt_fuzz_single_with_vuln wlp0s20f3 48:e2:44:f5:9b:01 10.0.13.86 255.255.255.0 10.0.13.254
+
+
 # built-in imports
 import logging
 from pathlib import Path
