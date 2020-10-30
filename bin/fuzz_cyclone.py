@@ -48,13 +48,14 @@ def online(host: str, port: int):
 @cli.command()
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
+@click.option('-c', "--count", type=int, default=0, help="Number of execution")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
 @click.option('-x', '--exmode', type=click.Choice([x.name for x in ExecMode]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in CheckMode]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
 @click.option('-cov', '--covmode', type=click.Choice([x.name for x in CoverageMode]), help="Coverage strategy", default=CoverageMode.EDGE.name)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.argument('pargvs', nargs=-1)
-def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
+def offline(program: str, kl_report: Optional[str], count: int, seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
 
     # Transform the type of parameters
     program = Path(program)
@@ -69,6 +70,9 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
 
     # Instanciate the pastis that will register the appropriate callbacks
     pastis = PastisDSE(agent)
+
+    # Set the number of execution limit
+    pastis.config.exploration_limit = count
 
     #pastis.init_agent(host, port)  # Does not even call init_agent as it does nothing for the FileAgent
 
