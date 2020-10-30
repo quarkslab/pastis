@@ -53,9 +53,9 @@ class PastisDSE(object):
 
         # When the start_received callback is triggered, the dse should be
         # initialized. So, let's start the exploration
-        while not self.stop:
+        while not self.stop and not self.dse.stop:
             self.dse.explore()
-            time.sleep(1)
+            time.sleep(0.5)
 
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
