@@ -8,8 +8,8 @@ import logging
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
 
-from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SeedFile, SymbolicExplorator, \
-                               SymbolicExecutor, Seed, ProcessState
+from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, \
+                               ProcessState, ExplorationStatus
 from tritondse.types    import Addr, Input
 from libpastis.agent    import ClientAgent
 from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
@@ -25,6 +25,7 @@ class PastisDSE(object):
         self.dse     = None
         self.program = None
         self.stop    = False
+        self._seed_lock = False
 
         # Default config
         self.config.execution_timeout    = 120   # 2 minutes
@@ -46,17 +47,31 @@ class PastisDSE(object):
         self.agent.send_hello([(FuzzingEngine.TRITON, TRITON_VERSION)])
 
 
-    def run(self):
+    def run(self, wait_idle=True):
         # Just wait until the broker says let's go
         while self.dse is None:
             time.sleep(0.10)
 
-        # When the start_received callback is triggered, the dse should be
-        # initialized. So, let's start the exploration
-        while not self.stop and not self.dse.stop:
-            self.dse.explore()
-            time.sleep(0.5)
+        # Run while we are not instructed to stop
+        while not self.stop:
+            st = self.dse.explore()
+            if st == ExplorationStatus.STOPPED:  # if the exploration stopped just return
+                break
+            elif st == ExplorationStatus.IDLE:
+                if wait_idle:  # if we want to wait for seeds just wait to receive one
+                    logging.info("exploration idle (worklist empty)")
+                    self.agent.send_log(LogLevel.INFO, "exploration idle (worklist empty)")
+                    self.wait_seed_event()
+                else:
+                    break  # Just break and exit
+            else:
+                logging.error(f"explorator not meant to be in state: {st}")
+                break
 
+    def wait_seed_event(self):
+        self._seed_lock = True
+        while self._seed_lock:
+            time.sleep(0.5)
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
@@ -113,13 +128,15 @@ class PastisDSE(object):
         # TODO: Handle whether the seed is already known or not
         # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
-            self.dse.seeds_manager.add_seed(Seed(seed))
-
+            self.dse.add_input_seed(seed)
+        else:
+            logging.warning("receiving seeds while the DSE is not instanciated")
+        self._seed_lock = False  # Unlock the run() thread if it was waiting for a seed
 
     def stop_received(self):
         logging.info(f"[BROKER] [STOP]")
         if self.dse:
-            self.dse.stop = True
+            self.dse.stop_exploration()
         self.stop = True
         self.agent.stop()
 

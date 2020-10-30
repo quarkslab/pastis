@@ -45,7 +45,7 @@ def online(host: str, port: int):
     pastis = PastisDSE(agent)
 
     pastis.init_agent(host, port)
-    pastis.run()
+    pastis.run(wait_idle=True)
 
 
 @cli.command()
@@ -92,7 +92,7 @@ def offline(program: str, kl_report: Optional[str], count: int, seed: Tuple[str]
                 pastis.seed_received(SeedType.INPUT, sub_s.read_bytes(), origin=FuzzingEngine.HONGGFUZZ)
 
     # Call run to start exploration
-    pastis.run()
+    pastis.run(wait_idle=False)
 
 
 if __name__ == "__main__":
