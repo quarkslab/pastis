@@ -97,6 +97,7 @@ class PastisDSE(object):
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
+        #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         #if chkmode == CheckMode.CHECK_ALL:
         #    self.dse.callback_manager.register_probe_callback(UAFSanitizer())
@@ -106,6 +107,9 @@ class PastisDSE(object):
         #    # TODO Buffer overflow
         #elif chkmode == CheckMode.ALERT_ONLY:
         #    self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
+
+    def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
+        print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
