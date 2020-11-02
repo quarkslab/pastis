@@ -52,13 +52,14 @@ def online(host: str, port: int):
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
 @click.option('-c', "--count", type=int, default=0, help="Number of execution")
+@click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Triton configuration file")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
 @click.option('-x', '--exmode', type=click.Choice([x.name for x in ExecMode]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in CheckMode]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
 @click.option('-cov', '--covmode', type=click.Choice([x.name for x in CoverageMode]), help="Coverage strategy", default=CoverageMode.EDGE.name)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.argument('pargvs', nargs=-1)
-def offline(program: str, kl_report: Optional[str], count: int, seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
+def offline(program: str, kl_report: Optional[str], count: int, config: str, seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
 
     # Transform the type of parameters
     program = Path(program)
@@ -78,9 +79,13 @@ def offline(program: str, kl_report: Optional[str], count: int, seed: Tuple[str]
     pastis.config.exploration_limit = count
 
     #pastis.init_agent(host, port)  # Does not even call init_agent as it does nothing for the FileAgent
+    if config:
+        config = Path(config).read_text()
+    else:
+        config = ""
 
     # Mimick a callback to start_received
-    pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, "", pargvs, kl_report)
+    pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, config, pargvs, kl_report)
 
     # Provide it all our seeds
     for s in seed:

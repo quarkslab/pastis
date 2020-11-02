@@ -3,6 +3,8 @@ from typing  import List
 from hashlib import md5
 import time
 import logging
+import tempfile
+from pathlib import Path
 
 # third-party imports
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
@@ -26,13 +28,6 @@ class PastisDSE(object):
         self.program = None
         self.stop    = False
         self._seed_lock = False
-
-        # Default config
-        self.config.execution_timeout    = 120   # 2 minutes
-        self.config.smt_timeout          = 5000  # 5 seconds
-        self.config.smt_queries_limit    = 400
-        self.config.thread_scheduling    = 300
-        self.config.time_inc_coefficient = 0.00001
 
 
     def _init_callbacks(self):
@@ -77,15 +72,23 @@ class PastisDSE(object):
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
         logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
 
-        with open('/tmp/' + fname, 'wb+') as f:
+        # Parse triton specific parameters and update conf if needed
+        if engine_args:
+            self.config = Config.from_str(engine_args)
+
+        # Write the binary in a temporary file
+        tmp_dir = tempfile.mkdtemp()
+        program_path = Path(tmp_dir) / fname
+        with open(program_path, 'wb') as f:
             f.write(binary)
-        try:
-            self.program = Program('/tmp/' + fname)
-        except FileNotFoundError as e:
-            print(e)
+
+        self.program = Program(str(program_path))
+        if self.program is None:
+            self.dual_log(LogLevel.CRITICAL, f"LIEF was not able to parse the binary file {fname}")
             self.agent.stop()
             return
 
+        # Update the coverage strategy in the current config (it overrides the config file one)
         if covmode == CoverageMode.BLOCK:
             self.config.coverage_strategy = CoverageStrategy.CODE_COVERAGE
         elif covmode == CoverageMode.EDGE:
@@ -104,23 +107,25 @@ class PastisDSE(object):
             self.agent.stop()
             return
 
-        self.config.program_argv.append(b'/tmp/' + fname.encode('utf-8'))
-        for arg in argv:
-            self.config.program_argv.append(arg.encode('utf-8'))
+        if argv: # Override config
+            self.config.program_argv = [str(program_path)]  # Set current binary
+            self.config.program_argv.extend(argv)
 
         self.dse = SymbolicExplorator(self.config, self.program)
+
+        # Register common callbacks
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
-        self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
-        #if chkmode == CheckMode.CHECK_ALL:
-        #    self.dse.callback_manager.register_probe_callback(UAFSanitizer())
-        #    self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
-        #    self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
-        #    self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
-        #    # TODO Buffer overflow
-        #elif chkmode == CheckMode.ALERT_ONLY:
-        #    self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
+        if chkmode == CheckMode.CHECK_ALL:
+            pass
+           # self.dse.callback_manager.register_probe_callback(UAFSanitizer())
+           # self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
+           # self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
+           # self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
+           # # TODO Buffer overflow
+        elif chkmode == CheckMode.ALERT_ONLY:
+           self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
@@ -177,3 +182,21 @@ class PastisDSE(object):
         with open('./id', 'a+') as f:
             f.write(f'{alert_id}\n')
         return
+
+    def dual_log(self, level: LogLevel, message: str) -> None:
+        """
+        Helper function to log message both in the local log system and also
+        to the broker.
+
+        :param level: LogLevel message type
+        :param message: string message to log
+        :return: None
+        """
+        mapper = {LogLevel.DEBUG: "debug",
+                  LogLevel.INFO: "info",
+                  LogLevel.CRITICAL: "critical",
+                  LogLevel.WARNING: "warning",
+                  LogLevel.ERROR: "error"}
+        log_f = getattr(logging, mapper[level])
+        log_f(message)
+        self.agent.send_log(level, message)
