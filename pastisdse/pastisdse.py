@@ -74,7 +74,7 @@ class PastisDSE(object):
 
         # Parse triton specific parameters and update conf if needed
         if engine_args:
-            self.config = Config.from_str(engine_args)
+            self.config = Config.from_json(engine_args)
 
         # Write the binary in a temporary file
         tmp_dir = tempfile.mkdtemp()
