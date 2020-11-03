@@ -16,6 +16,7 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 # Local imports
 from pastisdse import PastisDSE
 
+pastis = None
 
 @click.group()
 def cli():
@@ -60,7 +61,7 @@ def online(host: str, port: int):
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.argument('pargvs', nargs=-1)
 def offline(program: str, kl_report: Optional[str], count: int, config: str, seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
-
+    global pastis
     # Transform the type of parameters
     program = Path(program)
     exmode = ExecMode[exmode]
