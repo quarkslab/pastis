@@ -61,11 +61,8 @@ def online(host: str, port: int):
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.argument('pargvs', nargs=-1)
 def offline(program: str, kl_report: Optional[str], count: int, config: str, seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
-<<<<<<< HEAD
     global pastis
-=======
 
->>>>>>> 0845905... enable transmiting tritondse config file in both online/offline
     # Transform the type of parameters
     program = Path(program)
     exmode = ExecMode[exmode]
