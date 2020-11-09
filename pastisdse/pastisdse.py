@@ -131,6 +131,9 @@ class PastisDSE(object):
     def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
         print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
+    def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
+        print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
+
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
         logging.info(f"[BROKER] [SEED RCV] [{origin.name}] {md5(seed).hexdigest()} ({typ})")
