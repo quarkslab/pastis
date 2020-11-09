@@ -8,7 +8,7 @@ import logging
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
 
-from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SeedFile, SymbolicExplorator, \
+from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, \
                                SymbolicExecutor, Seed, ProcessState
 from tritondse.types    import Addr, Input
 from libpastis.agent    import ClientAgent
