@@ -114,7 +114,7 @@ class PastisDSE(object):
         if kl_report:
             self.klreport = KlocworkReport.from_json(kl_report)
             bd = 'OK' if self.klreport.has_binding() else 'KO'
-            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(self.klreport.counted_alerts)} (total:{len(self.klreport.alerts)}")
+            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)}")
 
         if argv: # Override config
             self.config.program_argv = [str(program_path)]  # Set current binary
@@ -213,7 +213,11 @@ class PastisDSE(object):
         res_improved = False
         if self.klreport:
             # Retrieve the KlocworkAlert object from the report
-            alert = self.klreport.get_alert(binding_id=alert_id)
+            try:
+                alert = self.klreport.get_alert(binding_id=alert_id)
+            except IndexError:
+                logging.warning(f"Intrinsic id {alert_id} not binded in report (ignored)")
+                return
 
             if not alert.covered:
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} covered ! ({alert.kind.name})")
