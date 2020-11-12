@@ -235,7 +235,7 @@ class PastisDSE(object):
 
             if res_improved:  # If either coverage or validation were improved print stats
                 d, v = self.klreport.get_stats()
-                logging.info(f"Klocwork stats: defaults: [cov:{d.covered}/{d.total}] vulns: [cov:{v.covered}/{v.total}, check:{v.validated}/{v.total}]")
+                logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
             if self.klreport.all_alerts_validated():
                 self._all_alerts_validated()
