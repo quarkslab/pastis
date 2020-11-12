@@ -11,12 +11,13 @@ from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
 
 # Pastis & triton imports
-from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, \
-                               ProcessState, ExplorationStatus
-from tritondse.types    import Addr, Input
-from libpastis.agent    import ClientAgent
-from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
-from klocwork           import KlocworkReport, KlocworkAlertType, PastisVulnKind
+from triton               import MemoryAccess, CPUSIZE
+from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus
+from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer
+from tritondse.types      import Addr, Input
+from libpastis.agent      import ClientAgent
+from libpastis.types      import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
+from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
 class PastisDSE(object):
@@ -243,7 +244,7 @@ class PastisDSE(object):
         else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
             # Retrieve alert type from parameters
             arg1  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(1))
-            alert_kind = se.pstate.get_memory_string(arg1)
+            alert_kind = se.abi.get_memory_string(arg1)
             try:
                 kind = KlocworkAlertType[alert_kind]
                 if self.check_alert_dispatcher(kind, se, state, addr):
@@ -258,34 +259,48 @@ class PastisDSE(object):
         # All BUFFER_OVERFLOW related alerts
         if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
             pass
+
         elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
             pass
+
         elif type == KlocworkAlertType.ABV_GENERAL:
             pass
+
         # All INTEGER_OVERFLOW related alerts
         elif type == KlocworkAlertType.NUM_OVERFLOW:
-            pass
+            res = IntegerOverflowSanitizer.post_instruction(se, state, state.current_instruction)
+            return res
+
         # All USE_AFTER_FREE related alerts
-        elif type == KlocworkAlertType.UFM_DEREF_MIGHT:
-            pass
-        elif type == KlocworkAlertType.UFM_FFM_MUST:
-            pass
-        elif type == KlocworkAlertType.UFM_DEREF_MIGHT:
-            pass
+        elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_DEREF_MIGHT]:
+            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            # NOTE: Ici, avec ce design de elif, il n'est pas possible de différencier si c'est un UAF en
+            # lecture / écriture ou un double free. Du coup, on appel memory_read dans le sanitizer de
+            # UAFSanitizer. Cela ne change rien au resultat, c'est juste qu'on perd le type de UAF.
+            res = UAFSanitizer.memory_read(se, state, MemoryAccess(ptr, CPUSIZE.BYTE))
+            return res
+
         # All FORMAT_STRING related alerts
-        elif type == KlocworkAlertType.SV_TAINTED_FMTSTR:
-            pass
-        elif type == KlocworkAlertType.SV_FMTSTR_GENERIC:
-            pass
+        elif type in [KlocworkAlertType.SV_TAINTED_FMTSTR, KlocworkAlertType.SV_FMTSTR_GENERIC]:
+            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            res = FormatStringSanitizer.printf_family_routines(se, state, addr, ptr)
+            return res
+
         # All INVALID_MEMORY related alerts
-        elif type == KlocworkAlertType.NPD_FUNC_MUST:
-            pass
+        elif type in [KlocworkAlertType.NPD_FUNC_MUST, locworkAlertType.NPD_FUNC_MIGHT]:
+            # NOTE: Ici, avec ce design de elif, il n'est pas possible de différencier si c'est un UAF en
+            # lecture / écriture ou un double free. Du coup, on appel memory_read dans le sanitizer de
+            # UAFSanitizer. Cela ne change rien au resultat, c'est juste qu'on perd le type de UAF.
+            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            res = NullDerefSanitizer.memory_read(se, state, MemoryAccess(ptr, CPUSIZE.BYTE))
+            return res
+
         elif type == KlocworkAlertType.NPD_CHECK_MIGHT:
             pass
-        elif type == KlocworkAlertType.NPD_FUNC_MIGHT:
-            pass
+
         elif type == KlocworkAlertType.NPD_CONST_CALL:
             pass
+
         else:
             logging.error(f"Unsupported alert kind {type}")
 
