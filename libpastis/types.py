@@ -1,3 +1,4 @@
+import json
 from enum import Enum, IntEnum
 from pathlib import Path
 from typing import Union
@@ -56,3 +57,18 @@ class LogLevel(Enum):
     WARNING = 2
     ERROR = 3
     CRITICAL = 4
+
+
+class AlertData(object):
+    def __init__(self, id: int, covered: bool, validated: bool):
+        self.id = id
+        self.covered = covered
+        self.validated = validated
+
+    @staticmethod
+    def from_json(data: str) -> 'AlertData':
+        data = json.loads(data)
+        return AlertData(data['id'], data['covered'], data['validated'])
+
+    def to_json(self) -> str:
+        return json.dumps({'id': self.id, 'covered': self.covered, 'validated': self.validated})
