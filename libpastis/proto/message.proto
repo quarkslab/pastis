@@ -26,6 +26,9 @@ message InputSeedMsg {
     FuzzingEngine origin = 3; // TODO: Changing to encompass manual seeds + covmode
 }
 
+message DataMsg {
+    string data = 1;  //Arbitrary serialized data. The the peer is meant to understand
+}
 
 
 /* ------------- Broker -> Agent ----------- */

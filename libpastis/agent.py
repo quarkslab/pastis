@@ -12,12 +12,12 @@ import psutil
 
 # local imports
 from libpastis.proto import InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, \
-                            TelemetryMsg, StopCoverageCriteria
+                            TelemetryMsg, StopCoverageCriteria, DataMsg
 from libpastis.types import SeedType, Arch, FuzzingEngine, PathLike, ExecMode, CheckMode, CoverageMode, SeedInjectLoc, \
-                            LogLevel, State
+                            LogLevel, State, AlertData
 from libpastis.utils import get_local_architecture
 
-Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg, StopCoverageCriteria]
+Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg, StopCoverageCriteria, DataMsg]
 
 
 class MessageType(Enum):  # Topics in the ZMQ terminology
@@ -29,6 +29,7 @@ class MessageType(Enum):  # Topics in the ZMQ terminology
     LOG = b'L'
     STOP_COVERAGE_DONE = b'C'
     STOP = b"P"
+    DATA = b"D"
 
 
 class AgentMode(Enum):
@@ -126,6 +127,8 @@ class NetworkAgent(object):
             return MessageType.STOP_COVERAGE_DONE
         elif isinstance(msg, StartMsg):
             return MessageType.START
+        elif isinstance(msg, DataMsg):
+            return MessageType.DATA
         else:
             logging.error(f"invalid message type: {type(msg)} (cannot find associated topic)")
 
@@ -167,6 +170,9 @@ class NetworkAgent(object):
             return [msg.binary_filename, msg.binary, FuzzingEngine(msg.engine), ExecMode(msg.exec_mode),
                     CheckMode(msg.check_mode), CoverageMode(msg.coverage_mode), SeedInjectLoc(msg.seed_location),
                     msg.engine_args, [x for x in msg.program_argv], msg.klocwork_report]
+        elif topic == MessageType.DATA:
+            msg = DataMsg.FromString(message)
+            return [msg.data]
         else:  # for stop and store_coverage_done nothing to unpack
             return []
 
@@ -218,6 +224,9 @@ class BrokerAgent(NetworkAgent):
 
     def register_stop_coverage_callback(self, cb: Callable):
         self.register_callback(MessageType.STOP_COVERAGE_DONE, cb)
+
+    def register_data_callback(self, cb: Callable):
+        self.register_callback(MessageType.DATA, cb)
 
 
 class ClientAgent(NetworkAgent):
@@ -290,6 +299,11 @@ class ClientAgent(NetworkAgent):
         msg.origin = origin.value
         self.send(msg, msg_type=MessageType.INPUT_SEED)
 
+    def send_alert_data(self, alert_data: AlertData):
+        msg = DataMsg()
+        msg.data = alert_data.to_json()
+        self.send(msg, msg_type=MessageType.DATA)
+
     def register_start_callback(self, cb: Callable):
         self.register_callback(MessageType.START, cb)
 
@@ -299,6 +313,8 @@ class ClientAgent(NetworkAgent):
     def register_seed_callback(self, cb: Callable):
         self.register_callback(MessageType.INPUT_SEED, cb)
 
+    def register_data_callback(self, cb: Callable):
+        self.register_callback(MessageType.DATA, cb)
 
 
 class FileAgent(ClientAgent):
@@ -351,6 +367,8 @@ class FileAgent(ClientAgent):
             msg = f"{State(msg.state).name} exec/s: {msg.exec_per_sec} total:{msg.total_exec}"
         elif isinstance(msg, LogMsg):
             msg = f"{LogLevel(msg.level).name}: {msg.message}"
+        elif isinstance(msg, DataMsg):
+            msg = f"Data: {msg.data}"
         elif isinstance(msg, StopCoverageCriteria):
             msg = ""
         else:

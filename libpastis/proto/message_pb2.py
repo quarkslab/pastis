@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\rmessage.proto\x12\rlibpastiscomm\"\xaa\x01\n\x0cInputSeedMsg\x12\x0c\n\x04seed\x18\x01 \x01(\x0c\x12\x32\n\x04type\x18\x02 \x01(\x0e\x32$.libpastiscomm.InputSeedMsg.SeedType\x12,\n\x06origin\x18\x03 \x01(\x0e\x32\x1c.libpastiscomm.FuzzingEngine\"*\n\x08SeedType\x12\t\n\x05INPUT\x10\x00\x12\t\n\x05\x43RASH\x10\x01\x12\x08\n\x04HANG\x10\x02\"\xbb\x04\n\x08StartMsg\x12\x17\n\x0f\x62inary_filename\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\x0c\x12\x17\n\x0fklocwork_report\x18\x03 \x01(\t\x12,\n\x06\x65ngine\x18\x04 \x01(\x0e\x32\x1c.libpastiscomm.FuzzingEngine\x12\x33\n\texec_mode\x18\x05 \x01(\x0e\x32 .libpastiscomm.StartMsg.ExecMode\x12\x35\n\ncheck_mode\x18\x06 \x01(\x0e\x32!.libpastiscomm.StartMsg.CheckMode\x12;\n\rcoverage_mode\x18\x07 \x01(\x0e\x32$.libpastiscomm.StartMsg.CoverageMode\x12<\n\rseed_location\x18\x08 \x01(\x0e\x32%.libpastiscomm.StartMsg.SeedInjectLoc\x12\x13\n\x0b\x65ngine_args\x18\t \x01(\t\x12\x14\n\x0cprogram_argv\x18\n \x03(\t\"+\n\x08\x45xecMode\x12\x0f\n\x0bSINGLE_EXEC\x10\x00\x12\x0e\n\nPERSISTENT\x10\x01\"*\n\tCheckMode\x12\r\n\tCHECK_ALL\x10\x00\x12\x0e\n\nALERT_ONLY\x10\x01\".\n\x0c\x43overageMode\x12\t\n\x05\x42LOCK\x10\x00\x12\x08\n\x04PATH\x10\x01\x12\t\n\x05STATE\x10\x02\"$\n\rSeedInjectLoc\x12\t\n\x05STDIN\x10\x00\x12\x08\n\x04\x41RGV\x10\x01\"\t\n\x07StopMsg\"\xd2\x01\n\x08HelloMsg\x12\x32\n\x0c\x61rchitecture\x18\x01 \x01(\x0e\x32\x1c.libpastiscomm.HelloMsg.Arch\x12\x0c\n\x04\x63pus\x18\x02 \x01(\r\x12\x0e\n\x06memory\x18\x03 \x01(\x04\x12-\n\x07\x65ngines\x18\x04 \x03(\x0e\x32\x1c.libpastiscomm.FuzzingEngine\x12\x10\n\x08versions\x18\x05 \x03(\t\"3\n\x04\x41rch\x12\x07\n\x03X86\x10\x00\x12\n\n\x06X86_64\x10\x01\x12\t\n\x05\x41RMV7\x10\x02\x12\x0b\n\x07\x41\x41RCH64\x10\x03\"\x8f\x01\n\x06LogMsg\x12\x0f\n\x07message\x18\x01 \x01(\t\x12-\n\x05level\x18\x02 \x01(\x0e\x32\x1e.libpastiscomm.LogMsg.LogLevel\"E\n\x08LogLevel\x12\t\n\x05\x44\x45\x42UG\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\x0b\n\x07WARNING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x12\x0c\n\x08\x43RITICAL\x10\x04\"\x82\x02\n\x0cTelemetryMsg\x12#\n\x05state\x18\x01 \x01(\x0e\x32\x14.libpastiscomm.State\x12\x14\n\x0c\x65xec_per_sec\x18\x02 \x01(\r\x12\x12\n\ntotal_exec\x18\x03 \x01(\x04\x12\r\n\x05\x63ycle\x18\x04 \x01(\r\x12\x0f\n\x07timeout\x18\x05 \x01(\r\x12\x16\n\x0e\x63overage_block\x18\x06 \x01(\r\x12\x15\n\rcoverage_edge\x18\x07 \x01(\r\x12\x15\n\rcoverage_path\x18\x08 \x01(\r\x12\x17\n\x0flast_cov_update\x18\t \x01(\x04\x12\x11\n\tcpu_usage\x18\n \x01(\x02\x12\x11\n\tmem_usage\x18\x0b \x01(\x02\"\x16\n\x14StopCoverageCriteria*\x1e\n\x05State\x12\x0b\n\x07RUNNING\x10\x00\x12\x08\n\x04IDLE\x10\x01*.\n\rFuzzingEngine\x12\r\n\tHONGGFUZZ\x10\x00\x12\x0e\n\nTRITONEXPL\x10\x01\x62\x06proto3'
+  serialized_pb=b'\n\rmessage.proto\x12\rlibpastiscomm\"\xaa\x01\n\x0cInputSeedMsg\x12\x0c\n\x04seed\x18\x01 \x01(\x0c\x12\x32\n\x04type\x18\x02 \x01(\x0e\x32$.libpastiscomm.InputSeedMsg.SeedType\x12,\n\x06origin\x18\x03 \x01(\x0e\x32\x1c.libpastiscomm.FuzzingEngine\"*\n\x08SeedType\x12\t\n\x05INPUT\x10\x00\x12\t\n\x05\x43RASH\x10\x01\x12\x08\n\x04HANG\x10\x02\"\x17\n\x07\x44\x61taMsg\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"\xbb\x04\n\x08StartMsg\x12\x17\n\x0f\x62inary_filename\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\x0c\x12\x17\n\x0fklocwork_report\x18\x03 \x01(\t\x12,\n\x06\x65ngine\x18\x04 \x01(\x0e\x32\x1c.libpastiscomm.FuzzingEngine\x12\x33\n\texec_mode\x18\x05 \x01(\x0e\x32 .libpastiscomm.StartMsg.ExecMode\x12\x35\n\ncheck_mode\x18\x06 \x01(\x0e\x32!.libpastiscomm.StartMsg.CheckMode\x12;\n\rcoverage_mode\x18\x07 \x01(\x0e\x32$.libpastiscomm.StartMsg.CoverageMode\x12<\n\rseed_location\x18\x08 \x01(\x0e\x32%.libpastiscomm.StartMsg.SeedInjectLoc\x12\x13\n\x0b\x65ngine_args\x18\t \x01(\t\x12\x14\n\x0cprogram_argv\x18\n \x03(\t\"+\n\x08\x45xecMode\x12\x0f\n\x0bSINGLE_EXEC\x10\x00\x12\x0e\n\nPERSISTENT\x10\x01\"*\n\tCheckMode\x12\r\n\tCHECK_ALL\x10\x00\x12\x0e\n\nALERT_ONLY\x10\x01\".\n\x0c\x43overageMode\x12\t\n\x05\x42LOCK\x10\x00\x12\x08\n\x04PATH\x10\x01\x12\t\n\x05STATE\x10\x02\"$\n\rSeedInjectLoc\x12\t\n\x05STDIN\x10\x00\x12\x08\n\x04\x41RGV\x10\x01\"\t\n\x07StopMsg\"\xd2\x01\n\x08HelloMsg\x12\x32\n\x0c\x61rchitecture\x18\x01 \x01(\x0e\x32\x1c.libpastiscomm.HelloMsg.Arch\x12\x0c\n\x04\x63pus\x18\x02 \x01(\r\x12\x0e\n\x06memory\x18\x03 \x01(\x04\x12-\n\x07\x65ngines\x18\x04 \x03(\x0e\x32\x1c.libpastiscomm.FuzzingEngine\x12\x10\n\x08versions\x18\x05 \x03(\t\"3\n\x04\x41rch\x12\x07\n\x03X86\x10\x00\x12\n\n\x06X86_64\x10\x01\x12\t\n\x05\x41RMV7\x10\x02\x12\x0b\n\x07\x41\x41RCH64\x10\x03\"\x8f\x01\n\x06LogMsg\x12\x0f\n\x07message\x18\x01 \x01(\t\x12-\n\x05level\x18\x02 \x01(\x0e\x32\x1e.libpastiscomm.LogMsg.LogLevel\"E\n\x08LogLevel\x12\t\n\x05\x44\x45\x42UG\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\x0b\n\x07WARNING\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x12\x0c\n\x08\x43RITICAL\x10\x04\"\x82\x02\n\x0cTelemetryMsg\x12#\n\x05state\x18\x01 \x01(\x0e\x32\x14.libpastiscomm.State\x12\x14\n\x0c\x65xec_per_sec\x18\x02 \x01(\r\x12\x12\n\ntotal_exec\x18\x03 \x01(\x04\x12\r\n\x05\x63ycle\x18\x04 \x01(\r\x12\x0f\n\x07timeout\x18\x05 \x01(\r\x12\x16\n\x0e\x63overage_block\x18\x06 \x01(\r\x12\x15\n\rcoverage_edge\x18\x07 \x01(\r\x12\x15\n\rcoverage_path\x18\x08 \x01(\r\x12\x17\n\x0flast_cov_update\x18\t \x01(\x04\x12\x11\n\tcpu_usage\x18\n \x01(\x02\x12\x11\n\tmem_usage\x18\x0b \x01(\x02\"\x16\n\x14StopCoverageCriteria*\x1e\n\x05State\x12\x0b\n\x07RUNNING\x10\x00\x12\x08\n\x04IDLE\x10\x01*.\n\rFuzzingEngine\x12\r\n\tHONGGFUZZ\x10\x00\x12\x0e\n\nTRITONEXPL\x10\x01\x62\x06proto3'
 )
 
 _STATE = _descriptor.EnumDescriptor(
@@ -43,8 +43,8 @@ _STATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1434,
-  serialized_end=1464,
+  serialized_start=1459,
+  serialized_end=1489,
 )
 _sym_db.RegisterEnumDescriptor(_STATE)
 
@@ -69,8 +69,8 @@ _FUZZINGENGINE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1466,
-  serialized_end=1512,
+  serialized_start=1491,
+  serialized_end=1537,
 )
 _sym_db.RegisterEnumDescriptor(_FUZZINGENGINE)
 
@@ -131,8 +131,8 @@ _STARTMSG_EXECMODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=604,
-  serialized_end=647,
+  serialized_start=629,
+  serialized_end=672,
 )
 _sym_db.RegisterEnumDescriptor(_STARTMSG_EXECMODE)
 
@@ -156,8 +156,8 @@ _STARTMSG_CHECKMODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=649,
-  serialized_end=691,
+  serialized_start=674,
+  serialized_end=716,
 )
 _sym_db.RegisterEnumDescriptor(_STARTMSG_CHECKMODE)
 
@@ -186,8 +186,8 @@ _STARTMSG_COVERAGEMODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=693,
-  serialized_end=739,
+  serialized_start=718,
+  serialized_end=764,
 )
 _sym_db.RegisterEnumDescriptor(_STARTMSG_COVERAGEMODE)
 
@@ -211,8 +211,8 @@ _STARTMSG_SEEDINJECTLOC = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=741,
-  serialized_end=777,
+  serialized_start=766,
+  serialized_end=802,
 )
 _sym_db.RegisterEnumDescriptor(_STARTMSG_SEEDINJECTLOC)
 
@@ -246,8 +246,8 @@ _HELLOMSG_ARCH = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=950,
-  serialized_end=1001,
+  serialized_start=975,
+  serialized_end=1026,
 )
 _sym_db.RegisterEnumDescriptor(_HELLOMSG_ARCH)
 
@@ -286,8 +286,8 @@ _LOGMSG_LOGLEVEL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1078,
-  serialized_end=1147,
+  serialized_start=1103,
+  serialized_end=1172,
 )
 _sym_db.RegisterEnumDescriptor(_LOGMSG_LOGLEVEL)
 
@@ -336,6 +336,38 @@ _INPUTSEEDMSG = _descriptor.Descriptor(
   ],
   serialized_start=33,
   serialized_end=203,
+)
+
+
+_DATAMSG = _descriptor.Descriptor(
+  name='DataMsg',
+  full_name='libpastiscomm.DataMsg',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='data', full_name='libpastiscomm.DataMsg.data', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=205,
+  serialized_end=228,
 )
 
 
@@ -433,8 +465,8 @@ _STARTMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=206,
-  serialized_end=777,
+  serialized_start=231,
+  serialized_end=802,
 )
 
 
@@ -458,8 +490,8 @@ _STOPMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=779,
-  serialized_end=788,
+  serialized_start=804,
+  serialized_end=813,
 )
 
 
@@ -519,8 +551,8 @@ _HELLOMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=791,
-  serialized_end=1001,
+  serialized_start=816,
+  serialized_end=1026,
 )
 
 
@@ -559,8 +591,8 @@ _LOGMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1004,
-  serialized_end=1147,
+  serialized_start=1029,
+  serialized_end=1172,
 )
 
 
@@ -661,8 +693,8 @@ _TELEMETRYMSG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1150,
-  serialized_end=1408,
+  serialized_start=1175,
+  serialized_end=1433,
 )
 
 
@@ -686,8 +718,8 @@ _STOPCOVERAGECRITERIA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1410,
-  serialized_end=1432,
+  serialized_start=1435,
+  serialized_end=1457,
 )
 
 _INPUTSEEDMSG.fields_by_name['type'].enum_type = _INPUTSEEDMSG_SEEDTYPE
@@ -709,6 +741,7 @@ _LOGMSG.fields_by_name['level'].enum_type = _LOGMSG_LOGLEVEL
 _LOGMSG_LOGLEVEL.containing_type = _LOGMSG
 _TELEMETRYMSG.fields_by_name['state'].enum_type = _STATE
 DESCRIPTOR.message_types_by_name['InputSeedMsg'] = _INPUTSEEDMSG
+DESCRIPTOR.message_types_by_name['DataMsg'] = _DATAMSG
 DESCRIPTOR.message_types_by_name['StartMsg'] = _STARTMSG
 DESCRIPTOR.message_types_by_name['StopMsg'] = _STOPMSG
 DESCRIPTOR.message_types_by_name['HelloMsg'] = _HELLOMSG
@@ -725,6 +758,13 @@ InputSeedMsg = _reflection.GeneratedProtocolMessageType('InputSeedMsg', (_messag
   # @@protoc_insertion_point(class_scope:libpastiscomm.InputSeedMsg)
   })
 _sym_db.RegisterMessage(InputSeedMsg)
+
+DataMsg = _reflection.GeneratedProtocolMessageType('DataMsg', (_message.Message,), {
+  'DESCRIPTOR' : _DATAMSG,
+  '__module__' : 'message_pb2'
+  # @@protoc_insertion_point(class_scope:libpastiscomm.DataMsg)
+  })
+_sym_db.RegisterMessage(DataMsg)
 
 StartMsg = _reflection.GeneratedProtocolMessageType('StartMsg', (_message.Message,), {
   'DESCRIPTOR' : _STARTMSG,
