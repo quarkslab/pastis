@@ -86,8 +86,11 @@ def offline(program: str, kl_report: Optional[str], count: int, config: str, see
     else:
         config = ""
 
+    # Load the report if anyone provided
+    report = Path(kl_report).read_text() if kl_report else ""
+
     # Mimick a callback to start_received
-    pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, config, pargvs, kl_report)
+    pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, config, pargvs, report)
 
     # Provide it all our seeds
     for s in seed:

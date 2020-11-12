@@ -10,14 +10,18 @@ from pathlib import Path
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
 
+# Pastis & triton imports
 from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, \
                                ProcessState, ExplorationStatus
 from tritondse.types    import Addr, Input
 from libpastis.agent    import ClientAgent
 from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
+from klocwork           import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
 class PastisDSE(object):
+
+    KL_MAGIC = "KL-METADATA"
 
     def __init__(self, agent: ClientAgent):
         self.agent = agent
@@ -28,7 +32,7 @@ class PastisDSE(object):
         self.program = None
         self.stop    = False
         self._seed_lock = False
-
+        self.klreport = None
 
     def _init_callbacks(self):
         self.agent.register_start_callback(self.start_received)
@@ -107,6 +111,11 @@ class PastisDSE(object):
             self.agent.stop()
             return
 
+        if kl_report:
+            self.klreport = KlocworkReport.from_json(kl_report)
+            bd = 'OK' if self.klreport.has_binding() else 'KO'
+            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)}")
+
         if argv: # Override config
             self.config.program_argv = [str(program_path)]  # Set current binary
             self.config.program_argv.extend(argv)
@@ -131,9 +140,6 @@ class PastisDSE(object):
     def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
         print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
-    def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
-        print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
-
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
         logging.info(f"[BROKER] [SEED RCV] [{origin.name}] {md5(seed).hexdigest()} ({typ})")
@@ -151,6 +157,25 @@ class PastisDSE(object):
             self.dse.stop_exploration()
         self.stop = True
         self.agent.stop()
+
+
+    def dual_log(self, level: LogLevel, message: str) -> None:
+        """
+        Helper function to log message both in the local log system and also
+        to the broker.
+
+        :param level: LogLevel message type
+        :param message: string message to log
+        :return: None
+        """
+        mapper = {LogLevel.DEBUG: "debug",
+                  LogLevel.INFO: "info",
+                  LogLevel.CRITICAL: "critical",
+                  LogLevel.WARNING: "warning",
+                  LogLevel.ERROR: "error"}
+        log_f = getattr(logging, mapper[level])
+        log_f(message)
+        self.agent.send_log(level, message)
 
 
     def checksum_callback(self, se: SymbolicExecutor, state: ProcessState, new_input_generated: Input):
@@ -185,25 +210,98 @@ class PastisDSE(object):
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
         alert_id = state.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(0))
-        logging.info(f"[INTRINSIC] id {alert_id} triggered")
-        with open('./id', 'a+') as f:
-            f.write(f'{alert_id}\n')
-        return
+        res_improved = False
+        if self.klreport:
+            # Retrieve the KlocworkAlert object from the report
+            try:
+                alert = self.klreport.get_alert(binding_id=alert_id)
+            except IndexError:
+                logging.warning(f"Intrinsic id {alert_id} not binded in report (ignored)")
+                return
 
-    def dual_log(self, level: LogLevel, message: str) -> None:
+            if not alert.covered:
+                self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} covered ! ({alert.kind.name})")
+                alert.covered = True
+                res_improved = True
+
+            if alert.kind == PastisVulnKind.VULNERABILITY and not alert.validated:  # If of type VULNERABILITY and not yet validated
+                res = self.check_alert_dispatcher(alert.code, se, state, addr)
+                if res:
+                    alert.validated = True
+                    self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
+                    res_improved = True
+                else:
+                    logging.info(f"Alert [{alert.id}] in {alert.file}:{alert.line}: validation [FAIL]")
+
+            if res_improved:  # If either coverage or validation were improved print stats
+                d, v = self.klreport.get_stats()
+                logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+
+            if self.klreport.all_alerts_validated():
+                self._all_alerts_validated()
+
+        else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
+            # Retrieve alert type from parameters
+            arg1  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(1))
+            alert_kind = se.pstate.get_memory_string(arg1)
+            try:
+                kind = KlocworkAlertType[alert_kind]
+                if self.check_alert_dispatcher(kind, se, state, addr):
+                    logging.info(f"Alert {alert_id} of type {kind.name} [VALIDATED]")
+                else:
+                    logging.info(f"Alert {alert_id} of type {kind.name} [NOT VALIDATED]")
+            except KeyError:
+                logging.error(f"Alert kind {alert_kind} not recognized")
+
+
+    def check_alert_dispatcher(self, type: KlocworkAlertType, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
+        # All BUFFER_OVERFLOW related alerts
+        if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
+            pass
+        elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
+            pass
+        elif type == KlocworkAlertType.ABV_GENERAL:
+            pass
+        # All INTEGER_OVERFLOW related alerts
+        elif type == KlocworkAlertType.NUM_OVERFLOW:
+            pass
+        # All USE_AFTER_FREE related alerts
+        elif type == KlocworkAlertType.UFM_DEREF_MIGHT:
+            pass
+        elif type == KlocworkAlertType.UFM_FFM_MUST:
+            pass
+        elif type == KlocworkAlertType.UFM_DEREF_MIGHT:
+            pass
+        # All FORMAT_STRING related alerts
+        elif type == KlocworkAlertType.SV_TAINTED_FMTSTR:
+            pass
+        elif type == KlocworkAlertType.SV_FMTSTR_GENERIC:
+            pass
+        # All INVALID_MEMORY related alerts
+        elif type == KlocworkAlertType.NPD_FUNC_MUST:
+            pass
+        elif type == KlocworkAlertType.NPD_CHECK_MIGHT:
+            pass
+        elif type == KlocworkAlertType.NPD_FUNC_MIGHT:
+            pass
+        elif type == KlocworkAlertType.NPD_CONST_CALL:
+            pass
+        else:
+            logging.error(f"Unsupported alert kind {type}")
+
+
+    def _all_alerts_validated(self) -> None:
         """
-        Helper function to log message both in the local log system and also
-        to the broker.
-
-        :param level: LogLevel message type
-        :param message: string message to log
+        Function called if all alerts have been covered and validated. All data are meant to
+        have been transmitted to the broker, but writes down locally the CSV anyway
         :return: None
         """
-        mapper = {LogLevel.DEBUG: "debug",
-                  LogLevel.INFO: "info",
-                  LogLevel.CRITICAL: "critical",
-                  LogLevel.WARNING: "warning",
-                  LogLevel.ERROR: "error"}
-        log_f = getattr(logging, mapper[level])
-        log_f(message)
-        self.agent.send_log(level, message)
+        logging.info("All defaults and vulnerability have been covered !")
+        self.agent.send_stop_coverage_criteria()  # FIXME: Not sure anymore it makes sense ?
+
+        # Write the final CSV in the workspace directory
+        out_file = self.dse.workspace.get_metadata_file_path("klocwork_coverage_results.csv")
+        self.klreport.write_csv(out_file)
+
+        # Stop the dse exploration
+        self.dse.stop_exploration()
