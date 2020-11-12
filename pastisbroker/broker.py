@@ -10,7 +10,7 @@ import re
 
 # Third-party imports
 from libpastis import BrokerAgent, do_engine_support_coverage_strategy
-from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode
+from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData
 from klocwork import KlocworkReport
 import lief
 
@@ -105,6 +105,7 @@ class PastisBroker(BrokerAgent):
         self.register_log_callback(self.log_received)
         self.register_telemetry_callback(self.telemetry_received)
         self.register_stop_coverage_callback(self.stop_coverage_received)
+        self.register_data_callback(self.data_received)
 
     def get_client(self, cli_id: bytes) -> Optional[PastisClient]:
         cli = self.clients.get(cli_id)
@@ -159,10 +160,10 @@ class PastisBroker(BrokerAgent):
         client = self.get_client(cli_id)
         if not client:
             return
-        logging.info(f"[{client.strid}] [LOG] [{level.name}] {message}")
-        client.log(level, message)
         if message.startswith(self.KL_MAGIC):
             pass # TODO: Retrieving info about the defaut, vulns (covered / validated)
+        #logging.info(f"[{client.strid}] [LOG] [{level.name}] {message}")
+        client.log(level, message)
 
     def telemetry_received(self, cli_id: bytes,
         state: State = None, exec_per_sec: int = None, total_exec: int = None,
@@ -194,6 +195,36 @@ class PastisBroker(BrokerAgent):
         for c in self.iter_other_clients(client):
             c.set_stopped()
             self.send_stop(c.netid)
+
+    def data_received(self,  cli_id: bytes, data: str):
+        client = self.get_client(cli_id)
+        if not client:
+            return
+
+        alert_data = AlertData.from_json(data)
+        if self.kl_report.has_binding():
+            alert = self.kl_report.get_alert(binding_id=alert_data.id)
+        else:
+            alert = self.kl_report.get_alert(kid=alert_data.id)
+        if not alert.covered and alert_data.covered:
+            logging.info(f"[{client.strid}] is the first to cover {alert}")
+            alert.covered = alert_data.covered
+        if not alert.validated and alert_data.validated:
+            logging.info(f"[{client.strid}] is the first to validate {alert}")
+            alert.validated = alert_data.validated
+
+        # If all alerts are validated send a stop to everyone
+        if self.kl_report.all_alerts_validated():
+            self.stop_broker()
+
+    def stop_broker(self):
+        for client in self.clients.values():
+            logging.info(f"Send stop to {client.strid}")
+            self.send_stop(client.netid)
+        self._stop = True
+
+        # Write the final CSV in the workspace
+        self.kl_report.write_csv(self.workspace / "results.csv")
 
     def start_client(self, client: PastisClient):
         program = None  # The program yet to be selected
@@ -326,6 +357,8 @@ class PastisBroker(BrokerAgent):
 
     def _init_workspace(self):
         """ Create the directory for inputs, crashes and logs"""
+        if not self.workspace.exists():
+            self.workspace.mkdir()
         for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR]:
             p = self.workspace / s
             if not p.exists():
