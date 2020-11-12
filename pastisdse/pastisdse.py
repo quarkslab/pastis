@@ -268,33 +268,25 @@ class PastisDSE(object):
 
         # All INTEGER_OVERFLOW related alerts
         elif type == KlocworkAlertType.NUM_OVERFLOW:
-            res = IntegerOverflowSanitizer.post_instruction(se, state, state.current_instruction)
+            res = IntegerOverflowSanitizer.check(se, state, state.current_instruction)
             return res
 
         # All USE_AFTER_FREE related alerts
         elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_DEREF_MIGHT]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            # NOTE: Ici, avec ce design de elif, il n'est pas possible de différencier si c'est un UAF en
-            # lecture / écriture ou un double free. Du coup, on appel memory_read dans le sanitizer de
-            # UAFSanitizer. Cela ne change rien au resultat, c'est juste qu'on perd le type de UAF.
-            res = UAFSanitizer.memory_read(se, state, MemoryAccess(ptr, CPUSIZE.BYTE))
-            return res
+            return UAFSanitizer.check(se, state, ptr, f'UAF detected at {ptr:#x}')
 
         # All FORMAT_STRING related alerts
         elif type in [KlocworkAlertType.SV_TAINTED_FMTSTR, KlocworkAlertType.SV_FMTSTR_GENERIC]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            res = FormatStringSanitizer.printf_family_routines(se, state, addr, ptr)
-            return res
+            return FormatStringSanitizer.check(se, state, addr, ptr)
 
         # All INVALID_MEMORY related alerts
         elif type in [KlocworkAlertType.NPD_FUNC_MUST, locworkAlertType.NPD_FUNC_MIGHT]:
-            # NOTE: Ici, avec ce design de elif, il n'est pas possible de différencier si c'est un UAF en
-            # lecture / écriture ou un double free. Du coup, on appel memory_read dans le sanitizer de
-            # UAFSanitizer. Cela ne change rien au resultat, c'est juste qu'on perd le type de UAF.
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            res = NullDerefSanitizer.memory_read(se, state, MemoryAccess(ptr, CPUSIZE.BYTE))
-            return res
+            return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
 
+        # FIXME: Those ones are not supported by klocwork-alert-inserter
         elif type == KlocworkAlertType.NPD_CHECK_MIGHT:
             pass
 
