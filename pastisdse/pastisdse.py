@@ -207,7 +207,7 @@ class PastisDSE(object):
 
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
-        alert_id = state.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(0))
+        alert_id = state.get_argument_value(0)
         res_improved = False
         if self.klreport:
             # Retrieve the KlocworkAlert object from the report
@@ -242,8 +242,7 @@ class PastisDSE(object):
 
         else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
             # Retrieve alert type from parameters
-            arg1  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(1))
-            alert_kind = se.pstate.get_memory_string(arg1)
+            alert_kind = se.pstate.get_string_argument(1)
             try:
                 kind = KlocworkAlertType[alert_kind]
                 if self.check_alert_dispatcher(kind, se, state, addr):
