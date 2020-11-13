@@ -256,13 +256,45 @@ class PastisDSE(object):
 
 
     def check_alert_dispatcher(self, type: KlocworkAlertType, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
-        # All BUFFER_OVERFLOW related alerts
+        # BUFFER_OVERFLOW related alerts
         if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
-            pass
+            size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(3))
 
+            # Runtime check
+            if len(se.abi.get_memory_string(ptr)) >= size:
+                # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                return True
+
+            # Symbolic check
+            actx = se.pstate.tt_ctx.getAstContext()
+            predicate = [se.pstate.tt_ctx.getPathPredicate()]
+
+            # For each memory cell, try to proof that they can be different from \0
+            for i in range(size + 1): # +1 in order to proof that we can at least do an off-by-one
+                cell = se.pstate.tt_ctx.getMemoryAst(MemoryAccess(ptr + i, CPUSIZE.BYTE))
+                predicate.append(cell != 0)
+
+            # FIXME: Maybe we can generate models until unsat in order to find the bigger string
+
+            model = se.pstate.tt_ctx.getModel(actx.land(predicate))
+            if model:
+                crash_seed = mk_new_crashing_seed(se, model)
+                se.workspace.save_seed(crash_seed)
+                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                return True
+
+            return False
+
+        ######################################################################
+
+        # BUFFER_OVERFLOW related alerts
         elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
             pass
 
+        ######################################################################
+
+        # BUFFER_OVERFLOW related alerts
         # FIXME: Il faut modifier le rapport et le klocwork-alert-inserter.
         # Le prototype doit être intrinseque(id, type, sizeof(buff), index)
         elif type == KlocworkAlertType.ABV_GENERAL:
@@ -281,31 +313,40 @@ class PastisDSE(object):
             if model:
                 crash_seed = mk_new_crashing_seed(se, model)
                 se.workspace.save_seed(crash_seed)
-                se.seed.status = SeedStatus.OK_DONE
                 logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
                 return True
 
             return False
 
+        ######################################################################
+
         # All INTEGER_OVERFLOW related alerts
         elif type == KlocworkAlertType.NUM_OVERFLOW:
             return IntegerOverflowSanitizer.check(se, state, state.current_instruction)
+
+        ######################################################################
 
         # All USE_AFTER_FREE related alerts
         elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_DEREF_MIGHT]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
             return UAFSanitizer.check(se, state, ptr, f'UAF detected at {ptr:#x}')
 
+        ######################################################################
+
         # All FORMAT_STRING related alerts
         elif type in [KlocworkAlertType.SV_TAINTED_FMTSTR, KlocworkAlertType.SV_FMTSTR_GENERIC]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
             return FormatStringSanitizer.check(se, state, addr, ptr)
+
+        ######################################################################
 
         # All INVALID_MEMORY related alerts
         # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
         elif type in [KlocworkAlertType.NPD_FUNC_MUST, locworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
             return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
+
+        ######################################################################
 
         else:
             logging.error(f"Unsupported alert kind {type}")
