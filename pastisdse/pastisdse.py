@@ -13,7 +13,7 @@ from scapy.contrib.igmp import IGMP
 # Pastis & triton imports
 from triton               import MemoryAccess, CPUSIZE
 from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus
-from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer
+from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
 from libpastis.agent      import ClientAgent
 from libpastis.types      import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
@@ -129,12 +129,12 @@ class PastisDSE(object):
         #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
-            pass
-           # self.dse.callback_manager.register_probe_callback(UAFSanitizer())
-           # self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
-           # self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
-           # self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
-           # # TODO Buffer overflow
+           self.dse.callback_manager.register_probe_callback(UAFSanitizer())
+           self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
+           self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
+           self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
+           # TODO Buffer overflow
+
         elif chkmode == CheckMode.ALERT_ONLY:
            self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
@@ -263,13 +263,33 @@ class PastisDSE(object):
         elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
             pass
 
+        # FIXME: Il faut modifier le rapport et le klocwork-alert-inserter.
+        # Le prototype doit être intrinseque(id, type, sizeof(buff), index)
         elif type == KlocworkAlertType.ABV_GENERAL:
-            pass
+            size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            index = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(3))
+
+            # Runtime check
+            if index.evaluate() >= size:
+                # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                return True
+
+            # Symbolic check
+            actx = se.pstate.tt_ctx.getAstContext()
+            predicate = se.pstate.tt_ctx.getPathPredicate()
+            model = se.pstate.tt_ctx.getModel(actx.land([predicate, index >= size]))
+            if model:
+                crash_seed = mk_new_crashing_seed(se, model)
+                se.workspace.save_seed(crash_seed)
+                se.seed.status = SeedStatus.OK_DONE
+                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                return True
+
+            return False
 
         # All INTEGER_OVERFLOW related alerts
         elif type == KlocworkAlertType.NUM_OVERFLOW:
-            res = IntegerOverflowSanitizer.check(se, state, state.current_instruction)
-            return res
+            return IntegerOverflowSanitizer.check(se, state, state.current_instruction)
 
         # All USE_AFTER_FREE related alerts
         elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_DEREF_MIGHT]:
@@ -282,16 +302,10 @@ class PastisDSE(object):
             return FormatStringSanitizer.check(se, state, addr, ptr)
 
         # All INVALID_MEMORY related alerts
-        elif type in [KlocworkAlertType.NPD_FUNC_MUST, locworkAlertType.NPD_FUNC_MIGHT]:
+        # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
+        elif type in [KlocworkAlertType.NPD_FUNC_MUST, locworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
             return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
-
-        # FIXME: Those ones are not supported by klocwork-alert-inserter
-        elif type == KlocworkAlertType.NPD_CHECK_MIGHT:
-            pass
-
-        elif type == KlocworkAlertType.NPD_CONST_CALL:
-            pass
 
         else:
             logging.error(f"Unsupported alert kind {type}")
