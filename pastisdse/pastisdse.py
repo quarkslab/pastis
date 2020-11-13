@@ -69,6 +69,11 @@ class PastisDSE(object):
                 break
 
 
+    def kl_state(self, se: SymbolicExecutor, state: ProcessState):
+        d, v = self.klreport.get_stats()
+        logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+
+
     def wait_seed_event(self):
         self._seed_lock = True
         while self._seed_lock:
@@ -128,6 +133,7 @@ class PastisDSE(object):
         # Register common callbacks
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
+        self.dse.callback_manager.register_post_execution_callback(self.kl_state)
         #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
@@ -356,11 +362,33 @@ class PastisDSE(object):
 
         # All INVALID_MEMORY related alerts
         # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
-        elif type in [KlocworkAlertType.NPD_FUNC_MUST, locworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
+        elif type in [KlocworkAlertType.NPD_FUNC_MUST, KlocworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
             return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
 
         ######################################################################
+
+        elif type == KlocworkAlertType.MISRA_ETYPE_CATEGORY_DIFFERENT_2012:
+            expr = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(2))
+
+            # Runtime check
+            if expr.isSigned():
+                # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
+                return True
+
+            # Symbolic check
+            actx = se.pstate.tt_ctx.getAstContext()
+            size = expr.getBitvectorSize() - 1
+            predicate = [se.pstate.tt_ctx.getPathPredicate(), actx.extract(size - 1, size - 1, expr) == 1]
+
+            model = se.pstate.tt_ctx.getModel(actx.land(predicate))
+            if model:
+                crash_seed = mk_new_crashing_seed(se, model)
+                se.workspace.save_seed(crash_seed)
+                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                return True
+            return False
 
         else:
             logging.error(f"Unsupported alert kind {type}")
