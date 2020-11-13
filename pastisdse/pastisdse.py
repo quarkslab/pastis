@@ -68,10 +68,12 @@ class PastisDSE(object):
                 logging.error(f"explorator not meant to be in state: {st}")
                 break
 
+
     def wait_seed_event(self):
         self._seed_lock = True
         while self._seed_lock:
             time.sleep(0.5)
+
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
@@ -151,6 +153,7 @@ class PastisDSE(object):
         else:
             logging.warning("receiving seeds while the DSE is not instanciated")
         self._seed_lock = False  # Unlock the run() thread if it was waiting for a seed
+
 
     def stop_received(self):
         logging.info(f"[BROKER] [STOP]")
@@ -259,11 +262,12 @@ class PastisDSE(object):
         # BUFFER_OVERFLOW related alerts
         if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
             size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            ptr = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(3))
+            ptr  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(3))
 
             # Runtime check
             if len(se.abi.get_memory_string(ptr)) >= size:
                 # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
                 return True
 
             # Symbolic check
@@ -290,32 +294,42 @@ class PastisDSE(object):
 
         # BUFFER_OVERFLOW related alerts
         elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
-            pass
-
-        ######################################################################
-
-        # BUFFER_OVERFLOW related alerts
-        # FIXME: Il faut modifier le rapport et le klocwork-alert-inserter.
-        # Le prototype doit être intrinseque(id, type, sizeof(buff), index)
-        elif type == KlocworkAlertType.ABV_GENERAL:
-            size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            index = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(3))
+            dst_size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr_inpt = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(3))
+            max_size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(4))
 
             # Runtime check
-            if index.evaluate() >= size:
+            if max_size >= dst_size and len(se.abi.get_memory_string(ptr_inpt)) >= dst_size:
                 # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
                 return True
 
             # Symbolic check
             actx = se.pstate.tt_ctx.getAstContext()
-            predicate = se.pstate.tt_ctx.getPathPredicate()
-            model = se.pstate.tt_ctx.getModel(actx.land([predicate, index >= size]))
+            max_size_s = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(4))
+            predicate = [se.pstate.tt_ctx.getPathPredicate(), max_size_s >= dst_size]
+
+            # For each memory cell, try to proof that they can be different from \0
+            for i in range(dst_size + 1): # +1 in order to proof that we can at least do an off-by-one
+                cell = se.pstate.tt_ctx.getMemoryAst(MemoryAccess(ptr_inpt + i, CPUSIZE.BYTE))
+                predicate.append(cell != 0)
+
+            # FIXME: Maybe we can generate models until unsat in order to find the bigger string
+
+            model = se.pstate.tt_ctx.getModel(actx.land(predicate))
             if model:
                 crash_seed = mk_new_crashing_seed(se, model)
                 se.workspace.save_seed(crash_seed)
                 logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
                 return True
 
+            return False
+
+        ######################################################################
+
+        # BUFFER_OVERFLOW related alerts
+        elif type == KlocworkAlertType.ABV_GENERAL:
+            logging.warning(f'ABV_GENERAL encounter but can not check the issue')
             return False
 
         ######################################################################
