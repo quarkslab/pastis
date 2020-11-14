@@ -323,7 +323,7 @@ class PastisDSE(object):
 
             # Symbolic check
             actx = se.pstate.actx
-            max_size_s = se.pstate.get_argument_symbolic(4)
+            max_size_s = se.pstate.get_argument_symbolic(4).getAst()
             predicate = [se.pstate.tt_ctx.getPathPredicate(), max_size_s >= dst_size]
 
             # For each memory cell, try to proof that they can be different from \0
@@ -380,7 +380,7 @@ class PastisDSE(object):
         ######################################################################
 
         elif type == KlocworkAlertType.MISRA_ETYPE_CATEGORY_DIFFERENT_2012:
-            expr = se.pstate.get_argument_symbolic(2)
+            expr = se.pstate.get_argument_symbolic(2).getAst()
 
             # Runtime check
             if expr.isSigned():
