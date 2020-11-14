@@ -16,7 +16,7 @@ from tritondse            import TRITON_VERSION, Config, Program, CoverageStrate
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
 from libpastis.agent      import ClientAgent
-from libpastis.types      import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
+from libpastis.types      import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -73,7 +73,7 @@ class PastisDSE(object):
         # Handle CRASH and ABV_GENERAL
         if se.seed.status == SeedStatus.CRASH and self._last_kid:
             alert = self.klreport.get_alert(binding_id=self._last_kid)
-            if alert.code.name == 'ABV_GENERAL':
+            if alert.code == KlocworkAlertType.ABV_GENERAL:
                 logging.info(f'A crash occured with an ABV_GENERAL encountered just before.')
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
                 alert.validated = True
@@ -278,17 +278,17 @@ class PastisDSE(object):
     def check_alert_dispatcher(self, type: KlocworkAlertType, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
         # BUFFER_OVERFLOW related alerts
         if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
-            size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            ptr  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(3))
+            size = se.pstate.get_argument_value(2)
+            ptr  = se.pstate.get_argument_value(3)
 
             # Runtime check
-            if len(se.abi.get_memory_string(ptr)) >= size:
+            if len(se.pstate.get_memory_string(ptr)) >= size:
                 # FIXME: Do we have to define the seed as CRASH even if there is no crash?
                 # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
                 return True
 
             # Symbolic check
-            actx = se.pstate.tt_ctx.getAstContext()
+            actx = se.pstate.actx
             predicate = [se.pstate.tt_ctx.getPathPredicate()]
 
             # For each memory cell, try to proof that they can be different from \0
@@ -311,19 +311,19 @@ class PastisDSE(object):
 
         # BUFFER_OVERFLOW related alerts
         elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
-            dst_size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
-            ptr_inpt = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(3))
-            max_size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(4))
+            dst_size = se.pstate.get_argument_value(2)
+            ptr_inpt = se.pstate.get_argument_value(3)
+            max_size = se.pstate.get_argument_value(4)
 
             # Runtime check
-            if max_size >= dst_size and len(se.abi.get_memory_string(ptr_inpt)) >= dst_size:
+            if max_size >= dst_size and len(se.pstate.get_memory_string(ptr_inpt)) >= dst_size:
                 # FIXME: Do we have to define the seed as CRASH even if there is no crash?
                 # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
                 return True
 
             # Symbolic check
-            actx = se.pstate.tt_ctx.getAstContext()
-            max_size_s = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(4))
+            actx = se.pstate.actx
+            max_size_s = se.pstate.get_argument_symbolic(4)
             predicate = [se.pstate.tt_ctx.getPathPredicate(), max_size_s >= dst_size]
 
             # For each memory cell, try to proof that they can be different from \0
@@ -359,14 +359,14 @@ class PastisDSE(object):
 
         # All USE_AFTER_FREE related alerts
         elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_FFM_MIGHT]:
-            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr = se.pstate.get_argument_value(2)
             return UAFSanitizer.check(se, state, ptr, f'UAF detected at {ptr:#x}')
 
         ######################################################################
 
         # All FORMAT_STRING related alerts
         elif type in [KlocworkAlertType.SV_TAINTED_FMTSTR, KlocworkAlertType.SV_FMTSTR_GENERIC]:
-            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr = se.pstate.get_argument_value(2)
             return FormatStringSanitizer.check(se, state, addr, ptr)
 
         ######################################################################
@@ -374,13 +374,13 @@ class PastisDSE(object):
         # All INVALID_MEMORY related alerts
         # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
         elif type in [KlocworkAlertType.NPD_FUNC_MUST, KlocworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
-            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr = se.pstate.get_argument_value(2)
             return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
 
         ######################################################################
 
         elif type == KlocworkAlertType.MISRA_ETYPE_CATEGORY_DIFFERENT_2012:
-            expr = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(2))
+            expr = se.pstate.get_argument_symbolic(2)
 
             # Runtime check
             if expr.isSigned():
