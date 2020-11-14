@@ -347,7 +347,7 @@ class PastisDSE(object):
         ######################################################################
 
         # All USE_AFTER_FREE related alerts
-        elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_DEREF_MIGHT]:
+        elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_FFM_MIGHT]:
             ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
             return UAFSanitizer.check(se, state, ptr, f'UAF detected at {ptr:#x}')
 
