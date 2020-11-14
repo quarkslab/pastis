@@ -12,7 +12,7 @@ from scapy.contrib.igmp import IGMP
 
 # Pastis & triton imports
 from triton               import MemoryAccess, CPUSIZE
-from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus
+from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
 from libpastis.agent      import ClientAgent
@@ -28,12 +28,14 @@ class PastisDSE(object):
         self.agent = agent
         self._init_callbacks()  # register callbacks on the given agent
 
-        self.config  = Config(debug=False)
-        self.dse     = None
-        self.program = None
-        self.stop    = False
+        self.config     = Config(debug=False)
+        self.dse        = None
+        self.program    = None
+        self.stop       = False
+        self.klreport   = None
+        self._last_kid  = None
         self._seed_lock = False
-        self.klreport = None
+
 
     def _init_callbacks(self):
         self.agent.register_start_callback(self.start_received)
@@ -69,7 +71,16 @@ class PastisDSE(object):
                 break
 
 
-    def kl_state(self, se: SymbolicExecutor, state: ProcessState):
+    def cb_post_execution(self, se: SymbolicExecutor, state: ProcessState):
+        # Handle CRASH and ABV_GENERAL
+        if se.seed.status == SeedStatus.CRASH and self._last_kid:
+            alert = self.klreport.get_alert(binding_id=self._last_kid)
+            if alert.code.name == 'ABV_GENERAL':
+                logging.info(f'A crash occured with an ABV_GENERAL encountered just before.')
+                self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
+                alert.validated = True
+
+        # Print stats
         d, v = self.klreport.get_stats()
         logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
@@ -133,7 +144,7 @@ class PastisDSE(object):
         # Register common callbacks
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
-        self.dse.callback_manager.register_post_execution_callback(self.kl_state)
+        self.dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
         #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
@@ -220,6 +231,7 @@ class PastisDSE(object):
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
         alert_id = state.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(0))
+        self._last_kid = alert_id
         res_improved = False
         if self.klreport:
             # Retrieve the KlocworkAlert object from the report
@@ -291,7 +303,7 @@ class PastisDSE(object):
             if model:
                 crash_seed = mk_new_crashing_seed(se, model)
                 se.workspace.save_seed(crash_seed)
-                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                logging.info(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
                 return True
 
             return False
@@ -326,7 +338,7 @@ class PastisDSE(object):
             if model:
                 crash_seed = mk_new_crashing_seed(se, model)
                 se.workspace.save_seed(crash_seed)
-                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                logging.info(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
                 return True
 
             return False
@@ -335,7 +347,7 @@ class PastisDSE(object):
 
         # BUFFER_OVERFLOW related alerts
         elif type == KlocworkAlertType.ABV_GENERAL:
-            logging.warning(f'ABV_GENERAL encounter but can not check the issue')
+            logging.warning(f'ABV_GENERAL encounter but can not check the issue. This issue will be handle if the program will crash.')
             return False
 
         ######################################################################
@@ -386,7 +398,7 @@ class PastisDSE(object):
             if model:
                 crash_seed = mk_new_crashing_seed(se, model)
                 se.workspace.save_seed(crash_seed)
-                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                logging.info(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
                 return True
             return False
 
