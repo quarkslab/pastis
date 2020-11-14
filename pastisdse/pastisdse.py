@@ -22,8 +22,6 @@ from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKi
 
 class PastisDSE(object):
 
-    KL_MAGIC = "KL-METADATA"
-
     def __init__(self, agent: ClientAgent):
         self.agent = agent
         self._init_callbacks()  # register callbacks on the given agent
@@ -244,6 +242,8 @@ class PastisDSE(object):
                     logging.info(f"Alert [{alert.id}] in {alert.file}:{alert.line}: validation [FAIL]")
 
             if res_improved:  # If either coverage or validation were improved print stats
+                # Send updates to the broker
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
                 d, v = self.klreport.get_stats()
                 logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
