@@ -11,12 +11,13 @@ from scapy.all          import Ether, IP, TCP, UDP, ICMP
 from scapy.contrib.igmp import IGMP
 
 # Pastis & triton imports
-from tritondse          import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, \
-                               ProcessState, ExplorationStatus
-from tritondse.types    import Addr, Input
-from libpastis.agent    import ClientAgent
-from libpastis.types    import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, AlertData
-from klocwork           import KlocworkReport, KlocworkAlertType, PastisVulnKind
+from triton               import MemoryAccess, CPUSIZE
+from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus
+from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
+from tritondse.types      import Addr, Input
+from libpastis.agent      import ClientAgent
+from libpastis.types      import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
+from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
 class PastisDSE(object):
@@ -65,10 +66,17 @@ class PastisDSE(object):
                 logging.error(f"explorator not meant to be in state: {st}")
                 break
 
+
+    def kl_state(self, se: SymbolicExecutor, state: ProcessState):
+        d, v = self.klreport.get_stats()
+        logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+
+
     def wait_seed_event(self):
         self._seed_lock = True
         while self._seed_lock:
             time.sleep(0.5)
+
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
@@ -123,15 +131,16 @@ class PastisDSE(object):
         # Register common callbacks
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
+        self.dse.callback_manager.register_post_execution_callback(self.kl_state)
         #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
-            pass
-           # self.dse.callback_manager.register_probe_callback(UAFSanitizer())
-           # self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
-           # self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
-           # self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
-           # # TODO Buffer overflow
+           self.dse.callback_manager.register_probe_callback(UAFSanitizer())
+           self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
+           self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
+           self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
+           # TODO Buffer overflow
+
         elif chkmode == CheckMode.ALERT_ONLY:
            self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
@@ -148,6 +157,7 @@ class PastisDSE(object):
         else:
             logging.warning("receiving seeds while the DSE is not instanciated")
         self._seed_lock = False  # Unlock the run() thread if it was waiting for a seed
+
 
     def stop_received(self):
         logging.info(f"[BROKER] [STOP]")
@@ -243,7 +253,7 @@ class PastisDSE(object):
         else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
             # Retrieve alert type from parameters
             arg1  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(1))
-            alert_kind = se.pstate.get_memory_string(arg1)
+            alert_kind = se.abi.get_memory_string(arg1)
             try:
                 kind = KlocworkAlertType[alert_kind]
                 if self.check_alert_dispatcher(kind, se, state, addr):
@@ -255,37 +265,131 @@ class PastisDSE(object):
 
 
     def check_alert_dispatcher(self, type: KlocworkAlertType, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
-        # All BUFFER_OVERFLOW related alerts
+        # BUFFER_OVERFLOW related alerts
         if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
-            pass
+            size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr  = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(3))
+
+            # Runtime check
+            if len(se.abi.get_memory_string(ptr)) >= size:
+                # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
+                return True
+
+            # Symbolic check
+            actx = se.pstate.tt_ctx.getAstContext()
+            predicate = [se.pstate.tt_ctx.getPathPredicate()]
+
+            # For each memory cell, try to proof that they can be different from \0
+            for i in range(size + 1): # +1 in order to proof that we can at least do an off-by-one
+                cell = se.pstate.tt_ctx.getMemoryAst(MemoryAccess(ptr + i, CPUSIZE.BYTE))
+                predicate.append(cell != 0)
+
+            # FIXME: Maybe we can generate models until unsat in order to find the bigger string
+
+            model = se.pstate.tt_ctx.getModel(actx.land(predicate))
+            if model:
+                crash_seed = mk_new_crashing_seed(se, model)
+                se.workspace.save_seed(crash_seed)
+                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                return True
+
+            return False
+
+        ######################################################################
+
+        # BUFFER_OVERFLOW related alerts
         elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
-            pass
+            dst_size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            ptr_inpt = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(3))
+            max_size = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(4))
+
+            # Runtime check
+            if max_size >= dst_size and len(se.abi.get_memory_string(ptr_inpt)) >= dst_size:
+                # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
+                return True
+
+            # Symbolic check
+            actx = se.pstate.tt_ctx.getAstContext()
+            max_size_s = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(4))
+            predicate = [se.pstate.tt_ctx.getPathPredicate(), max_size_s >= dst_size]
+
+            # For each memory cell, try to proof that they can be different from \0
+            for i in range(dst_size + 1): # +1 in order to proof that we can at least do an off-by-one
+                cell = se.pstate.tt_ctx.getMemoryAst(MemoryAccess(ptr_inpt + i, CPUSIZE.BYTE))
+                predicate.append(cell != 0)
+
+            # FIXME: Maybe we can generate models until unsat in order to find the bigger string
+
+            model = se.pstate.tt_ctx.getModel(actx.land(predicate))
+            if model:
+                crash_seed = mk_new_crashing_seed(se, model)
+                se.workspace.save_seed(crash_seed)
+                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                return True
+
+            return False
+
+        ######################################################################
+
+        # BUFFER_OVERFLOW related alerts
         elif type == KlocworkAlertType.ABV_GENERAL:
-            pass
+            logging.warning(f'ABV_GENERAL encounter but can not check the issue')
+            return False
+
+        ######################################################################
+
         # All INTEGER_OVERFLOW related alerts
         elif type == KlocworkAlertType.NUM_OVERFLOW:
-            pass
+            return IntegerOverflowSanitizer.check(se, state, state.current_instruction)
+
+        ######################################################################
+
         # All USE_AFTER_FREE related alerts
-        elif type == KlocworkAlertType.UFM_DEREF_MIGHT:
-            pass
-        elif type == KlocworkAlertType.UFM_FFM_MUST:
-            pass
-        elif type == KlocworkAlertType.UFM_DEREF_MIGHT:
-            pass
+        elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_FFM_MIGHT]:
+            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            return UAFSanitizer.check(se, state, ptr, f'UAF detected at {ptr:#x}')
+
+        ######################################################################
+
         # All FORMAT_STRING related alerts
-        elif type == KlocworkAlertType.SV_TAINTED_FMTSTR:
-            pass
-        elif type == KlocworkAlertType.SV_FMTSTR_GENERIC:
-            pass
+        elif type in [KlocworkAlertType.SV_TAINTED_FMTSTR, KlocworkAlertType.SV_FMTSTR_GENERIC]:
+            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            return FormatStringSanitizer.check(se, state, addr, ptr)
+
+        ######################################################################
+
         # All INVALID_MEMORY related alerts
-        elif type == KlocworkAlertType.NPD_FUNC_MUST:
-            pass
-        elif type == KlocworkAlertType.NPD_CHECK_MIGHT:
-            pass
-        elif type == KlocworkAlertType.NPD_FUNC_MIGHT:
-            pass
-        elif type == KlocworkAlertType.NPD_CONST_CALL:
-            pass
+        # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
+        elif type in [KlocworkAlertType.NPD_FUNC_MUST, KlocworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
+            ptr = se.pstate.tt_ctx.getConcreteRegisterValue(se.abi.get_arg_register(2))
+            return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
+
+        ######################################################################
+
+        elif type == KlocworkAlertType.MISRA_ETYPE_CATEGORY_DIFFERENT_2012:
+            expr = se.pstate.tt_ctx.getRegisterAst(se.abi.get_arg_register(2))
+
+            # Runtime check
+            if expr.isSigned():
+                # FIXME: Do we have to define the seed as CRASH even if there is no crash?
+                # FIXME: Maybe we have to define a new TAG like BUG or VULN or whatever
+                return True
+
+            # Symbolic check
+            actx = se.pstate.tt_ctx.getAstContext()
+            size = expr.getBitvectorSize() - 1
+            predicate = [se.pstate.tt_ctx.getPathPredicate(), actx.extract(size - 1, size - 1, expr) == 1]
+
+            model = se.pstate.tt_ctx.getModel(actx.land(predicate))
+            if model:
+                crash_seed = mk_new_crashing_seed(se, model)
+                se.workspace.save_seed(crash_seed)
+                logging.warning(f'Model found for a seed which may lead to a crash ({crash_seed.filename})')
+                return True
+            return False
+
         else:
             logging.error(f"Unsupported alert kind {type}")
 
