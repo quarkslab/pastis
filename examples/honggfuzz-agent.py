@@ -4,9 +4,12 @@ import logging
 
 from hfwrapper import Honggfuzz
 from libpastis.agent import ClientAgent
+import coloredlogs
 
-
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
+coloredlogs.install(level=logging.DEBUG,
+                    fmt="%(asctime)s %(levelname)s %(message)s",
+                    level_styles={'debug': {'color': 'blue'}, 'info': {}, 'warning': {'color': 'yellow'},
+                                  'error': {'color': 'red'}, 'critical': {'bold': True, 'color': 'red'}})
 
 
 def main():

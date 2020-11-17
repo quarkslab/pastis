@@ -8,6 +8,7 @@ setup(
     description="Honggfuzz wrapper",
     packages=find_packages(),
     install_requires=[
-        "inotify"
+        "inotify",
+        "coloredlogs"
     ]
 )

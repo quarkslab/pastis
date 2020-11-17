@@ -2,7 +2,7 @@
 import inotify.adapters
 import logging
 import os
-import pathlib
+from pathlib import Path
 import signal
 import stat
 import subprocess
@@ -57,7 +57,7 @@ class ManagedProcess:
 class HonggfuzzProcess:
 
     def __init__(self, path: PathLike):
-        self.__path = pathlib.Path(path) / 'honggfuzz'
+        self.__path = Path(path) / 'honggfuzz'
         self.__process = ManagedProcess()
 
         if not self.__path.exists():
@@ -99,7 +99,7 @@ class HonggfuzzProcess:
 
 class DirectoryEventWatcher:
 
-    def __init__(self, path: pathlib.Path, event_type: str, callback: Callable):
+    def __init__(self, path: Path, event_type: str, callback: Callable):
         self.__path = path
         self.__event_type = event_type
         self.__callback = callback
@@ -129,7 +129,7 @@ class DirectoryEventWatcher:
                 (header, type_names, watch_path, filename) = event
 
                 if self.__event_type in type_names:
-                    self.__callback(pathlib.Path(watch_path) / filename)
+                    self.__callback(Path(watch_path) / filename)
 
         self.__inotify.remove_watch(str(self.__path))
 
@@ -152,7 +152,7 @@ class Honggfuzz:
 
         self.__hfuzz_path = os.environ['HFUZZ_PATH']
         self.__hfuzz_version = '2.1'
-        self.__hfuzz_workspace = pathlib.Path(os.environ.get('HFUZZ_WS', '/tmp/hfuzz_workspace'))
+        self.__hfuzz_workspace = Path(os.environ.get('HFUZZ_WS', '/tmp/hfuzz_workspace'))
         self.__hfuzz_process = HonggfuzzProcess(self.__hfuzz_path)
 
         self.__target_id = self.__generate_id()
@@ -201,7 +201,7 @@ class Honggfuzz:
         self.__agent.send_hello([(FuzzingEngine.HONGGFUZZ, self.__hfuzz_version)])
 
         if isinstance(self.__agent, FileAgent):
-            target_path = pathlib.Path(target)
+            target_path = Path(target)
             binary = target_path.read_bytes()
 
             self.__start_received(target_path, binary, FuzzingEngine.HONGGFUZZ,
@@ -275,28 +275,22 @@ class Honggfuzz:
     def __generate_id():
         return int(time.time())
 
-    def __send_seed(self, filename: pathlib.Path):
-        logging.debug(f'[SEED] Sending new seed: {filename}')
+    def __send_seed(self, filename: Path):
+        file = Path(filename)
+        logging.debug(f'[SEED] Sending new seed: {file.name}')
+        self.__agent.send_seed(SeedType.INPUT, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
+        self.__check_seed_alert(filename, is_crash=False)
 
-        content = pathlib.Path(filename).read_bytes()
+    def __send_crash(self, filename: Path):
+        file = Path(filename)
+        logging.debug(f'[CRASH] Sending new crash: {file.name}')
+        self.__agent.send_seed(SeedType.CRASH, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
+        self.__check_seed_alert(filename, is_crash=True)
 
-        self.__agent.send_seed(SeedType.INPUT, content, FuzzingEngine.HONGGFUZZ)
-
-        self.__check_seed_alert(filename)
-
-    def __send_crash(self, filename: pathlib.Path):
-        logging.debug(f'[SEED] Sending new crash: {filename}')
-
-        content = pathlib.Path(filename).read_bytes()
-
-        self.__agent.send_seed(SeedType.CRASH, content, FuzzingEngine.HONGGFUZZ)
-
-        self.__check_seed_alert(filename)
-
-    def __check_seed_alert(self, filename: pathlib.Path):
+    def __check_seed_alert(self, filename: Path, is_crash: bool):
+        p = Path(filename)
         # Only rerun the seed if in alert only mode and a klocwork report was provided
         if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
-            logging.info(f"Replay {filename}")
 
             # Rerun the program with the seed
             run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.__target_workspace['target']))
@@ -307,26 +301,29 @@ class Honggfuzz:
                 if not alert.covered:
                     alert.covered = True
                     logging.info(f"New alert covered {alert} [{alert.id}]")
-                    self.__agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
+                    self.__agent.send_alert_data(AlertData(alert.id, alert.covered, False, p.read_bytes()))
 
             # Check if the target has crashed and if so tell the broker which one
             if run.has_crashed():
                 if not run.crashing_id:
-                    logging.warning("Crash on {filename} but can't link it to a Klocwork alert")
+                    self.dual_log(LogLevel.WARNING, f"Crash on {filename.name} but can't link it to a Klocwork alert (maybe bonus !)")
                 else:
                     alert = self.__report.get_alert(binding_id=run.crashing_id)
                     if not alert.validated:
                         alert.validated = True
                         bugt, aline = run.asan_info()
                         self.dual_log(LogLevel.INFO, f"Honggfuzz new alert validated {alert} [{alert.id}] ({aline})")
-                        self.__agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
+                        self.__agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, p.read_bytes()))
+            else:
+                if is_crash:
+                    self.dual_log(LogLevel.WARNING, f"crash not reproducible by rerunning seed: {filename.name}")
 
             if run.has_hanged():  # Honggfuzz does not stores 'hangs' it will have been sent as corpus or crash
-                logging.info(f"Seed {filename} was hanging in replay")
+                self.dual_log(LogLevel.WARNING, f"Seed {filename} was hanging in replay")
 
 
-    def __send_telemetry(self, filename: pathlib.Path):
-        if self._tel_counter % 500 != 0:
+    def __send_telemetry(self, filename: Path):
+        if self._tel_counter % 250 != 0:
             return
         self._tel_counter += 1
 
