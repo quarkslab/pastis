@@ -70,6 +70,15 @@ class PastisDSE(object):
 
 
     def cb_post_execution(self, se: SymbolicExecutor, state: ProcessState):
+
+        # Send seed that have been executed
+        mapper = {SeedStatus.OK_DONE: SeedType.INPUT, SeedStatus.CRASH: SeedType.CRASH, SeedStatus.HANG: SeedType.HANG}
+        seed = se.seed
+        if seed.status == SeedStatus.NEW:
+            logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
+        else:
+            self.agent.send_seed(mapper[seed.status], seed.content, origin=FuzzingEngine.TRITON)
+
         # Handle CRASH and ABV_GENERAL
         if se.seed.status == SeedStatus.CRASH and self._last_kid:
             alert = self.klreport.get_alert(binding_id=self._last_kid)
@@ -77,6 +86,7 @@ class PastisDSE(object):
                 logging.info(f'A crash occured with an ABV_GENERAL encountered just before.')
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
                 alert.validated = True
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
 
         # Print stats
         d, v = self.klreport.get_stats()
@@ -141,7 +151,7 @@ class PastisDSE(object):
 
         # Register common callbacks
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
-        self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
+        # self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         self.dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
         #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
@@ -222,9 +232,9 @@ class PastisDSE(object):
         return new_input_generated
 
 
-    def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Input):
-        self.agent.send_seed(SeedType.INPUT, bytes(seed), FuzzingEngine.TRITON)
-        return
+    # def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Input):
+    #     self.agent.send_seed(SeedType.INPUT, bytes(seed), FuzzingEngine.TRITON)
+    #     return
 
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
