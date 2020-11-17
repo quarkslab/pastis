@@ -2,14 +2,24 @@ import subprocess
 from io import BytesIO
 from typing import Optional, List, Tuple
 import re
+import logging
+
+
+EXAMPLES = '''
+REGEX_1:
+==373876==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7ffecfb907a4 at pc 0x00000043e9e7 bp 0x7ffecfb90660 sp 0x7ffecfb8fdf8
+
+REGEX_2:
+==372317==AddressSanitizer: WARNING: unexpected format specifier in printf interceptor: %� (reported once per process)
+==372317==AddressSanitizer CHECK failed: /build/llvm-toolchain-9-NoMHhU/llvm-toolchain-9-9.0.1/compiler-rt/lib/asan/../sanitizer_common/sani
+'''
 
 
 class Replay(object):
 
     INTRINSIC_REGEX = rb".*REACHED ID (\d+)"
-    ASAN_REGEX = rb"^==\d+==ERROR:"
-    ASAN_END_LINE = rb"^==\d+==ERROR: AddressSanitizer: (.+)"
-    ASAN_PARAM = rb"^==\d+==ERROR: AddressSanitizer: (\S+)"
+    ASAN_REGEX_1 = rb"^==\d+==ERROR: AddressSanitizer: (\S+) (.*)"
+    ASAN_REGEX_2 = rb"^==\d+==AddressSanitizer:? ([^:]+): (.*)"
 
     def __init__(self):
         self._process = None
@@ -30,6 +40,7 @@ class Replay(object):
             replay.stdout, replay.stderr = replay._process.communicate(timeout=timeout)
             replay.__parse_output(replay.stdout)  # In case intrinsic are on output
             replay.__parse_output(replay.stderr)
+
         except TimeoutError:
             replay._is_hang = True
 
@@ -66,6 +77,7 @@ class Replay(object):
 
 
     def __parse_output(self, raw_output: bytes):
+        matched_vuln = False
         for line in BytesIO(raw_output).readlines():
             # Check if its a line of intrinsic output
             m = re.match(self.INTRINSIC_REGEX, line)
@@ -74,16 +86,18 @@ class Replay(object):
                 self._alert_covered.append(id)
 
             # Check if its a line of ASAN
-            m = re.match(self.ASAN_REGEX, line)
-            if m:
+            m1 = re.match(self.ASAN_REGEX_1, line)
+            m2 = re.match(self.ASAN_REGEX_2, line)
+            if m1 or m2:
+                if matched_vuln:
+                    logging.warning(f"already matched ASAN with {self._asan_bugtype} now {m1.groups() if m1 else m2.groups()}")
+                    continue
+                matched_vuln = True
                 if self._alert_covered: # Try getting last alert (and consider it to be the origin)
                     self._alert_crash = self._alert_covered[-1]
                 # Else cannot link the crash to an ID
 
                 # Extract end of line and parameter
-                m = re.match(self.ASAN_END_LINE, line)
-                if m:
-                    self._asan_line = m.groups()[0].decode()
-                m = re.match(self.ASAN_PARAM, line)
-                if m:
-                    self._asan_bugtype = m.groups()[0].decode()
+                topic, details = m1.groups() if m1 else m2.groups()
+                self._asan_bugtype = topic.decode(errors="replace")
+                self._asan_line = details.decode(errors="replace")
