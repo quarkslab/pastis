@@ -86,7 +86,7 @@ class PastisDSE(object):
                 logging.info(f'A crash occured with an ABV_GENERAL encountered just before.')
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
                 alert.validated = True
-                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content))
 
         # Print stats
         d, v = self.klreport.get_stats()
@@ -240,7 +240,7 @@ class PastisDSE(object):
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
         alert_id = state.get_argument_value(0)
         self._last_kid = alert_id
-        res_improved = False
+        covered, validated = False, False
         if self.klreport:
             # Retrieve the KlocworkAlert object from the report
             try:
@@ -252,20 +252,20 @@ class PastisDSE(object):
             if not alert.covered:
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} covered ! ({alert.kind.name})")
                 alert.covered = True
-                res_improved = True
+                covered = True
 
             if alert.kind == PastisVulnKind.VULNERABILITY and not alert.validated:  # If of type VULNERABILITY and not yet validated
                 res = self.check_alert_dispatcher(alert.code, se, state, addr)
                 if res:
                     alert.validated = True
                     self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
-                    res_improved = True
+                    validated = True
                 else:
                     logging.info(f"Alert [{alert.id}] in {alert.file}:{alert.line}: validation [FAIL]")
 
-            if res_improved:  # If either coverage or validation were improved print stats
+            if covered or validated:  # If either coverage or validation were improved print stats
                 # Send updates to the broker
-                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, validated, se.seed.content))
                 d, v = self.klreport.get_stats()
                 logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
