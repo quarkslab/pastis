@@ -1,3 +1,4 @@
+# builtin imports
 import inotify.adapters
 import logging
 import os
@@ -8,13 +9,20 @@ import subprocess
 import threading
 import time
 import hashlib
-
 from typing import Callable, List, Dict
 
+# Third party imports
 from libpastis import FileAgent, ClientAgent
 from libpastis.types import Arch, CheckMode, CoverageMode, ExecMode, FuzzingEngine, SeedInjectLoc, SeedType, State, \
-                            PathLike, LogLevel
+                            PathLike, LogLevel, AlertData
+try:  # Make the klocwork support optional
+    from klocwork import KlocworkReport
+    KLOCWORK_SUPPORTED = True
+except ImportError:
+    KLOCWORK_SUPPORTED = False
 
+# Local imports
+from hfwrapper.replay import Replay
 
 
 class ManagedProcess:
@@ -135,7 +143,9 @@ class Honggfuzz:
         self.__exec_mode = None   # SINGLE_RUN, PERSISTENT
         self.__check_mode = None  # CHECK_ALL, ALERT_ONLY
         self.__seed_inj = None    # STDIN or ARGV
+        self.__report = None      # Klocwork report if supported
 
+        # File watcher threads
         self.__coverage_watcher = None
         self.__crashes_watcher = None
         self.__stats_watcher = None
@@ -147,11 +157,13 @@ class Honggfuzz:
 
         self.__target_id = self.__generate_id()
         self.__target_path = None
+        self.__target_args = None  # Kept for replay
         self.__target_workspace = None
         self.__setup_target_workspace()
 
         self.__setup_agent()
 
+        self._tel_counter = 0
 
 
     def start(self, bin_name: str, binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
@@ -159,11 +171,12 @@ class Honggfuzz:
         self.__target_path = self.__target_workspace['target'] / bin_name
         self.__target_path.write_bytes(binary)
         self.__target_path.chmod(stat.S_IRWXU)  # Change target mode to execute.
+        self.__target_args = argv
 
         self.__setup_watchers()
         self.__start_watchers()
 
-        self.__hfuzz_process.start(self.__target_path.absolute(), ' '.join(argv), self.__target_workspace, exmode, seed_inj, engine_args)
+        self.__hfuzz_process.start(self.__target_path.absolute(), " ".join(argv), self.__target_workspace, exmode, seed_inj, engine_args)
 
     def stop(self):
         self.__hfuzz_process.stop()
@@ -281,11 +294,42 @@ class Honggfuzz:
         self.__check_seed_alert(filename)
 
     def __check_seed_alert(self, filename: pathlib.Path):
-        if self.__exec_mode == CheckMode.ALERT_ONLY:  # otherwise do nothing
-            # TODO: Rerun the target with the sample to identify targets
-            pass
+        # Only rerun the seed if in alert only mode and a klocwork report was provided
+        if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
+            logging.info(f"Replay {filename}")
+
+            # Rerun the program with the seed
+            run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.__target_workspace['target']))
+
+            # Iterate all covered alerts
+            for id in run.alert_covered:
+                alert = self.__report.get_alert(binding_id=id)
+                if not alert.covered:
+                    alert.covered = True
+                    logging.info(f"New alert covered {alert} [{alert.id}]")
+                    self.__agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
+
+            # Check if the target has crashed and if so tell the broker which one
+            if run.has_crashed():
+                if not run.crashing_id:
+                    logging.warning("Crash on {filename} but can't link it to a Klocwork alert")
+                else:
+                    alert = self.__report.get_alert(binding_id=run.crashing_id)
+                    if not alert.validated:
+                        alert.validated = True
+                        bugt, aline = run.asan_info()
+                        self.dual_log(LogLevel.INFO, f"Honggfuzz new alert validated {alert} [{alert.id}] ({aline})")
+                        self.__agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated))
+
+            if run.has_hanged():  # Honggfuzz does not stores 'hangs' it will have been sent as corpus or crash
+                logging.info(f"Seed {filename} was hanging in replay")
+
 
     def __send_telemetry(self, filename: pathlib.Path):
+        if self._tel_counter % 500 != 0:
+            return
+        self._tel_counter += 1
+
         logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
 
         with open(filename, 'r') as stats_file:
@@ -326,6 +370,13 @@ class Honggfuzz:
             self.__agent.send_log(LogLevel.ERROR, "Invalid fuzzing engine received {engine} can't do anything")
             return
 
+        if kl_report:
+            if KLOCWORK_SUPPORTED:
+                logging.info("Loading klocwork report")
+                self.__report = KlocworkReport.from_json(kl_report)
+            else:
+                self.dual_log(LogLevel.ERROR, "Klocwork report provided while Klocwork not supported by host")
+
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
         self.start(fname, binary, argv, exmode, seed_inj, engine_args)
@@ -339,3 +390,22 @@ class Honggfuzz:
         logging.info(f"[STOP]")
 
         self.stop()
+
+
+    def dual_log(self, level: LogLevel, message: str) -> None:
+        """
+        Helper function to log message both in the local log system and also
+        to the broker.
+
+        :param level: LogLevel message type
+        :param message: string message to log
+        :return: None
+        """
+        mapper = {LogLevel.DEBUG: "debug",
+                  LogLevel.INFO: "info",
+                  LogLevel.CRITICAL: "critical",
+                  LogLevel.WARNING: "warning",
+                  LogLevel.ERROR: "error"}
+        log_f = getattr(logging, mapper[level])
+        log_f(message)
+        self.__agent.send_log(level, message)
