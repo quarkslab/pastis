@@ -57,7 +57,7 @@ class PastisClient(object):
         self.logger.addHandler(hldr)
 
     def reconfigure_logger(self, colorid: int):
-        self.logger.name = f"\033[7m\033[{colorid}m{self.strid}\033[0m"
+        self.logger.name = f"\033[7m\033[{colorid}m[{self.strid}]\033[0m"
 
     @property
     def strid(self):
