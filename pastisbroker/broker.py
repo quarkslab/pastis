@@ -29,6 +29,19 @@ class BrokingMode(Enum):
 COLORS = [32, 33, 34, 35, 36, 37, 39, 91, 93, 94, 95, 96]
 
 
+class Bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+
 class PastisBroker(BrokerAgent):
 
     INPUT_DIR = "corpus"
@@ -61,6 +74,7 @@ class PastisBroker(BrokerAgent):
         self.kl_report = KlocworkReport(kl_report)
         if not self.kl_report.has_binding():
             logging.warning(f"the klocwork report {kl_report} does not contain bindings")
+        self._init_alert_corpus()
 
         # Client infos
         self.clients = {}   # bytes -> Client
@@ -114,7 +128,7 @@ class PastisBroker(BrokerAgent):
     def get_client(self, cli_id: bytes) -> Optional[PastisClient]:
         cli = self.clients.get(cli_id)
         if not cli:
-            logging.warning(f"[broker] client '{cli_id}' unknown (send stop)")
+            logging.warning(f"client '{cli_id}' unknown (send stop)")
             self.send_stop(cli_id)
         return cli
 
@@ -127,7 +141,7 @@ class PastisBroker(BrokerAgent):
 
         # Show log message and save seed to file
         if is_new:
-            cli.log(LogLevel.INFO, f"[{cli.strid}] [SEED] [{origin.name}] {md5(seed).hexdigest()} ({typ.name})")
+            cli.log(LogLevel.INFO, f"new seed {md5(seed).hexdigest()} [{self._colored_seed_type(typ)}]")
             self.write_seed(typ, cli, seed) # Write seed to file
             self._seed_pool[seed] = (typ, origin)  # Save it in the local pool
 
@@ -202,6 +216,7 @@ class PastisBroker(BrokerAgent):
         client = self.get_client(cli_id)
         if not client:
             return
+        res_improved = False
 
         alert_data = AlertData.from_json(data)
         if self.kl_report.has_binding():
@@ -209,13 +224,20 @@ class PastisBroker(BrokerAgent):
         else:
             alert = self.kl_report.get_alert(kid=alert_data.id)
         if not alert.covered and alert_data.covered:
-            logging.info(f"[{client.strid}] is the first to cover {alert}")
+            logging.info(f"[{client.strid}] First to cover {alert}")
             alert.covered = alert_data.covered
             self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
+            res_improved = True
+            self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
         if not alert.validated and alert_data.validated:
-            logging.info(f"[{client.strid}] is the first to validate {alert}")
+            logging.info(f"[{client.strid}] First to validate {alert}")
             alert.validated = alert_data.validated
             self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
+            res_improved = True
+            self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
+        if res_improved:
+            d, v = self.kl_report.get_stats()
+            logging.info(f"Klocwork results updated: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
         # If all alerts are validated send a stop to everyone
         if self.kl_report.all_alerts_validated():
@@ -275,7 +297,7 @@ class PastisBroker(BrokerAgent):
             return
 
         # Update internal client info and send him the message
-        logging.info(f"[broker] send start client {client.id}: {engine.name} {covmode.name} {exmode.name}")
+        logging.info(f"send start client {client.id}: {engine.name} {covmode.name} {exmode.name}")
         client.set_running(engine, covmode, exmode, self.ck_mode)
         client.reconfigure_logger(random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
@@ -293,7 +315,7 @@ class PastisBroker(BrokerAgent):
         super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.localtime()
         self._running = True
-        logging.info("[broker] start broking")
+        logging.info("start broking")
 
         # Send the start message to all clients
         for c in self.clients.values():
@@ -312,7 +334,7 @@ class PastisBroker(BrokerAgent):
                     logging.info("broker terminate")
                     break
         except KeyboardInterrupt:
-            logging.info("[broker] stop")
+            logging.info("stop")
 
     def _find_binary_workspace(self, binaries_dir) -> None:
         """
@@ -401,3 +423,23 @@ class PastisBroker(BrokerAgent):
         hldr.setLevel(logging.root.level)
         hldr.setFormatter(logging.Formatter("%(asctime)s [%(name)s] [%(levelname)s]: %(message)s"))
         logging.root.addHandler(hldr)
+
+    def _colored_seed_type(self, typ: SeedType) -> str:
+        mapper = {SeedType.INPUT: Bcolors.OKBLUE,
+                  SeedType.HANG: Bcolors.WARNING,
+                  SeedType.CRASH: Bcolors.FAIL}
+        return mapper[typ]+typ.name+Bcolors.ENDC
+
+    def _init_alert_corpus(self):
+        """ Create a directory for each alert where to store coverage / vuln corpus """
+        p = self.workspace / "alerts_data"
+        p.mkdir(exist_ok=True)
+        for alert in self.kl_report.counted_alerts:
+            a_dir = p / str(alert.id)
+            a_dir.mkdir(exist_ok=True)
+
+    def _save_alert_seed(self, from_cli: PastisClient, alert: AlertData):
+        t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
+        fname = f"{t}_{from_cli.strid}_{md5(alert.seed).hexdigest()}-{'CRASH' if alert.validated else 'COVERAGE'}.cov"
+        p = ((self.workspace / "alerts_data") / str(alert.id)) / fname
+        p.write_bytes(alert.seed)
