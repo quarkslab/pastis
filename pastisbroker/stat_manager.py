@@ -64,7 +64,8 @@ class StatManager(object):
     def set_coverage_path(self, client: PastisClient, coverage: int = None):
         self._set_coverage(client, coverage)
 
-    def set_las_coverage_update(self, client: PastisClient, last_up: int = None):
+    @staticmethod
+    def set_last_coverage_update(client: PastisClient, last_up: int = None):
         if last_up:
             client.last_cov_update = last_up  # instantaneous value does not keep history
 
