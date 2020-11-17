@@ -7,6 +7,7 @@ from hashlib import md5
 from enum import Enum
 from collections import Counter
 import re
+import random
 
 # Third-party imports
 from libpastis import BrokerAgent, do_engine_support_coverage_strategy
@@ -25,19 +26,22 @@ class BrokingMode(Enum):
     COVERAGE_ORDERED = 3  # Transmit a seed to a peer if they have the same notion of coverage
 
 
+COLORS = [32, 33, 34, 35, 36, 37, 39, 91, 93, 94, 95, 96]
+
+
 class PastisBroker(BrokerAgent):
 
     INPUT_DIR = "corpus"
     HANGS_DIR = "hangs"
     CRASH_DIR = "crashes"
     LOG_DIR = "logs"
-
-    KL_MAGIC = "KL-METADATA"
+    CSV_FILE = "results.csv"
 
     def __init__(self, workspace, kl_report, binaries_dir, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, p_argv: List[str] = []):
         super(PastisBroker, self).__init__()
         self.workspace = Path(workspace)
         self._init_workspace()
+        self._configure_logging()
 
         # Register all agent callbacks
         self._register_all()
@@ -123,7 +127,7 @@ class PastisBroker(BrokerAgent):
 
         # Show log message and save seed to file
         if is_new:
-            logging.info(f"[{cli.strid}] [SEED] [{origin.name}] {md5(seed).hexdigest()} ({typ.name})")
+            cli.log(LogLevel.INFO, f"[{cli.strid}] [SEED] [{origin.name}] {md5(seed).hexdigest()} ({typ.name})")
             self.write_seed(typ, cli, seed) # Write seed to file
             self._seed_pool[seed] = (typ, origin)  # Save it in the local pool
 
@@ -160,8 +164,6 @@ class PastisBroker(BrokerAgent):
         client = self.get_client(cli_id)
         if not client:
             return
-        if message.startswith(self.KL_MAGIC):
-            pass # TODO: Retrieving info about the defaut, vulns (covered / validated)
         #logging.info(f"[{client.strid}] [LOG] [{level.name}] {message}")
         client.log(level, message)
 
@@ -184,7 +186,7 @@ class PastisBroker(BrokerAgent):
         self.statmanager.set_coverage_block(client, coverage_block)
         self.statmanager.set_coverage_edge(client, coverage_edge)
         self.statmanager.set_coverage_path(client, coverage_path)
-        self.statmanager.set_las_coverage_update(client, last_cov_update)
+        self.statmanager.set_last_coverage_update(client, last_cov_update)
         # NOTE: Send an update signal for future UI ?
 
     def stop_coverage_received(self, cli_id: bytes):
@@ -209,9 +211,11 @@ class PastisBroker(BrokerAgent):
         if not alert.covered and alert_data.covered:
             logging.info(f"[{client.strid}] is the first to cover {alert}")
             alert.covered = alert_data.covered
+            self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
         if not alert.validated and alert_data.validated:
             logging.info(f"[{client.strid}] is the first to validate {alert}")
             alert.validated = alert_data.validated
+            self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
 
         # If all alerts are validated send a stop to everyone
         if self.kl_report.all_alerts_validated():
@@ -224,7 +228,7 @@ class PastisBroker(BrokerAgent):
         self._stop = True
 
         # Write the final CSV in the workspace
-        self.kl_report.write_csv(self.workspace / "results.csv")
+        self.kl_report.write_csv(self.workspace / self.CSV_FILE)
 
     def start_client(self, client: PastisClient):
         program = None  # The program yet to be selected
@@ -261,7 +265,7 @@ class PastisBroker(BrokerAgent):
                 # pick in-order BLOCK < EDGE < PATH among the least frequently launched modes
                 covmode = sorted(d[min(d)])[0]
             else:
-                covmode = None
+                covmode = CoverageMode.BLOCK  # Dummy value (for honggfuzz)
 
             # If got here a suitable program has been found just break loop
             break
@@ -273,6 +277,7 @@ class PastisBroker(BrokerAgent):
         # Update internal client info and send him the message
         logging.info(f"[broker] send start client {client.id}: {engine.name} {covmode.name} {exmode.name}")
         client.set_running(engine, covmode, exmode, self.ck_mode)
+        client.reconfigure_logger(random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
                         program,
                         self.argv,
@@ -370,7 +375,7 @@ class PastisBroker(BrokerAgent):
         for typ, d in [(SeedType.INPUT, self.INPUT_DIR), (SeedType.CRASH, self.CRASH_DIR), (SeedType.HANG, self.HANGS_DIR)]:
             directory = self.workspace / d
             for file in directory.iterdir():
-                logging.info(f"Load seed in pool: {file.name}")
+                logging.debug(f"Load seed in pool: {file.name}")
                 match = re.match(r"\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}_Cli-\d-+([THF]+)_[0-9a-z]+.cov", file.name)
                 if match:
                     origin = mapping[match.groups()[0]]
@@ -390,3 +395,9 @@ class PastisBroker(BrokerAgent):
         if self.engines_args[engine]:
             logging.warning(f"arguments where already set for engine {engine.name}")
         self.engines_args[engine] = args
+
+    def _configure_logging(self):
+        hldr = logging.FileHandler(self.workspace/f"broker.log")
+        hldr.setLevel(logging.root.level)
+        hldr.setFormatter(logging.Formatter("%(asctime)s [%(name)s] [%(levelname)s]: %(message)s"))
+        logging.root.addHandler(hldr)

@@ -7,8 +7,18 @@ import logging
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
 from libpastis.types import CheckMode
+import coloredlogs
 
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
+logging.root.name = f"\033[7m\033[39m[BROKER]\033[0m"
+coloredlogs.install(level=logging.DEBUG,
+                    fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+                    level_styles={'debug': {'color': 'blue'}, # 10
+                                  'info': {}, # 20
+                                  'warning': {'color': 'yellow'},  # 30
+                                  'success': {'bold': True, 'color': 'green'}, # 35
+                                  'error': {'color': 'red'},
+                                  'critical': {'bold': True, 'color': 'red'}})
 
 
 def main():

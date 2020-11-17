@@ -53,12 +53,15 @@ class PastisClient(object):
     def _configure_logging(self, log_dir):
         hldr = logging.FileHandler(log_dir/f"client-{self.id}")
         hldr.setLevel(logging.DEBUG)
-        hldr.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s %(name)s - %(message)s"))
+        hldr.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s"))
         self.logger.addHandler(hldr)
+
+    def reconfigure_logger(self, colorid: int):
+        self.logger.name = f"\033[7m\033[{colorid}m{self.strid}\033[0m"
 
     @property
     def strid(self):
-        return f"Cli-{self.id}{self._engine_short()}"
+        return f"CLI-{self.id}{self._engine_short()}"
 
     def _engine_short(self):
         if self._engine:
