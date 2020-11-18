@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 import hashlib
-from typing import Callable, List, Dict
+from typing import Callable, List, Dict, Union
 
 # Third party imports
 from libpastis import FileAgent, ClientAgent
@@ -29,6 +29,10 @@ class ManagedProcess:
 
     def __init__(self):
         self.__process = None
+
+    @property
+    def instanciated(self):
+        return self.__process is not None
 
     def start(self, command: str, workspace: str = '.'):
         logging.debug(f'Starting process...')
@@ -51,6 +55,8 @@ class ManagedProcess:
             logging.debug(f"Honggfuzz process seem's already killed")
 
     def wait(self):
+        while not self.instanciated:
+            time.sleep(0.1)
         self.__process.wait()
 
 
@@ -137,7 +143,7 @@ class DirectoryEventWatcher:
 class Honggfuzz:
 
     def __init__(self, agent: ClientAgent):
-        self.__agent = agent
+        self._agent = agent
 
         # Parameters received through start_received
         self.__exec_mode = None   # SINGLE_RUN, PERSISTENT
@@ -165,6 +171,8 @@ class Honggfuzz:
 
         self._tel_counter = 0
 
+        # Runtime data
+        self._tot_seeds = 0
 
     def start(self, bin_name: str, binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
@@ -183,47 +191,18 @@ class Honggfuzz:
 
         self.__stop_watchers()
 
-
     def add_seed(self, seed: bytes):
         # Write seed to disk.
         seed_path = self.__target_workspace['dynamic-inputs'] / f'seed-{self.__generate_id()}'
-
         seed_path.write_bytes(seed)
 
-    def run(self, target: str = '', target_arguments: str = ''):
-        # Connect with the Broker.
-        self.__agent.connect()
-
-        # Start main loop.
-        self.__agent.start()
-
+    def init_agent(self, remote: str = "localhost", port: int = 5555):
+        self._agent.connect(remote, port)
+        self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self.__agent.send_hello([(FuzzingEngine.HONGGFUZZ, self.__hfuzz_version)])
+        self._agent.send_hello([(FuzzingEngine.HONGGFUZZ, self.__hfuzz_version)])
 
-        if isinstance(self.__agent, FileAgent):
-            target_path = Path(target)
-            binary = target_path.read_bytes()
-
-            self.__start_received(target_path, binary, FuzzingEngine.HONGGFUZZ,
-                ExecMode.SINGLE_EXEC, CheckMode.CHECK_ALL, CoverageMode.BLOCK,
-                SeedInjectLoc.STDIN, '', target_arguments.split(' '), "")
-
-        # # TODO: Remove.
-        # # Send Alive message.
-        # while True:
-        #     self.__agent.send_log(LogLevel.DEBUG, f"Alive: {int(time.time())}")
-
-        #     # TODO: REMOVE. This is just for testing purposes.
-        #     logging.debug(f'[SEED] Sending fake new seed...')
-        #     self.__seed_received(SeedType.INPUT, os.urandom(random.randint(1, 100)), FuzzingEngine.TRITON)
-
-        #     time.sleep(2)
-
-        # TODO: Do something better here. We have to wait until the Honggfuzz
-        # process has started.
-        # Wait until the START message is received and the process starts.
-        time.sleep(5)
-
+    def run(self):
         self.__hfuzz_process.wait()
 
     def __setup_target_workspace(self):
@@ -249,9 +228,9 @@ class Honggfuzz:
 
     def __setup_agent(self):
         # Register callbacks.
-        self.__agent.register_seed_callback(self.__seed_received)
-        self.__agent.register_start_callback(self.__start_received)
-        self.__agent.register_stop_callback(self.__stop_received)
+        self._agent.register_seed_callback(self.__seed_received)
+        self._agent.register_start_callback(self.start_received)
+        self._agent.register_stop_callback(self.__stop_received)
 
     def __setup_watchers(self):
         self.__coverage_watcher = DirectoryEventWatcher(self.__target_workspace['coverage'], 'IN_CLOSE_WRITE', self.__send_seed)
@@ -276,15 +255,17 @@ class Honggfuzz:
         return int(time.time())
 
     def __send_seed(self, filename: Path):
+        self._tot_seeds += 1
         file = Path(filename)
-        logging.debug(f'[SEED] Sending new seed: {file.name}')
-        self.__agent.send_seed(SeedType.INPUT, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
+        logging.debug(f'[SEED] Sending new seed: {file.name} [{self._tot_seeds}]')
+        self._agent.send_seed(SeedType.INPUT, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
         self.__check_seed_alert(filename, is_crash=False)
 
     def __send_crash(self, filename: Path):
+        self._tot_seeds += 1
         file = Path(filename)
-        logging.debug(f'[CRASH] Sending new crash: {file.name}')
-        self.__agent.send_seed(SeedType.CRASH, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
+        logging.debug(f'[CRASH] Sending new crash: {file.name} [{self._tot_seeds}]')
+        self._agent.send_seed(SeedType.CRASH, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
         self.__check_seed_alert(filename, is_crash=True)
 
     def __check_seed_alert(self, filename: Path, is_crash: bool):
@@ -301,7 +282,7 @@ class Honggfuzz:
                 if not alert.covered:
                     alert.covered = True
                     logging.info(f"New alert covered {alert} [{alert.id}]")
-                    self.__agent.send_alert_data(AlertData(alert.id, alert.covered, False, p.read_bytes()))
+                    self._agent.send_alert_data(AlertData(alert.id, alert.covered, False, p.read_bytes()))
 
             # Check if the target has crashed and if so tell the broker which one
             if run.has_crashed():
@@ -313,7 +294,7 @@ class Honggfuzz:
                         alert.validated = True
                         bugt, aline = run.asan_info()
                         self.dual_log(LogLevel.INFO, f"Honggfuzz new alert validated {alert} [{alert.id}] ({aline})")
-                        self.__agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, p.read_bytes()))
+                        self._agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, p.read_bytes()))
             else:
                 if is_crash:
                     self.dual_log(LogLevel.WARNING, f"crash not reproducible by rerunning seed: {filename.name}")
@@ -350,7 +331,7 @@ class Honggfuzz:
                 coverage_block = int(stats[8])      # aka block_cov.
 
                 # NOTE: `cycle` and `coverage_path` does not apply for Honggfuzz.
-                self.__agent.send_telemetry(state=state, exec_per_sec=exec_per_sec,
+                self._agent.send_telemetry(state=state, exec_per_sec=exec_per_sec,
                                             total_exec=total_exec, timeout=timeout,
                                             coverage_block=coverage_block,
                                             coverage_edge=coverage_edge,
@@ -358,13 +339,13 @@ class Honggfuzz:
             except:
                 logging.error(f'Error retrieving stats!')
 
-    def __start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
+    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                          _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
 
         if engine != FuzzingEngine.HONGGFUZZ:
             logging.error(f"Wrong fuzzing engine received {engine} while I am Honggfuzz")
-            self.__agent.send_log(LogLevel.ERROR, "Invalid fuzzing engine received {engine} can't do anything")
+            self._agent.send_log(LogLevel.ERROR, "Invalid fuzzing engine received {engine} can't do anything")
             return
 
         if kl_report:
@@ -388,7 +369,6 @@ class Honggfuzz:
 
         self.stop()
 
-
     def dual_log(self, level: LogLevel, message: str) -> None:
         """
         Helper function to log message both in the local log system and also
@@ -405,4 +385,11 @@ class Honggfuzz:
                   LogLevel.ERROR: "error"}
         log_f = getattr(logging, mapper[level])
         log_f(message)
-        self.__agent.send_log(level, message)
+        self._agent.send_log(level, message)
+
+    def add_initial_seed(self, file: Union[str, Path]):
+        p = Path(file)
+        logging.info(f"add initial seed {file.name}")
+        # Write seed to disk.
+        seed_path = self.__target_workspace['inputs'] / p.name
+        seed_path.write_bytes(p.read_bytes())
