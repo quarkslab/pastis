@@ -285,7 +285,7 @@ class Honggfuzz:
                     self._agent.send_alert_data(AlertData(alert.id, alert.covered, False, p.read_bytes()))
 
             # Check if the target has crashed and if so tell the broker which one
-            if run.has_crashed():
+            if run.has_crashed() or run.is_asan_without_crash():  # Also consider ASAN warning as detection
                 if not run.crashing_id:
                     self.dual_log(LogLevel.WARNING, f"Crash on {filename.name} but can't link it to a Klocwork alert (maybe bonus !)")
                 else:

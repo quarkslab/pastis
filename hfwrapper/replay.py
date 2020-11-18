@@ -33,18 +33,25 @@ class Replay(object):
         self.stdout, self.stderr = None, None
 
     @staticmethod
-    def run(binary_path: str, args: List[str], stdin_file=None, timeout=None, cwd=None):
+    def run(binary_path: str, args: List[str] = [], stdin_file=None, timeout=None, cwd=None):
         replay = Replay()
         replay._process = subprocess.Popen([binary_path]+args, stdin=open(stdin_file, 'rb'), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         try:
             replay.stdout, replay.stderr = replay._process.communicate(timeout=timeout)
-            replay.__parse_output(replay.stdout)  # In case intrinsic are on output
-            replay.__parse_output(replay.stderr)
+            found = replay.__parse_output(replay.stdout)  # In case intrinsic are on output
+            found |= replay.__parse_output(replay.stderr)
 
+            if not found and replay.has_crashed():  # Crash that we were not able to link to an ASAN error
+                if replay._alert_covered: # Thus take the latest alert and consider it is the origin
+                    replay._alert_crash = replay._alert_covered[-1]
         except TimeoutError:
             replay._is_hang = True
 
         return replay
+
+    def is_asan_without_crash(self) -> bool:
+        """ Return True if an ASAN WARNING was shown without errors """
+        return self._asan_bugtype and not self.has_crashed()
 
     @property
     def returncode(self) -> int:
@@ -76,7 +83,8 @@ class Replay(object):
         return self._asan_bugtype, self._asan_line
 
 
-    def __parse_output(self, raw_output: bytes):
+    def __parse_output(self, raw_output: bytes) -> bool:
+        """ Return True if a vuln was matched """
         matched_vuln = False
         for line in BytesIO(raw_output).readlines():
             # Check if its a line of intrinsic output
@@ -101,3 +109,5 @@ class Replay(object):
                 topic, details = m1.groups() if m1 else m2.groups()
                 self._asan_bugtype = topic.decode(errors="replace")
                 self._asan_line = details.decode(errors="replace")
+
+        return matched_vuln
