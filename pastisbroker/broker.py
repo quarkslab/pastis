@@ -53,6 +53,8 @@ class PastisBroker(BrokerAgent):
     KL_REPORT_COPY = "klreport.json"
     CSV_FILE = "results.csv"
 
+    HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
+
 
     def __init__(self, workspace, kl_report, binaries_dir, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, p_argv: List[str] = []):
         super(PastisBroker, self).__init__()
@@ -296,7 +298,7 @@ class PastisBroker(BrokerAgent):
                 for cov, count in covs.items():
                     d[count].append(cov)
                 # pick in-order BLOCK < EDGE < PATH among the least frequently launched modes
-                covmode = CoverageMode.EDGE # sorted(d[min(d)])[0]
+                covmode = CoverageMode.EDGE # sorted(d[min(d)])[0] # TODO: To revert
             else:
                 covmode = CoverageMode.BLOCK  # Dummy value (for honggfuzz)
 
@@ -365,9 +367,9 @@ class PastisBroker(BrokerAgent):
                     logging.warning(f"binary {file} not supported (only ELF at the moment)")
                     continue
 
+                # Try to find intrinsic in program if so it is a good one!
                 good = False
                 honggfuzz = False
-                exmode = ExecMode.SINGLE_EXEC
                 for f in p.functions:
                     name = f.name
                     if '__klocwork' in name:
@@ -377,8 +379,19 @@ class PastisBroker(BrokerAgent):
                 if not good:
                     logging.debug(f"ignore binary: {file} (does not contain klocwork intrinsics)")
                     continue
-                if 'HF_ITER' in (x.name for x in p.imported_functions):
-                    exmode = ExecMode.PERSISTENT
+
+                # Try to find the Honggfuzz PERSISTENT magic in binary
+                exmode = ExecMode.SINGLE_EXEC  # by default single_exec
+                sections = {x.name: x for x in p.sections}
+                if '.rodata' in sections:
+                    rodata_content = bytearray(sections['.rodata'].content)
+                    if self.HF_PERSISTENT_SIG in rodata_content:
+                        exmode = ExecMode.PERSISTENT
+                else:
+                    if 'HF_ITER' in (x.name for x in p.imported_functions):  # More dummy method
+                        exmode = ExecMode.PERSISTENT
+
+                # Determine the architecture of the binary
                 mapping = {lief.ELF.ARCH.x86_64: Arch.X86_64,
                            lief.ELF.ARCH.i386: Arch.X86,
                            lief.ELF.ARCH.ARM: Arch.ARMV7,
