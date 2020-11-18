@@ -329,6 +329,7 @@ class FileAgent(ClientAgent):
         del self.ctx    # Remove network related attributes
         del self.socket
         self.logger = logging.getLogger('FileAgent')
+        self.logger.parent = None  # Remove root handler to make sur it is not printed on output
 
         # create file handler
         if log_file is not None:
