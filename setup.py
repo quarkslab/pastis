@@ -9,6 +9,8 @@ setup(
     packages=find_packages(),
     install_requires=[
         "inotify",
-        "coloredlogs"
-    ]
+        "coloredlogs",
+        "click"
+    ],
+    scripts=['bin/pastis-honggfuzz']
 )
