@@ -48,7 +48,11 @@ class PastisBroker(BrokerAgent):
     HANGS_DIR = "hangs"
     CRASH_DIR = "crashes"
     LOG_DIR = "logs"
+    BINS_DIR = "binaries"
+
+    KL_REPORT_COPY = "klreport.json"
     CSV_FILE = "results.csv"
+
 
     def __init__(self, workspace, kl_report, binaries_dir, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, p_argv: List[str] = []):
         super(PastisBroker, self).__init__()
@@ -74,6 +78,7 @@ class PastisBroker(BrokerAgent):
         self.kl_report = KlocworkReport(kl_report)
         if not self.kl_report.has_binding():
             logging.warning(f"the klocwork report {kl_report} does not contain bindings")
+        self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
         self._init_alert_corpus()
 
         # Client infos
@@ -223,18 +228,22 @@ class PastisBroker(BrokerAgent):
             alert = self.kl_report.get_alert(binding_id=alert_data.id)
         else:
             alert = self.kl_report.get_alert(kid=alert_data.id)
+
         if not alert.covered and alert_data.covered:
             logging.info(f"[{client.strid}] First to cover {alert}")
             alert.covered = alert_data.covered
             self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
             res_improved = True
-            self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
+
         if not alert.validated and alert_data.validated:
             logging.info(f"[{client.strid}] First to validate {alert}")
             alert.validated = alert_data.validated
             self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
             res_improved = True
-            self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
+
+        # Save systematically the AlertData received
+        self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
+
         if res_improved:
             d, v = self.kl_report.get_stats()
             logging.info(f"Klocwork results updated: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
@@ -251,6 +260,8 @@ class PastisBroker(BrokerAgent):
 
         # Write the final CSV in the workspace
         self.kl_report.write_csv(self.workspace / self.CSV_FILE)
+        # And also re-write the Klocwork report (that also contains resutls)
+        self.kl_report.write(self.workspace / self.KL_REPORT_COPY)
 
     def start_client(self, client: PastisClient):
         program = None  # The program yet to be selected
@@ -285,7 +296,7 @@ class PastisBroker(BrokerAgent):
                 for cov, count in covs.items():
                     d[count].append(cov)
                 # pick in-order BLOCK < EDGE < PATH among the least frequently launched modes
-                covmode = sorted(d[min(d)])[0]
+                covmode = CoverageMode.EDGE # sorted(d[min(d)])[0]
             else:
                 covmode = CoverageMode.BLOCK  # Dummy value (for honggfuzz)
 
@@ -322,7 +333,6 @@ class PastisBroker(BrokerAgent):
             if not c.is_running():
                 self.start_client(c)
 
-
     def run(self):
         self.start()
 
@@ -334,7 +344,8 @@ class PastisBroker(BrokerAgent):
                     logging.info("broker terminate")
                     break
         except KeyboardInterrupt:
-            logging.info("stop")
+            logging.info("stop required (Ctrl+C)")
+        self.stop_broker()
 
     def _find_binary_workspace(self, binaries_dir) -> None:
         """
@@ -379,14 +390,19 @@ class PastisBroker(BrokerAgent):
                     if tup in self.programs:
                         logging.warning(f"binary with same properties {tup} already detected, drop: {file}")
                     else:
-                        self.programs[tup] = file
                         logging.info(f"new binary detected [{arch}, {engine}, {exmode}]: {file}")
+                        # Copy binary in workspace
+                        dst_file = self.workspace / self.BINS_DIR / file.name
+                        if dst_file.absolute() != file.absolute(): # If not already in the workspace copy them in workspace
+                            dst_file.write_bytes(file.read_bytes())
+                        # Add it in the internal structure
+                        self.programs[tup] = dst_file
 
     def _init_workspace(self):
         """ Create the directory for inputs, crashes and logs"""
         if not self.workspace.exists():
             self.workspace.mkdir()
-        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR]:
+        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR, self.BINS_DIR]:
             p = self.workspace / s
             if not p.exists():
                 p.mkdir()
@@ -441,5 +457,6 @@ class PastisBroker(BrokerAgent):
     def _save_alert_seed(self, from_cli: PastisClient, alert: AlertData):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         fname = f"{t}_{from_cli.strid}_{md5(alert.seed).hexdigest()}-{'CRASH' if alert.validated else 'COVERAGE'}.cov"
+        logging.debug(f"Save alert  [{alert.id}] file: {fname}")
         p = ((self.workspace / "alerts_data") / str(alert.id)) / fname
         p.write_bytes(alert.seed)
