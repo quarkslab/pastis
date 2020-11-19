@@ -108,6 +108,7 @@ class PastisDSE(object):
         # Parse triton specific parameters and update conf if needed
         if engine_args:
             self.config = Config.from_json(engine_args)
+            logging.root.level = logging.DEBUG if self.config.debug else logging.INFO  # dynamically change level
 
         # Write the binary in a temporary file
         tmp_dir = tempfile.mkdtemp()
@@ -176,7 +177,7 @@ class PastisDSE(object):
             logging.warning(f"receiving seed already known: {md5(seed).hexdigest()} (dropped)")
             return
 
-        logging.info(f"[BROKER] [SEED RCV] [{origin.name}] {md5(seed).hexdigest()} ({typ})")
+        logging.info(f"seed received from:{origin.name} {md5(seed).hexdigest()} [{typ.name}]")
 
         self._seed_received.add(seed)  # Remember seed received not to send them back
 
