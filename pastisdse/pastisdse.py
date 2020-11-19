@@ -33,6 +33,7 @@ class PastisDSE(object):
         self.klreport   = None
         self._last_kid  = None
         self._seed_lock = False
+        self._seed_received = set()
 
 
     def _init_callbacks(self):
@@ -77,7 +78,8 @@ class PastisDSE(object):
         if seed.status == SeedStatus.NEW:
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
         else:
-            self.agent.send_seed(mapper[seed.status], seed.content, origin=FuzzingEngine.TRITON)
+            if seed.content not in self._seed_received:  # Do not send back a seed that already came from broker
+                self.agent.send_seed(mapper[seed.status], seed.content, origin=FuzzingEngine.TRITON)
 
         # Handle CRASH and ABV_GENERAL
         if se.seed.status == SeedStatus.CRASH and self._last_kid:
@@ -170,8 +172,14 @@ class PastisDSE(object):
 
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+        if seed in self._seed_received:
+            logging.warning(f"receiving seed already known: {md5(seed).hexdigest()} (dropped)")
+            return
+
         logging.info(f"[BROKER] [SEED RCV] [{origin.name}] {md5(seed).hexdigest()} ({typ})")
-        # TODO: Handle whether the seed is already known or not
+
+        self._seed_received.add(seed)  # Remember seed received not to send them back
+
         # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
             self.dse.add_input_seed(seed)
