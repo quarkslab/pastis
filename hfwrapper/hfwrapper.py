@@ -81,11 +81,12 @@ class HonggfuzzProcess:
             f"--persistent" if exmode == ExecMode.PERSISTENT else "",
             engine_args,  # Any arguments coming right from the broker
             f"--logfile logfile.log",
+            f"--sanitizers_del_report true",
             f"--input {target_workspace['inputs']}",
             f"--dynamic_input {target_workspace['dynamic-inputs']}",
             f"--output {target_workspace['coverage']}",
             f"--crashdir {target_workspace['crashes']}",
-            f"--workspace {target_workspace['outputs']}"
+            f"--workspace {target_workspace['main']}"
         ])
 
         # Build fuzzer command line.
