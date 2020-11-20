@@ -12,7 +12,7 @@ setup(
     description="A library and utility using tritondse to perform PASTIS-related DSE",
     packages=find_packages(),
     setup_requires=[],
-    install_requires=["scapy", "click"],
+    install_requires=["scapy", "click", "coloredlogs"],
     tests_require=[],
     license="qb",
     author="Quarkslab",
@@ -22,5 +22,5 @@ setup(
         'Operating System :: OS Independent',
     ],
     test_suite="",
-    scripts=["bin/fuzz_cyclone.py"]
+    scripts=["bin/pastis-triton"]
 )
