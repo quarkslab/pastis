@@ -8,6 +8,7 @@ from enum import Enum
 from collections import Counter
 import re
 import random
+import stat
 
 # Third-party imports
 from libpastis import BrokerAgent, do_engine_support_coverage_strategy
@@ -409,6 +410,7 @@ class PastisBroker(BrokerAgent):
                         dst_file = self.workspace / self.BINS_DIR / file.name
                         if dst_file.absolute() != file.absolute(): # If not already in the workspace copy them in workspace
                             dst_file.write_bytes(file.read_bytes())
+                            dst_file.chmod(stat.S_IRWXU)  # Change target mode to execute.
                         # Add it in the internal structure
                         self.programs[tup] = dst_file
 
