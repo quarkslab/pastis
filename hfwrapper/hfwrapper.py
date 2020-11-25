@@ -175,6 +175,11 @@ class Honggfuzz:
         # Runtime data
         self._tot_seeds = 0
 
+        # Variables for replay
+        self._replay_thread = None
+        self._queue_to_send = []
+        self._started = False
+
     def start(self, bin_name: str, binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
         self.__target_path = self.__target_workspace['target'] / bin_name
@@ -185,12 +190,32 @@ class Honggfuzz:
         self.__setup_watchers()
         self.__start_watchers()
 
+        logging.info("Start process")
         self.__hfuzz_process.start(self.__target_path.absolute(), " ".join(argv), self.__target_workspace, exmode, seed_inj, engine_args)
+        self._started = True
+
+        # Start the replay worker (note that the queue might already have started to be filled by agent thread)
+        self._replay_thread = threading.Thread(target=self.replay_worker, daemon=True)
+        self._replay_thread.start()
+
 
     def stop(self):
         self.__hfuzz_process.stop()
-
         self.__stop_watchers()
+        self._started = False  # should stop the replay thread
+
+    def replay_worker(self):
+        while True:
+            if not self._started:
+                break  # Break when the fuzzer stops
+            if self._queue_to_send:
+                filename, res = self._queue_to_send.pop(0)
+                self.__check_seed_alert(filename, is_crash=res)
+            time.sleep(0.05)
+
+    @property
+    def started(self):
+        return self._started
 
     def add_seed(self, seed: bytes):
         # Write seed to disk.
@@ -260,17 +285,18 @@ class Honggfuzz:
         file = Path(filename)
         logging.debug(f'[SEED] Sending new seed: {file.name} [{self._tot_seeds}]')
         self._agent.send_seed(SeedType.INPUT, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
-        self.__check_seed_alert(filename, is_crash=False)
+        self._queue_to_send.append((filename, False))
 
     def __send_crash(self, filename: Path):
         self._tot_seeds += 1
         file = Path(filename)
         logging.debug(f'[CRASH] Sending new crash: {file.name} [{self._tot_seeds}]')
         self._agent.send_seed(SeedType.CRASH, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
-        self.__check_seed_alert(filename, is_crash=True)
+        self._queue_to_send.append((filename, True))
 
     def __check_seed_alert(self, filename: Path, is_crash: bool):
         p = Path(filename)
+        #logging.debug(f"Start replaying {filename}")
         # Only rerun the seed if in alert only mode and a klocwork report was provided
         if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
 
@@ -343,6 +369,9 @@ class Honggfuzz:
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                          _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
+        if self.started:
+            self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
+            return
 
         if engine != FuzzingEngine.HONGGFUZZ:
             logging.error(f"Wrong fuzzing engine received {engine} while I am Honggfuzz")
@@ -362,7 +391,6 @@ class Honggfuzz:
 
     def __seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
         logging.info(f"[SEED-RECEIVED] from:[{origin.name}] {hashlib.md5(seed).hexdigest()} ({typ.name})")
-
         self.add_seed(seed)
 
     def __stop_received(self):
