@@ -44,7 +44,7 @@ class Replay(object):
             if not found and replay.has_crashed():  # Crash that we were not able to link to an ASAN error
                 if replay._alert_covered: # Thus take the latest alert and consider it is the origin
                     replay._alert_crash = replay._alert_covered[-1]
-        except TimeoutError:
+        except subprocess.TimeoutExpired:
             replay._is_hang = True
 
         return replay
