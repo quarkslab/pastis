@@ -5,6 +5,7 @@ import time
 import logging
 import tempfile
 from pathlib import Path
+import threading
 
 # third-party imports
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
@@ -29,7 +30,7 @@ class PastisDSE(object):
         self.config     = Config(debug=False)
         self.dse        = None
         self.program    = None
-        self.stop       = False
+        self._stop      = False
         self.klreport   = None
         self._last_kid  = None
         self._seed_lock = False
@@ -47,6 +48,9 @@ class PastisDSE(object):
         self.agent.start()
         self.agent.send_hello([(FuzzingEngine.TRITON, TRITON_VERSION)])
 
+    def start(self):
+        self._th = threading.Thread(target=self.run, daemon=True)
+        self._th.start()
 
     def run(self, wait_idle=True):
         # Just wait until the broker says let's go
@@ -54,7 +58,7 @@ class PastisDSE(object):
             time.sleep(0.10)
 
         # Run while we are not instructed to stop
-        while not self.stop:
+        while not self._stop:
             st = self.dse.explore()
             if st == ExplorationStatus.STOPPED:  # if the exploration stopped just return
                 break
@@ -191,9 +195,12 @@ class PastisDSE(object):
 
     def stop_received(self):
         logging.info(f"[BROKER] [STOP]")
+        self.stop()
+
+    def stop(self):
         if self.dse:
             self.dse.stop_exploration()
-        self.stop = True
+        self._stop = True
         self.agent.stop()
 
 
