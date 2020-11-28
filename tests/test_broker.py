@@ -9,10 +9,10 @@ from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 
 
-def seed_received(cli_id: bytes, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+def seed_received(cli_id: bytes, typ: SeedType, seed: bytes):
     global agent
-    logging.info(f"[{cli_id.hex()}] [SEED] [{origin.name}] {seed.hex()} ({typ.name})")
-    agent.send_seed(cli_id, typ, seed[::-1], origin)
+    logging.info(f"[{cli_id.hex()}] [SEED] {seed.hex()} ({typ.name})")
+    agent.send_seed(cli_id, typ, seed[::-1])
 
 
 def hello_received(cli_id: bytes, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):

@@ -153,7 +153,7 @@ class NetworkAgent(object):
     def _unpack_message(self, topic: MessageType, message: bytes):
         if topic == MessageType.INPUT_SEED:
             msg = InputSeedMsg.FromString(message)
-            return [SeedType(msg.type), msg.seed, FuzzingEngine(msg.origin)]
+            return [SeedType(msg.type), msg.seed]
         elif topic == MessageType.LOG:
             msg = LogMsg.FromString(message)
             return [LogLevel(msg.level), msg.message]
@@ -179,11 +179,10 @@ class NetworkAgent(object):
 
 class BrokerAgent(NetworkAgent):
 
-    def send_seed(self, id: bytes, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+    def send_seed(self, id: bytes, typ: SeedType, seed: bytes):
         msg = InputSeedMsg()
         msg.type = typ.value
         msg.seed = seed
-        msg.origin = origin.value
         self.send_to(id, msg, msg_type=MessageType.INPUT_SEED)
 
     def send_start(self, id: bytes, program: PathLike, argv: List[str], exmode: ExecMode, ckmode: CheckMode,
@@ -292,11 +291,10 @@ class ClientAgent(NetworkAgent):
     def send_stop_coverage_criteria(self):
         self.send(StopCoverageCriteria(), MessageType.STOP_COVERAGE_DONE)
 
-    def send_seed(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+    def send_seed(self, typ: SeedType, seed: bytes):
         msg = InputSeedMsg()
         msg.type = typ.value
         msg.seed = seed
-        msg.origin = origin.value
         self.send(msg, msg_type=MessageType.INPUT_SEED)
 
     def send_alert_data(self, alert_data: AlertData):
@@ -361,7 +359,7 @@ class FileAgent(ClientAgent):
             msg_type = self.msg_to_type(msg)
 
         if isinstance(msg, InputSeedMsg):
-            msg = f"{FuzzingEngine(msg.origin).name} {SeedType(msg.type).name}: {msg.seed[:20]}.."
+            msg = f"{SeedType(msg.type).name}: {msg.seed[:20]}.."
         elif isinstance(msg, HelloMsg):
             msg = f"{Arch(msg.architecture)} CPU:{msg.cpus} engines:{[FuzzingEngine(x).name for x in msg.engines]}"
         elif isinstance(msg, TelemetryMsg):
