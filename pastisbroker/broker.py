@@ -178,10 +178,10 @@ class PastisBroker(BrokerAgent):
         p = self.workspace / self._seed_typ_to_dir(typ) / fname
         p.write_bytes(seed)
 
-    def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int):
+    def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
         uid = self.new_uid()
-        client = PastisClient(uid, cli_id, self.workspace/self.LOG_DIR, engines, arch, cpus, memory)
-        logging.info(f"[{client.strid}] [HELLO] Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
+        client = PastisClient(uid, cli_id, self.workspace/self.LOG_DIR, engines, arch, cpus, memory, hostname)
+        logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
         self.clients[client.netid] = client
 
         if self.running: # A client is coming in the middle of a session
