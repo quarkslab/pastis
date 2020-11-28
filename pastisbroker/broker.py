@@ -142,7 +142,7 @@ class PastisBroker(BrokerAgent):
             self.send_stop(cli_id)
         return cli
 
-    def seed_received(self, cli_id: bytes, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+    def seed_received(self, cli_id: bytes, typ: SeedType, seed: bytes):
         cli = self.get_client(cli_id)
         if not cli:
             return
@@ -154,13 +154,13 @@ class PastisBroker(BrokerAgent):
             cli.log(LogLevel.INFO, f"new seed {md5(seed).hexdigest()} [{self._colored_seed_type(typ)}]")
             cli.add_seed(seed)  # Add seed in client's seed
             self.write_seed(typ, cli, seed) # Write seed to file
-            self._seed_pool[seed] = (typ, origin)  # Save it in the local pool
+            self._seed_pool[seed] = typ  # Save it in the local pool
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
             for c in self.iter_other_clients(cli):
                 if c.is_new_seed(seed):
-                    self.send_seed(c.netid, typ, seed, origin)  # send the seed to the client
+                    self.send_seed(c.netid, typ, seed)  # send the seed to the client
                     c.add_seed(seed)  # Add it in its list of seed
         # TODO: implementing BrokingMode.COVERAGE_ORDERED
 
@@ -170,7 +170,7 @@ class PastisBroker(BrokerAgent):
         out = self.workspace / self._seed_typ_to_dir(SeedType.INPUT) / p.name
         seed = p.read_bytes()
         out.write_bytes(seed)
-        self._seed_pool[seed] = (SeedType.INPUT, FuzzingEngine.HONGGFUZZ)
+        self._seed_pool[seed] = SeedType.INPUT
 
     def write_seed(self, typ: SeedType, from_cli: PastisClient, seed: bytes):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
@@ -188,8 +188,8 @@ class PastisBroker(BrokerAgent):
             self.start_client(client)
             # Iterate all the seed pool and send it to the client
             if self.broker_mode == BrokingMode.FULL:
-                for seed, (typ, orig) in self._seed_pool.items():
-                    self.send_seed(client.netid, typ, seed, orig)  # necessarily a new seed
+                for seed, typ in self._seed_pool.items():
+                    self.send_seed(client.netid, typ, seed)  # necessarily a new seed
                     client.add_seed(seed)  # Add it in its list of seed
                 # TODO: Implementing BrokingMode.COVERAGE_ORDERED
 
@@ -476,18 +476,12 @@ class PastisBroker(BrokerAgent):
 
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
-        mapping = {"HF": FuzzingEngine.HONGGFUZZ, "TT": FuzzingEngine.TRITON}
         for typ, d in [(SeedType.INPUT, self.INPUT_DIR), (SeedType.CRASH, self.CRASH_DIR), (SeedType.HANG, self.HANGS_DIR)]:
             directory = self.workspace / d
             for file in directory.iterdir():
                 logging.debug(f"Load seed in pool: {file.name}")
-                match = re.match(r"\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}_Cli-\d-+([THF]+)_[0-9a-z]+.cov", file.name)
-                if match:
-                    origin = mapping[match.groups()[0]]
-                else:
-                    origin = FuzzingEngine.HONGGFUZZ  # FIXME: shall be manual
                 content = file.read_bytes()
-                self._seed_pool[content] = (typ, origin)
+                self._seed_pool[content] = typ
         # TODO: Also dumping the current state to a file in case
         # TODO: of exit. And being able to reload it. (not to resend all seeds to clients)
 
