@@ -82,6 +82,7 @@ message HelloMsg {
     uint64 memory = 3;
     repeated FuzzingEngine engines = 4;
     repeated string versions = 5;
+    string hostname = 6;
 }
 
 message LogMsg {
