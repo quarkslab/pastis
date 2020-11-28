@@ -9,10 +9,11 @@ from collections import Counter
 import re
 import random
 import stat
+import json
 
 # Third-party imports
 from libpastis import BrokerAgent, do_engine_support_coverage_strategy
-from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData
+from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData, PathLike
 from klocwork import KlocworkReport
 import lief
 
@@ -57,7 +58,7 @@ class PastisBroker(BrokerAgent):
     HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
 
 
-    def __init__(self, workspace, kl_report, binaries_dir, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, p_argv: List[str] = []):
+    def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = []):
         super(PastisBroker, self).__init__()
         self.workspace = Path(workspace)
         self._init_workspace()
@@ -71,18 +72,19 @@ class PastisBroker(BrokerAgent):
         self.ck_mode = check_mode
         self.inject = SeedInjectLoc.STDIN  # At the moment injection location is hardcoded
         self.argv = p_argv
-        self.engines_args = {x: "" for x in FuzzingEngine}
+        self.engines_args = {x: [] for x in FuzzingEngine}
 
         # Initialize availables binaries
         self.programs = {}  # Tuple[(Arch, Fuzzer, ExecMode)] -> Path
         self._find_binary_workspace(binaries_dir)
 
         # Klocwork informations
-        self.kl_report = KlocworkReport(kl_report)
-        if not self.kl_report.has_binding():
-            logging.warning(f"the klocwork report {kl_report} does not contain bindings")
-        self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
-        self._init_alert_corpus()
+        self.kl_report = KlocworkReport(kl_report) if kl_report else None
+        if self.kl_report:
+            if not self.kl_report.has_binding():
+                logging.warning(f"the klocwork report {kl_report} does not contain bindings")
+            self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
+            self._init_alert_corpus()
 
         # Client infos
         self.clients = {}   # bytes -> Client
@@ -162,6 +164,14 @@ class PastisBroker(BrokerAgent):
                     c.add_seed(seed)  # Add it in its list of seed
         # TODO: implementing BrokingMode.COVERAGE_ORDERED
 
+    def add_seed_file(self, file: PathLike) -> None:
+        p = Path(file)
+        logging.info(f"Add seed {p.name} in pool")
+        out = self.workspace / self._seed_typ_to_dir(SeedType.INPUT) / p.name
+        seed = p.read_bytes()
+        out.write_bytes(seed)
+        self._seed_pool[seed] = (SeedType.INPUT, FuzzingEngine.HONGGFUZZ)
+
     def write_seed(self, typ: SeedType, from_cli: PastisClient, seed: bytes):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         fname = f"{t}_{from_cli.strid}_{md5(seed).hexdigest()}.cov"
@@ -227,6 +237,10 @@ class PastisBroker(BrokerAgent):
             return
         res_improved = False
 
+        if not self.kl_report:
+            logging.warning("Data received while no Klocwork report is loaded (drop data)")
+            return
+
         alert_data = AlertData.from_json(data)
         if self.kl_report.has_binding():
             alert = self.kl_report.get_alert(binding_id=alert_data.id)
@@ -262,15 +276,17 @@ class PastisBroker(BrokerAgent):
             self.send_stop(client.netid)
         self._stop = True
 
-        # Write the final CSV in the workspace
-        self.kl_report.write_csv(self.workspace / self.CSV_FILE)
-        # And also re-write the Klocwork report (that also contains resutls)
-        self.kl_report.write(self.workspace / self.KL_REPORT_COPY)
+        if self.kl_report:  # If a klocwork report was loaded
+            # Write the final CSV in the workspace
+            self.kl_report.write_csv(self.workspace / self.CSV_FILE)
+            # And also re-write the Klocwork report (that also contains resutls)
+            self.kl_report.write(self.workspace / self.KL_REPORT_COPY)
 
     def start_client(self, client: PastisClient):
         program = None  # The program yet to be selected
         engine = None
         exmode = ExecMode.SINGLE_EXEC
+        engine_args = ""
         engines = Counter({e: 0 for e in FuzzingEngine})
         engines.update(c.engine for c in self.clients.values() if c.is_running())  # Count instances of each engine running
         for eng, _ in engines.most_common()[::-1]:
@@ -290,19 +306,9 @@ class PastisBroker(BrokerAgent):
             # Valid engine and suitable program found
             engine = eng
 
-            # Now that program have been found select coverage strategy
-            if do_engine_support_coverage_strategy(engine):
-                covs = Counter({c: 0 for c in CoverageMode})
-                # Count how many times each coverage strategies have been launched
-                covs.update(x.coverage_mode for x in self.clients.values() if x.is_running() and x.engine == engine)
-                # Revert dictionnary to have freq -> [covmodes]
-                d = {v: [] for v in covs.values()}
-                for cov, count in covs.items():
-                    d[count].append(cov)
-                # pick in-order BLOCK < EDGE < PATH among the least frequently launched modes
-                covmode = CoverageMode.EDGE # sorted(d[min(d)])[0] # TODO: To revert
-            else:
-                covmode = CoverageMode.BLOCK  # Dummy value (for honggfuzz)
+            # Find a configuration to use for that engine
+            engine_args = self._find_configuration(engine)
+            covmode = self._find_coverage_mode(engine, engine_args)
 
             # If got here a suitable program has been found just break loop
             break
@@ -322,9 +328,54 @@ class PastisBroker(BrokerAgent):
                         self.ck_mode,
                         covmode,
                         engine,
-                        self.engines_args[engine],
+                        engine_args,
                         self.inject,
-                        self.kl_report.to_json())
+                        self.kl_report.to_json() if self.kl_report else "")
+
+    def _find_configuration(self, engine: FuzzingEngine) -> str:
+        """
+        Find a coverage mode for the engine. It will iterate all configuration
+        available or automatically balance de configuration if there is multiple of
+        them
+        :param engine:
+        :return:
+        """
+        confs = self.engines_args[engine]
+        if confs:
+            if len(confs) == 1:
+                return confs[0]
+            else:
+                conf = confs.pop(0)
+                confs.append(conf)  # Rotate the configuration
+                return conf
+        else:
+            return ""
+
+    def _find_coverage_mode(self, engine: FuzzingEngine, conf: str) -> CoverageMode:
+
+        # Now that program have been found select coverage strategy
+        if do_engine_support_coverage_strategy(engine):
+
+            if conf:
+                data = json.loads(conf)  # FIXME: dirty as it assume we knows the format and the key
+                if "coverage_strategy" in data:
+                    mapper = {"CODE_COVERAGE": CoverageMode.BLOCK, "EDGE_COVERAGE": CoverageMode.EDGE, "PATH_COVERAGE": CoverageMode.PATH}
+                    return mapper[data["coverage_strategy"]]  # Return the CoverageMode of the config file
+
+            else:  # Auto-balance the CoverageMode
+                covs = Counter({c: 0 for c in CoverageMode})
+                # Count how many times each coverage strategies have been launched
+                covs.update(x.coverage_mode for x in self.clients.values() if x.is_running() and x.engine == engine)
+                # Revert dictionnary to have freq -> [covmodes]
+                d = {v: [] for v in covs.values()}
+                for cov, count in covs.items():
+                    d[count].append(cov)
+                # pick in-order BLOCK < EDGE < PATH among the least frequently launched modes
+                return sorted(d[min(d)])[0]
+
+        else:
+            return CoverageMode.BLOCK  # Dummy value (for honggfuzz)
+
 
     def start(self):
         super(PastisBroker, self).start()  # Start the listening thread
@@ -445,10 +496,8 @@ class PastisBroker(BrokerAgent):
                 SeedType.CRASH: self.CRASH_DIR,
                 SeedType.HANG: self.HANGS_DIR}[typ]
 
-    def set_engine_args(self, engine: FuzzingEngine, args: str):
-        if self.engines_args[engine]:
-            logging.warning(f"arguments where already set for engine {engine.name}")
-        self.engines_args[engine] = args
+    def add_engine_configuration(self, engine: FuzzingEngine, args: str):
+        self.engines_args[engine].append(args)
 
     def _configure_logging(self):
         hldr = logging.FileHandler(self.workspace/f"broker.log")

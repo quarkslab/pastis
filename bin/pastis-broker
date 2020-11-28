@@ -4,10 +4,16 @@
 import click
 import sys
 import logging
+from typing import Optional, Tuple
+from pathlib import Path
+
+# Thirs-party imports
+import coloredlogs
+
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
-from libpastis.types import CheckMode
-import coloredlogs
+from libpastis.types import CheckMode, FuzzingEngine
+
 
 #logging.basicConfig(level=logging.DEBUG)
 logging.root.name = f"\033[7m\033[39m[ BROKER ]\033[0m"
@@ -20,30 +26,54 @@ coloredlogs.install(level=logging.DEBUG,
                                   'error': {'color': 'red'},
                                   'critical': {'bold': True, 'color': 'red'}})
 
+broker = None
 
-def main():
+
+def iterate_file(file):
+    p = Path(file)
+    if p.is_file():  # Add the seed file
+        yield p
+    elif p.is_dir():  # Add all file contained in the directory as triton configuration
+        for sub_s in p.iterdir():
+            yield sub_s
+
+@click.command()
+@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
+@click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Klocwork report to use")
+@click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
+@click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking")
+@click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Triton configuration file")
+@click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Honggfuzz configuration file")
+@click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
+@click.argument('pargvs', nargs=-1)
+def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], pargvs: Tuple[str]):
+    global broker
     # Instanciate the broker
-    workspace = sys.argv.pop(0)
-    kl_report = sys.argv.pop(0)
-    binaries_dir = sys.argv.pop(0)
-    bmode = BrokingMode.FULL
-    ckmode = CheckMode.ALERT_ONLY
-    pargv = sys.argv
-    broker = PastisBroker(workspace, kl_report, binaries_dir, bmode, ckmode, pargv)
+
+    ckmode = CheckMode.ALERT_ONLY if kl_report else CheckMode.CHECK_ALL
+
+    broker = PastisBroker(workspace, bins, BrokingMode[mode], ckmode, kl_report, list(pargvs))
+
+    # Add all the triton configuration if the parameter was a directory
+    if tt_config:
+        for conf in iterate_file(tt_config):
+            logging.info(f"Add Triton configuration: {conf}")
+            broker.add_engine_configuration(FuzzingEngine.TRITON, conf.read_text())
+
+    # Add all the Honggfuzz configuration
+    if hf_config:
+        for conf in iterate_file(hf_config):
+            logging.info(f"Add Honggfuzz configuration: {conf}")
+            broker.add_engine_configuration(FuzzingEngine.HONGGFUZZ, conf.read_text())
+
+    # Add all given seeds as initial seed
+    for s in seed:
+        broker.add_seed_file(s)
 
     # Bind it and start listening (clients can connect)
     broker.bind()
-    #broker.start()
     broker.run()
-    # Send the binary to all already connected clients and start broking
-    # broker.run()
-    return broker
 
 
 if __name__ == "__main__":
-    sys.argv.pop(0)
-    if len(sys.argv) < 3:
-        print("Usage: ./pastis-broker workspace klocwork_report binaries_dir **argv")
-        sys.exit(1)
-
-    broker = main()
+    main()
