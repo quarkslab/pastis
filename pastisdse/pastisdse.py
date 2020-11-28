@@ -83,7 +83,7 @@ class PastisDSE(object):
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
         else:
             if seed.content not in self._seed_received:  # Do not send back a seed that already came from broker
-                self.agent.send_seed(mapper[seed.status], seed.content, origin=FuzzingEngine.TRITON)
+                self.agent.send_seed(mapper[seed.status], seed.content)
 
         # Handle CRASH and ABV_GENERAL
         if se.seed.status == SeedStatus.CRASH and self._last_kid:
@@ -176,12 +176,12 @@ class PastisDSE(object):
         print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
 
-    def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+    def seed_received(self, typ: SeedType, seed: bytes):
         if seed in self._seed_received:
             logging.warning(f"receiving seed already known: {md5(seed).hexdigest()} (dropped)")
             return
 
-        logging.info(f"seed received from:{origin.name} {md5(seed).hexdigest()} [{typ.name}]")
+        logging.info(f"seed received {md5(seed).hexdigest()} [{typ.name}]")
 
         self._seed_received.add(seed)  # Remember seed received not to send them back
 
