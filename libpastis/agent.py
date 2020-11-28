@@ -5,6 +5,7 @@ from enum import Enum
 import logging
 import threading
 from pathlib import Path
+import socket
 
 # third-party libs
 import zmq
@@ -164,7 +165,7 @@ class NetworkAgent(object):
         elif topic == MessageType.HELLO:
             msg = HelloMsg.FromString(message)
             engs = [(FuzzingEngine(x), y) for x, y in zip(msg.engines, msg.versions)]
-            return [engs, Arch(msg.architecture), msg.cpus, msg.memory]
+            return [engs, Arch(msg.architecture), msg.cpus, msg.memory, msg.hostname]
         elif topic == MessageType.START:
             msg = StartMsg.FromString(message)
             return [msg.binary_filename, msg.binary, FuzzingEngine(msg.engine), ExecMode(msg.exec_mode),
@@ -239,6 +240,7 @@ class ClientAgent(NetworkAgent):
         msg.architecture = arch.value
         msg.cpus = psutil.cpu_count()
         msg.memory = psutil.virtual_memory().total
+        msg.hostname = socket.gethostname()
         for eng, version in engines:
             msg.engines.append(eng.value)
             msg.versions.append(version)
@@ -361,7 +363,7 @@ class FileAgent(ClientAgent):
         if isinstance(msg, InputSeedMsg):
             msg = f"{SeedType(msg.type).name}: {msg.seed[:20]}.."
         elif isinstance(msg, HelloMsg):
-            msg = f"{Arch(msg.architecture)} CPU:{msg.cpus} engines:{[FuzzingEngine(x).name for x in msg.engines]}"
+            msg = f"{msg.hostname}: {Arch(msg.architecture)} CPU:{msg.cpus} engines:{[FuzzingEngine(x).name for x in msg.engines]}"
         elif isinstance(msg, TelemetryMsg):
             msg = f"{State(msg.state).name} exec/s: {msg.exec_per_sec} total:{msg.total_exec}"
         elif isinstance(msg, LogMsg):
