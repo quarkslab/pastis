@@ -148,7 +148,7 @@ class PastisDSE(object):
         if kl_report:
             self.klreport = KlocworkReport.from_json(kl_report)
             bd = 'OK' if self.klreport.has_binding() else 'KO'
-            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)}")
+            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)})")
 
         if argv: # Override config
             self.config.program_argv = [str(program_path)]  # Set current binary
