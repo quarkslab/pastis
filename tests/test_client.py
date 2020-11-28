@@ -15,8 +15,8 @@ def start_received(fname: str, binary: bytes, engine: FuzzingEngine, exmode: Exe
     logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
 
 
-def seed_received(typ: SeedType, seed: bytes, origin: FuzzingEngine):
-    logging.info(f"[SEED] [{origin.name}] {seed.hex()} ({typ})")
+def seed_received(typ: SeedType, seed: bytes):
+    logging.info(f"[SEED] {seed.hex()} ({typ})")
 
 
 def stop_received():
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         v = random.randint(0, 2)
         if v == 0:
             seed = bytes(random.getrandbits(8) for _ in range(16))
-            agent.send_seed(SeedType.INPUT, seed, FuzzingEngine.HONGGFUZZ)
+            agent.send_seed(SeedType.INPUT, seed)
         elif v == 1:
             level = random.choice(list(LogLevel))
             agent.send_log(level, f"Message: {random.randint(0, 100)}")

@@ -14,8 +14,8 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 clients = set()
 
 
-def seed_received(cli_id: bytes, typ: SeedType, seed: bytes, origin: FuzzingEngine):
-    logging.info(f"[{cli_id.hex()}] [SEED] [{origin.name}] {seed.hex()} ({typ.name})")
+def seed_received(cli_id: bytes, typ: SeedType, seed: bytes):
+    logging.info(f"[{cli_id.hex()}] [SEED] {seed.hex()} ({typ.name})")
 
 
 def hello_received(cli_id: bytes, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):
