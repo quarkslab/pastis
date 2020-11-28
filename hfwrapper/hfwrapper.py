@@ -224,6 +224,7 @@ class Honggfuzz:
         seed_path.write_bytes(seed)
 
     def init_agent(self, remote: str = "localhost", port: int = 5555):
+        self._agent.register_start_callback(self.start_received)  # Register start because launched manually (not by pastisd)
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
@@ -256,7 +257,6 @@ class Honggfuzz:
     def __setup_agent(self):
         # Register callbacks.
         self._agent.register_seed_callback(self.__seed_received)
-        self._agent.register_start_callback(self.start_received)
         self._agent.register_stop_callback(self.__stop_received)
 
     def __setup_watchers(self):
