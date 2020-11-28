@@ -38,12 +38,12 @@ class PastisDSE(object):
 
 
     def _init_callbacks(self):
-        self.agent.register_start_callback(self.start_received)
         self.agent.register_seed_callback(self.seed_received)
         self.agent.register_stop_callback(self.stop_received)
 
 
     def init_agent(self, remote: str = "localhost", port: int = 5555):
+        self.agent.register_start_callback(self.start_received) # register start because launched manually
         self.agent.connect(remote, port)
         self.agent.start()
         self.agent.send_hello([(FuzzingEngine.TRITON, TRITON_VERSION)])
