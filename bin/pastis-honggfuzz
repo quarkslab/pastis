@@ -9,13 +9,13 @@
 # built-in imports
 import logging
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 
 # Third-party imports
 import click
 import coloredlogs
 from libpastis import ClientAgent, FileAgent
-from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine, SeedType
+from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine
 
 # Local imports
 from hfwrapper import Honggfuzz
@@ -103,6 +103,3 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
 
 if __name__ == "__main__":
     cli()
-
-
-
