@@ -9,6 +9,7 @@ import subprocess
 import threading
 import time
 import hashlib
+import re
 from typing import Callable, List, Dict, Union
 
 # Third party imports
@@ -79,7 +80,7 @@ class HonggfuzzProcess:
             f"--statsfile {target_workspace['stats']}/statsfile.log",
             f"--stdin_input" if seed_inj == SeedInjectLoc.STDIN else "",
             f"--persistent" if exmode == ExecMode.PERSISTENT else "",
-            engine_args,  # Any arguments coming right from the broker
+            re.sub(r"\s", " ", engine_args),  # Any arguments coming right from the broker (remove \r\n)
             f"--logfile logfile.log",
             f"--sanitizers_del_report true",
             f"--input {target_workspace['inputs']}",
@@ -284,14 +285,14 @@ class Honggfuzz:
         self._tot_seeds += 1
         file = Path(filename)
         logging.debug(f'[SEED] Sending new seed: {file.name} [{self._tot_seeds}]')
-        self._agent.send_seed(SeedType.INPUT, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
+        self._agent.send_seed(SeedType.INPUT, file.read_bytes())
         self._queue_to_send.append((filename, False))
 
     def __send_crash(self, filename: Path):
         self._tot_seeds += 1
         file = Path(filename)
         logging.debug(f'[CRASH] Sending new crash: {file.name} [{self._tot_seeds}]')
-        self._agent.send_seed(SeedType.CRASH, file.read_bytes(), FuzzingEngine.HONGGFUZZ)
+        self._agent.send_seed(SeedType.CRASH, file.read_bytes())
         self._queue_to_send.append((filename, True))
 
     def __check_seed_alert(self, filename: Path, is_crash: bool):
@@ -389,8 +390,8 @@ class Honggfuzz:
 
         self.start(fname, binary, argv, exmode, seed_inj, engine_args)
 
-    def __seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
-        logging.info(f"[SEED-RECEIVED] from:[{origin.name}] {hashlib.md5(seed).hexdigest()} ({typ.name})")
+    def __seed_received(self, typ: SeedType, seed: bytes):
+        logging.info(f"[SEED] received  {hashlib.md5(seed).hexdigest()} ({typ.name})")
         self.add_seed(seed)
 
     def __stop_received(self):
