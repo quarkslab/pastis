@@ -11,7 +11,7 @@ setup(
     description="PASTIS deamon initializing connection with broker",
     packages=find_packages(),
     setup_requires=[],
-    install_requires=[],
+    install_requires=["coloredlogs"],
     tests_require=[],
     license="qb",
     author="Quarkslab",

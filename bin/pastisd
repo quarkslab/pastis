@@ -3,6 +3,7 @@
 import sys
 import logging
 import os
+import coloredlogs
 
 from libpastis import ClientAgent
 from libpastis.types import FuzzingEngine
@@ -31,7 +32,12 @@ PASTIS_PORT = 5555
 agent = ClientAgent()
 engine = None
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
+coloredlogs.install(level=logging.DEBUG,
+                    fmt="%(asctime)s %(threadName)s [%(levelname)s] %(message)s",
+                    level_styles={'debug': {'color': 'blue'}, 'info': {}, 'warning': {'color': 'yellow'},
+                                  'error': {'color': 'red'}, 'critical': {'bold': True, 'color': 'red'}},
+                    field_styles={'asctime': {'color': 'white'}, 'levelname': {'color': 'black', 'bold': True}})
+
 
 
 def configure_logging(level, fmt):
@@ -63,11 +69,11 @@ def start_received(*args):
         assert False
 
 
-def main():
+def main(host=PASTIS_MASTER):
     global agent, engine
     agent.register_start_callback(start_received)
 
-    agent.connect(PASTIS_MASTER, PASTIS_PORT)
+    agent.connect(host, PASTIS_PORT)
 
     engines = []
     if HONGGFUZZ_AVAILABLE:
@@ -84,9 +90,13 @@ def main():
     try:
         agent.run()
     except KeyboardInterrupt:
-        logging.info("Stop required (KeyboardInterrupt)")
-        engine.stop()
+        logging.warning("Stop required (KeyboardInterrupt)")
+        if engine:  # If an engine was launched
+            engine.stop()
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        main(sys.argv[1])
+    else:
+        main()
