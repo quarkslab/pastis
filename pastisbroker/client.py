@@ -13,13 +13,14 @@ class PastisClient(object):
     a client connected to the broker.
     """
 
-    def __init__(self, id: int, netid: bytes, log_dir: Path, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int):
+    def __init__(self, id: int, netid: bytes, log_dir: Path, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
         self.id = id
         self.netid = netid
         self.engines = engines
         self.arch = arch
         self.cpus = cpus
         self.memory = memory
+        self.hostname = hostname
 
         self.logger = logging.getLogger(f"client-{id}")
         self._configure_logging(log_dir)
