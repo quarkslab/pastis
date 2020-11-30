@@ -49,6 +49,10 @@ class PastisDSE(object):
 
 
     def run(self, wait_idle=True):
+        """
+        This function does the exploration while a stop is received
+        from the broker.
+        """
         # Just wait until the broker says let's go
         while self.dse is None:
             time.sleep(0.10)
@@ -62,7 +66,7 @@ class PastisDSE(object):
                 if wait_idle:  # if we want to wait for seeds just wait to receive one
                     logging.info("exploration idle (worklist empty)")
                     self.agent.send_log(LogLevel.INFO, "exploration idle (worklist empty)")
-                    self.wait_seed_event()
+                    self._wait_seed_event()
                 else:
                     break  # Just break and exit
             else:
@@ -70,8 +74,21 @@ class PastisDSE(object):
                 break
 
 
-    def cb_post_execution(self, se: SymbolicExecutor, state: ProcessState):
+    def _wait_seed_event(self):
+        self._seed_lock = True
+        while self._seed_lock:
+            time.sleep(0.5)
 
+
+    def cb_post_execution(self, se: SymbolicExecutor, state: ProcessState):
+        """
+        This function is called after each execution. In this function we verify
+        the ABV_GENERAL alert when a crash occurred during the last execution.
+
+        :param se: The current symbolic executor
+        :param state: The current processus state of the execution
+        :return: None
+        """
         # Send seed that have been executed
         mapper = {SeedStatus.OK_DONE: SeedType.INPUT, SeedStatus.CRASH: SeedType.CRASH, SeedStatus.HANG: SeedType.HANG}
         seed = se.seed
@@ -95,14 +112,24 @@ class PastisDSE(object):
         logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
 
-    def wait_seed_event(self):
-        self._seed_lock = True
-        while self._seed_lock:
-            time.sleep(0.5)
-
-
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
+        """
+        This function is called when the broker says to start the fuzzing session. Here, we receive all information about
+        the program to fuzz and the configuration.
+
+        :param fname: The name of the binary to explore
+        :param binary: The content of the binary to explore
+        :param engine: The kind of fuzzing engine (should be Triton for this script)
+        :param exmode: The mode of the exploration
+        :param chkmode: The mode of vulnerability check
+        :param covmode: The mode of coverage
+        :param seed_inj: The location where to inject input
+        :param engine_args: The engine arguments
+        :param argv: The program arguments
+        :param kl_report: The Klocwork report
+        :return: None
+        """
         logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
 
         # Parse triton specific parameters and update conf if needed
@@ -168,11 +195,28 @@ class PastisDSE(object):
         elif chkmode == CheckMode.ALERT_ONLY:
            self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
+
     def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
+        """
+        This function is mainly used for debug.
+
+        :param se: The current symbolic executor
+        :param state: The current processus state of the execution
+        :param instruction: The current instruction executed
+        :return: None
+        """
         print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
 
     def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+        """
+        This function is called when we receive a seed from the broker.
+
+        :param typ: The type of the seed
+        :param seed: The seed
+        :param origin: The origin of the mutation (Triton or HF)
+        :return: None
+        """
         if seed in self._seed_received:
             logging.warning(f"receiving seed already known: {md5(seed).hexdigest()} (dropped)")
             return
@@ -190,6 +234,9 @@ class PastisDSE(object):
 
 
     def stop_received(self):
+        """
+        This function is called when the broker says stop.
+        """
         logging.info(f"[BROKER] [STOP]")
         if self.dse:
             self.dse.stop_exploration()
@@ -220,6 +267,9 @@ class PastisDSE(object):
         """
         This callback is called each time a model is returned by the SMT solver. In this function
         we compute the checksum of the packets using scapy.
+
+        :note: This function is not used anymore as we removed checksum computation
+        into the Cyclone TCP/IP stack.
         """
         base = 0
         pkt_len = 600
@@ -247,6 +297,15 @@ class PastisDSE(object):
 
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
+        """
+        This function is called when an intrinsic call occurs in order to verify
+        defaults and vulnerabilities.
+
+        :param se: The current symbolic executor
+        :param state: The current processus state of the execution
+        :param addr: The instruction address of the intrinsic call
+        :return: None
+        """
         alert_id = state.get_argument_value(0)
         self._last_kid = alert_id
         covered, validated = False, False
@@ -295,6 +354,15 @@ class PastisDSE(object):
 
 
     def check_alert_dispatcher(self, type: KlocworkAlertType, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
+        """
+        This function is called by intrinsic_callback in order to verify defaults
+        and vulnerabilities.
+
+        :param se: The current symbolic executor
+        :param state: The current processus state of the execution
+        :param addr: The instruction address of the intrinsic call
+        :return: True if a vulnerability has been verified
+        """
         # BUFFER_OVERFLOW related alerts
         if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
             size = se.pstate.get_argument_value(2)
