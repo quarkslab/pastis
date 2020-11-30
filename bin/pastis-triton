@@ -22,9 +22,9 @@ pastis = None
 
 coloredlogs.install(level=logging.INFO,
                 fmt="%(asctime)s %(threadName)s [%(levelname)s] %(message)s",
-                level_styles={'debug': {'color': 'blue'}, 'info': {}, 'warning': {'color': 'yellow'},
+                level_styles={'debug': {'color': 'blue'}, 'info': {'color': 'white'}, 'warning': {'color': 'yellow'},
                               'error': {'color': 'red'}, 'critical': {'bold': True, 'color': 'red'}},
-                field_styles = {'asctime': {'color': 'white'}, 'levelname': {'color': 'black', 'bold': True}})
+                field_styles = {'asctime': {'color': 'white'}, 'levelname': {'bold': True}})
 
 
 @click.group()
@@ -48,6 +48,14 @@ def api():
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
 def online(host: str, port: int):
+    """
+    This is the online mode of the pastis-triton exploration. With this mode,
+    the client (pastis-triton) will try to connect to the broker. Then, the broker
+    will send us the binary to explore, the configuration and initiale seeds.
+
+    :param host: The remote host to connect
+    :param port: The remote host's port to connect
+    """
     # Create the network agent and connect to the broker
     agent = ClientAgent()
 
@@ -69,7 +77,33 @@ def online(host: str, port: int):
 @click.option('-cov', '--covmode', type=click.Choice([x.name for x in CoverageMode]), help="Coverage strategy", default=CoverageMode.EDGE.name)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.argument('pargvs', nargs=-1)
-def offline(program: str, kl_report: Optional[str], count: int, config: str, seed: Tuple[str], exmode, chkmode, covmode, seedinj, pargvs: Tuple[str]):
+def offline(program: str,
+            kl_report: Optional[str],
+            count: int,
+            config: str,
+            seed: Tuple[str],
+            exmode: ExecMode,
+            chkmode: CheckMode,
+            covmode: CoverageMode,
+            seedinj: SeedInjectLoc,
+            pargvs: Tuple[str]):
+    """
+    This is the offline mode of the pastis-triton exploration. With this mode,
+    the client (pastis-triton) will be able to work without a remote broker. In
+    this mode, we have to provide all information about the configuration via
+    the command line option.
+
+    :param program: The program to explore
+    :param kl_report: The klocwork report if provided
+    :param count: The limit of execution (0 = unlimited)
+    :param config: The path the to TritonDSE configuration file (json)
+    :param seed: The initial seed to inject
+    :param exmode: The mode of the exploration
+    :param chkmode: The mode of vulnerability check
+    :param covmode: The mode of coverage
+    :param seedinj: The location where to inject input
+    :param pargvs: The program arguments
+    """
     global pastis
 
     # Transform the type of parameters
