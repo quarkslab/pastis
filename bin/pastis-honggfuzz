@@ -18,7 +18,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine
 
 # Local imports
-from hfwrapper import Honggfuzz
+from hfwrapper import Honggfuzz, HonggfuzzNotFound
 
 
 coloredlogs.install(level=logging.DEBUG,
@@ -40,7 +40,11 @@ def cli():
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
 def online(host: str, port: int):
     agent = ClientAgent()
-    hfuzz = Honggfuzz(agent)
+    try:
+        hfuzz = Honggfuzz(agent)
+    except HonggfuzzNotFound:
+        logging.error("Cannot find HFUZZ_PATH environement variable")
+        return
 
     hfuzz.init_agent(host, port)
     try:
@@ -76,7 +80,11 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
     agent = FileAgent(level=logging.DEBUG, log_file=logfile)
 
     # Instanciate the pastis that will register the appropriate callbacks
-    honggfuzz = Honggfuzz(agent)
+    try:
+        honggfuzz = Honggfuzz(agent)
+    except HonggfuzzNotFound:
+        logging.error("Cannot find HFUZZ_PATH environement variable")
+        return
 
     # Load the report if anyone provided
     report = Path(kl_report).read_text() if kl_report else ""
