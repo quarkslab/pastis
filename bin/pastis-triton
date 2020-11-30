@@ -139,10 +139,10 @@ def offline(program: str,
     for s in seed:
         s_path = Path(s)
         if s_path.is_file():  # Add the seed file
-            pastis.seed_received(SeedType.INPUT, Path(s).read_bytes(), origin=FuzzingEngine.HONGGFUZZ)
+            pastis.seed_received(SeedType.INPUT, Path(s).read_bytes())
         elif s_path.is_dir():  # Add all file contained in the directory as seeds
             for sub_s in s_path.iterdir():
-                pastis.seed_received(SeedType.INPUT, sub_s.read_bytes(), origin=FuzzingEngine.HONGGFUZZ)
+                pastis.seed_received(SeedType.INPUT, sub_s.read_bytes())
 
     # Call run to start exploration
     pastis.run(wait_idle=False)

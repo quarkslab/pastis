@@ -5,6 +5,7 @@ import time
 import logging
 import tempfile
 from pathlib import Path
+import threading
 
 # third-party imports
 from scapy.all          import Ether, IP, TCP, UDP, ICMP
@@ -29,7 +30,7 @@ class PastisDSE(object):
         self.config     = Config(debug=False)
         self.dse        = None
         self.program    = None
-        self.stop       = False
+        self._stop      = False
         self.klreport   = None
         self._last_kid  = None
         self._seed_lock = False
@@ -37,15 +38,20 @@ class PastisDSE(object):
 
 
     def _init_callbacks(self):
-        self.agent.register_start_callback(self.start_received)
         self.agent.register_seed_callback(self.seed_received)
         self.agent.register_stop_callback(self.stop_received)
 
 
     def init_agent(self, remote: str = "localhost", port: int = 5555):
+        self.agent.register_start_callback(self.start_received) # register start because launched manually
         self.agent.connect(remote, port)
         self.agent.start()
         self.agent.send_hello([(FuzzingEngine.TRITON, TRITON_VERSION)])
+
+
+    def start(self):
+        self._th = threading.Thread(target=self.run, daemon=True)
+        self._th.start()
 
 
     def run(self, wait_idle=True):
@@ -58,7 +64,7 @@ class PastisDSE(object):
             time.sleep(0.10)
 
         # Run while we are not instructed to stop
-        while not self.stop:
+        while not self._stop:
             st = self.dse.explore()
             if st == ExplorationStatus.STOPPED:  # if the exploration stopped just return
                 break
@@ -96,7 +102,7 @@ class PastisDSE(object):
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
         else:
             if seed.content not in self._seed_received:  # Do not send back a seed that already came from broker
-                self.agent.send_seed(mapper[seed.status], seed.content, origin=FuzzingEngine.TRITON)
+                self.agent.send_seed(mapper[seed.status], seed.content)
 
         # Handle CRASH and ABV_GENERAL
         if se.seed.status == SeedStatus.CRASH and self._last_kid:
@@ -171,7 +177,7 @@ class PastisDSE(object):
         if kl_report:
             self.klreport = KlocworkReport.from_json(kl_report)
             bd = 'OK' if self.klreport.has_binding() else 'KO'
-            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)}")
+            logging.info(f"Klocwork report loaded [binded:{bd}]: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)})")
 
         if argv: # Override config
             self.config.program_argv = [str(program_path)]  # Set current binary
@@ -208,7 +214,7 @@ class PastisDSE(object):
         print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
 
-    def seed_received(self, typ: SeedType, seed: bytes, origin: FuzzingEngine):
+    def seed_received(self, typ: SeedType, seed: bytes):
         """
         This function is called when we receive a seed from the broker.
 
@@ -221,7 +227,7 @@ class PastisDSE(object):
             logging.warning(f"receiving seed already known: {md5(seed).hexdigest()} (dropped)")
             return
 
-        logging.info(f"seed received from:{origin.name} {md5(seed).hexdigest()} [{typ.name}]")
+        logging.info(f"seed received {md5(seed).hexdigest()} [{typ.name}]")
 
         self._seed_received.add(seed)  # Remember seed received not to send them back
 
@@ -238,9 +244,13 @@ class PastisDSE(object):
         This function is called when the broker says stop.
         """
         logging.info(f"[BROKER] [STOP]")
+        self.stop()
+
+
+    def stop(self):
         if self.dse:
             self.dse.stop_exploration()
-        self.stop = True
+        self._stop = True
         self.agent.stop()
 
 
