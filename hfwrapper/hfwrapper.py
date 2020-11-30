@@ -26,6 +26,11 @@ except ImportError:
 from hfwrapper.replay import Replay
 
 
+class HonggfuzzNotFound(Exception):
+    """ Issue raised on """
+    pass
+
+
 class ManagedProcess:
 
     def __init__(self):
@@ -158,7 +163,9 @@ class Honggfuzz:
         self.__crashes_watcher = None
         self.__stats_watcher = None
 
-        self.__hfuzz_path = os.environ['HFUZZ_PATH']
+        self.__hfuzz_path = os.environ.get('HFUZZ_PATH')
+        if self.__hfuzz_path is None:
+            raise HonggfuzzNotFound()
         self.__hfuzz_version = '2.1'
         self.__hfuzz_workspace = Path(os.environ.get('HFUZZ_WS', '/tmp/hfuzz_workspace'))
         self.__hfuzz_process = HonggfuzzProcess(self.__hfuzz_path)
@@ -332,9 +339,9 @@ class Honggfuzz:
 
 
     def __send_telemetry(self, filename: Path):
-        if self._tel_counter % 250 != 0:
-            return
         self._tel_counter += 1
+        if (self._tel_counter % 50) != 0:
+            return
 
         logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
 
