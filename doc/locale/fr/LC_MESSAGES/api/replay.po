@@ -1,0 +1,51 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the HF-Wrapper package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: HF-Wrapper \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-10 10:16+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../api/replay.rst:2
+msgid "Replay"
+msgstr ""
+
+#: hfwrapper.Replay:1 of
+msgid "Bases: :class:`object`"
+msgstr ""
+
+#: hfwrapper.Replay.alert_covered:1 of
+msgid "Alert covered"
+msgstr "list d'alertes couverte"
+
+#: hfwrapper.Replay.asan_info:1 of
+msgid "In case of crash return ASAN info gather by parsing"
+msgstr "En cas de crash renvoi les informations renvoyées par ASAN"
+
+#: hfwrapper.Replay.crashing_id:1 of
+msgid "Return the alert identifier that made the program to crash (last one seen)"
+msgstr "Renvoi l'identifiant de l'alerte qui a mené au crash (le dernier vu)"
+
+#: hfwrapper.Replay.has_crashed:1 of
+msgid "Return whether the execution has crashed or not"
+msgstr "Renvoi si l'exécution à crashé ou non"
+
+#: hfwrapper.Replay.has_hanged:1 of
+msgid "Return true if the target hanged during its replay"
+msgstr "Renvoi vrai si la cible à 'hang' pendant le rejeu"
+
+#: hfwrapper.Replay.is_asan_without_crash:1 of
+msgid "Return True if an ASAN WARNING was shown without errors"
+msgstr "Renvoi vrai si un message ASAN a été trouvé bien que le code de retour soit 0"
+
