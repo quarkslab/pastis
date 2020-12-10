@@ -328,7 +328,7 @@ class Honggfuzz:
                     if not alert.validated:
                         alert.validated = True
                         bugt, aline = run.asan_info()
-                        self.dual_log(LogLevel.INFO, f"Honggfuzz new alert validated {alert} [{alert.id}] ({aline})")
+                        self.dual_log(LogLevel.INFO, f"Honggfuzz new alert validated {alert} [{alert.id}] ({aline})  (asan no crash: {run.is_asan_without_crash()})")
                         self._agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, p.read_bytes()))
             else:
                 if is_crash:
