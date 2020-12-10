@@ -1,0 +1,59 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the libpastis package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: libpastis \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-10 17:53+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../api/agent.rst:4
+msgid "Agents"
+msgstr ""
+
+#: ../../api/agent.rst:7
+msgid "Client Agent"
+msgstr ""
+
+#: ../../api/agent.rst:9
+msgid ""
+"A full working example of a simple :py:class:`ClientAgent` is the "
+"following:"
+msgstr ""
+
+#: libpastis.BrokerAgent:1 libpastis.ClientAgent:1 of
+msgid "Bases: :class:`libpastis.agent.NetworkAgent`"
+msgstr ""
+
+#: ../../api/agent.rst:49
+msgid "Broker Agent"
+msgstr ""
+
+#: ../../api/agent.rst:60
+msgid "File Agent"
+msgstr ""
+
+#: ../../api/agent.rst:62
+msgid ""
+"This class is a dummy agent that expose the same API that a "
+":py:class:`ClientAgent` or a :py:class:`BrokerAgent` but does nothing but"
+" logging results of messages that shall have been sent."
+msgstr ""
+
+#: libpastis.FileAgent:1 of
+msgid ""
+"Mock agent that will mimick all APIs function of a network agent but "
+"which will never receive any incoming messages. All messages sent are "
+"logged to a file"
+msgstr ""
+
