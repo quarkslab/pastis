@@ -47,7 +47,7 @@ msgstr "API Python"
 
 #: ../../index.rst:2
 msgid "HF-Wrapper documentation"
-msgstr "Documention de HF-Wrapper"
+msgstr "Documentation de HF-Wrapper"
 
 #: ../../index.rst:4
 msgid ""
