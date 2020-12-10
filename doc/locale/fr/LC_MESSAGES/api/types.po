@@ -1,0 +1,72 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the libpastis package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: libpastis \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-10 17:53+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../api/types.rst:4
+msgid "Types"
+msgstr ""
+
+#: libpastis.types.AlertData:1 of
+msgid "Bases: :class:`object`"
+msgstr ""
+
+#: libpastis.types.Arch:1 libpastis.types.CheckMode:1
+#: libpastis.types.ExecMode:1 libpastis.types.FuzzingEngine:1
+#: libpastis.types.LogLevel:1 libpastis.types.SeedInjectLoc:1
+#: libpastis.types.SeedType:1 libpastis.types.State:1 of
+msgid "Bases: :class:`enum.Enum`"
+msgstr ""
+
+#: libpastis.types.Arch:1 libpastis.types.CheckMode:1
+#: libpastis.types.CoverageMode:1 libpastis.types.ExecMode:1
+#: libpastis.types.FuzzingEngine:1 libpastis.types.LogLevel:1
+#: libpastis.types.SeedInjectLoc:1 libpastis.types.SeedType:1
+#: libpastis.types.State:1 of
+msgid "An enumeration."
+msgstr ""
+
+#: libpastis.types.CoverageMode:1 of
+msgid "Bases: :class:`enum.IntEnum`"
+msgstr ""
+
+#: ../../api/types.rst:15
+msgid "Utility functions"
+msgstr ""
+
+#: libpastis.utils.do_engine_support_coverage_strategy:1 of
+msgid ""
+"Utility function to check whether the fuzzing engine support different "
+"coverage strategy"
+msgstr ""
+
+#: libpastis.utils.do_engine_support_coverage_strategy of
+msgid "Parameters"
+msgstr ""
+
+#: libpastis.utils.do_engine_support_coverage_strategy:6 of
+msgid "engine to check"
+msgstr ""
+
+#: libpastis.utils.do_engine_support_coverage_strategy of
+msgid "Returns"
+msgstr ""
+
+#: libpastis.utils.do_engine_support_coverage_strategy:7 of
+msgid "boolean if engine support variadic coverage strategies"
+msgstr ""
+

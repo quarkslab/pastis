@@ -1,0 +1,77 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the libpastis package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: libpastis \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-12-10 17:53+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../index.rst:28
+msgid "API usage"
+msgstr ""
+
+#: ../../index.rst:28
+msgid "Types"
+msgstr ""
+
+#: ../../index.rst:28
+msgid "Python API"
+msgstr ""
+
+#: ../../index.rst:2
+msgid "libpastis documentation"
+msgstr ""
+
+#: ../../index.rst:4
+msgid ""
+"Libpastis is a pure python library designed perform all network "
+"communications in the context of PASTIS. Its API mostly expose two "
+"classes :py:class:`ClientAgent` and :py:class:`BrokerAgent` that enable "
+"acting as a client or a broker respectively. It also exposes common types"
+" between components."
+msgstr ""
+
+#: ../../index.rst:9
+msgid ""
+"Underneath it uses `ZeroMQ <https://zeromq.org>`_ for message exchanges. "
+"All data transmitted are serialized in `Protobuf "
+"<https://developers.google.com/protocol-buffers>`_. However, for later "
+"interoperability, the user never manipulates directly zmq sockets nor "
+"Protobuf types."
+msgstr ""
+
+#: ../../index.rst:16
+msgid "Installation"
+msgstr ""
+
+#: ../../index.rst:18
+msgid "Libpastis can be installed through pip:"
+msgstr ""
+
+#: ../../index.rst:39
+msgid "Indices and tables"
+msgstr ""
+
+#: ../../index.rst:41
+msgid ":ref:`genindex`"
+msgstr ""
+
+#: ../../index.rst:42
+msgid ":ref:`modindex`"
+msgstr ""
+
+#: ../../index.rst:43
+msgid ":ref:`search`"
+msgstr ""
+
