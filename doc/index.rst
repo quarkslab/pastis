@@ -19,8 +19,8 @@ implementing the associated callbacks. It is possible to write its own broker by
 directly libpastis or by sub-classing pastis-broker to take advantages of its existing
 functionnalities.
 
-.. figure:: figs/broker.pdf
-   :scale: 100 %
+.. figure:: figs/broker.*
+   :scale: 50 %
    :align: center
    :alt: pastis-broker overview
 
