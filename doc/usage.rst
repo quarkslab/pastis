@@ -46,7 +46,7 @@ the broker through command line. The command line arguments are the following:
 
   * architecture : from ELF header
   * instrumentation : from functions of the program. If it contains references
-    to “__sanitizer” then it is considered for ``honggfuzz``otherwise for Triton
+    to "__sanitizer" then it is considered for ``honggfuzz`` otherwise for Triton
   * persistence : detect persistence through ``HF_ITER`` function presence or the
     presence of a token added in .rodata by Honggfuzz in the target.
 
