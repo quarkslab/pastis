@@ -33,18 +33,6 @@ def cli():
 
 
 @cli.command()
-def api():
-    pass
-    # Create the network client agent
-    # register de start_receive callback
-    # send the hello_msg
-    # start_receive_triggered
-    # instanciate PastisDSE or Honggfuzz (and register additional callbacks)
-    # forward the start_received to pastisdse or honggfuzz
-    # Call function run()
-
-
-@cli.command()
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
 def online(host: str, port: int):
@@ -120,9 +108,6 @@ def offline(program: str,
     # Instanciate the pastis that will register the appropriate callbacks
     pastis = PastisDSE(agent)
 
-    # Set the number of execution limit
-    pastis.config.exploration_limit = count
-
     #pastis.init_agent(host, port)  # Does not even call init_agent as it does nothing for the FileAgent
     if config:
         config = Path(config).read_text()
@@ -134,6 +119,9 @@ def offline(program: str,
 
     # Mimick a callback to start_received
     pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, config, pargvs, report)
+
+    # Set the number of execution limit
+    pastis.config.exploration_limit = count
 
     # Provide it all our seeds
     for s in seed:
