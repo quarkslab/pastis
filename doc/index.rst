@@ -16,14 +16,12 @@ thightly bound to ``libpastis`` for interacting with the broker.
 
     Installation <installation>
     Usage <usage>
-    API usage <api_usage>
 
 .. toctree::
     :caption: Python API
     :maxdepth: 3
 
-    Honggfuzz <api/hfwrapper>
-    Replay <api/replay>
+    api
 
 
 Indices and tables
