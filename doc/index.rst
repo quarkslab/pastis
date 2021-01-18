@@ -12,17 +12,10 @@ However, for later interoperability, the user never manipulates directly zmq
 sockets nor Protobuf types.
 
 
-Installation
-------------
+.. toctree::
+   :maxdepth: 2
 
-Libpastis can be installed through pip:
-
-
-.. code-block:: bash
-
-    $ cd libpastis
-    $ pip3 install .
-
+    Installation <installation>
 
 
 .. toctree::
