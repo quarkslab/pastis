@@ -114,8 +114,9 @@ class PastisDSE(object):
                 self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content))
 
         # Print stats
-        d, v = self.klreport.get_stats()
-        logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+        if self.klreport:
+            d, v = self.klreport.get_stats()
+            logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
@@ -472,7 +473,7 @@ class PastisDSE(object):
         # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
         elif type in [KlocworkAlertType.NPD_FUNC_MUST, KlocworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
             ptr = se.pstate.get_argument_value(2)
-            return NullDerefSanitizer.check(se, state, MemoryAccess(ptr, CPUSIZE.BYTE), f'Invalid memory access at {ptr:#x}')
+            return NullDerefSanitizer.check(se, state, ptr, f'Invalid memory access at {ptr:#x}')
 
         ######################################################################
 
