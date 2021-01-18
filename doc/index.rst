@@ -22,8 +22,8 @@ sockets nor Protobuf types.
     :caption: Python API
     :maxdepth: 3
 
-    API usage <api/agent>
-    Types <api/types>
+    api
+
 
 
 
