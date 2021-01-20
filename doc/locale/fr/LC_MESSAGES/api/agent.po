@@ -19,17 +19,17 @@ msgstr ""
 
 #: ../../api/agent.rst:4
 msgid "Agents"
-msgstr ""
+msgstr "Agents"
 
 #: ../../api/agent.rst:7
 msgid "Client Agent"
-msgstr ""
+msgstr "Agent Client"
 
 #: ../../api/agent.rst:9
 msgid ""
 "A full working example of a simple :py:class:`ClientAgent` is the "
 "following:"
-msgstr ""
+msgstr "La classe :py:class:`ClientAgent` suivant donne un exemple fonctionnel de client:"
 
 #: libpastis.BrokerAgent:1 libpastis.ClientAgent:1 of
 msgid "Bases: :class:`libpastis.agent.NetworkAgent`"
@@ -48,12 +48,16 @@ msgid ""
 "This class is a dummy agent that expose the same API that a "
 ":py:class:`ClientAgent` or a :py:class:`BrokerAgent` but does nothing but"
 " logging results of messages that shall have been sent."
-msgstr ""
+msgstr "Cette class est un agent factice qui expose néanmoins un"
+":py:class:`ClientAgent` ou un :py:class:`BrokerAgent` mais ne fais rien d'autre"
+"que de logger les résulats ou messages qui auraient normalement transité par le réseau."
 
 #: libpastis.FileAgent:1 of
 msgid ""
 "Mock agent that will mimick all APIs function of a network agent but "
 "which will never receive any incoming messages. All messages sent are "
 "logged to a file"
-msgstr ""
+msgstr "'Mock' agent qui imite toutes les fonctions d'API d'un agent réseau mais"
+"qui n'enverra ni ne recevera jamais aucuns messages. Tous les messages sont"
+"envoyés à un fichier de log"
 

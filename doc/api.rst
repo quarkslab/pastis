@@ -1,5 +1,5 @@
-Python API
-----------
+libpastis API
+-------------
 
 .. toctree::
     :maxdepth: 2

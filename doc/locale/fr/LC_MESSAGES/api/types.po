@@ -38,7 +38,7 @@ msgstr ""
 #: libpastis.types.SeedInjectLoc:1 libpastis.types.SeedType:1
 #: libpastis.types.State:1 of
 msgid "An enumeration."
-msgstr ""
+msgstr "Une énumeration"
 
 #: libpastis.types.CoverageMode:1 of
 msgid "Bases: :class:`enum.IntEnum`"
@@ -46,27 +46,27 @@ msgstr ""
 
 #: ../../api/types.rst:15
 msgid "Utility functions"
-msgstr ""
+msgstr "Fonctions utilitaires"
 
 #: libpastis.utils.do_engine_support_coverage_strategy:1 of
 msgid ""
 "Utility function to check whether the fuzzing engine support different "
 "coverage strategy"
-msgstr ""
+msgstr "Fonction utilitaire qui vérifie que le moteur de fuzzing supporte"
+"différentes stratégies de couverture"
 
 #: libpastis.utils.do_engine_support_coverage_strategy of
 msgid "Parameters"
-msgstr ""
+msgstr "Paramètres"
 
 #: libpastis.utils.do_engine_support_coverage_strategy:6 of
 msgid "engine to check"
-msgstr ""
+msgstr "moteur à vérifier"
 
 #: libpastis.utils.do_engine_support_coverage_strategy of
 msgid "Returns"
-msgstr ""
+msgstr "Renvoi"
 
 #: libpastis.utils.do_engine_support_coverage_strategy:7 of
 msgid "boolean if engine support variadic coverage strategies"
-msgstr ""
-
+msgstr "booléen vrai si le moteur supporte différentes stratégies de couverture"
