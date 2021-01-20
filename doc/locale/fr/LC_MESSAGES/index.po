@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libpastis \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-10 17:53+0100\n"
+"POT-Creation-Date: 2021-01-20 23:03+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,21 +17,17 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.9.0\n"
 
-#: ../../index.rst:28
-msgid "API usage"
+#: ../../index.rst:15
+msgid " Installation"
 msgstr ""
 
-#: ../../index.rst:28
-msgid "Types"
-msgstr ""
-
-#: ../../index.rst:28
+#: ../../index.rst:21
 msgid "Python API"
-msgstr ""
+msgstr "API Python"
 
 #: ../../index.rst:2
 msgid "libpastis documentation"
-msgstr ""
+msgstr "Documentation de libpastis"
 
 #: ../../index.rst:4
 msgid ""
@@ -41,6 +37,11 @@ msgid ""
 "acting as a client or a broker respectively. It also exposes common types"
 " between components."
 msgstr ""
+"Libpastis est une bibliothèque Python conçue pour effectuer toutes les "
+"communications réseau dans le contexte de PASTIS. Son API expose deux "
+"classes principales qui sont :py:class:`ClientAgent` and :py:class:`BrokerAgent` "
+"qui permettent d'agir comme client ou broker. L'API expose aussi des types "
+"communs utilisés par tous les autres composants."
 
 #: ../../index.rst:9
 msgid ""
@@ -49,29 +50,35 @@ msgid ""
 "<https://developers.google.com/protocol-buffers>`_. However, for later "
 "interoperability, the user never manipulates directly zmq sockets nor "
 "Protobuf types."
-msgstr ""
+msgstr "En interne elle utilise `ZeroMQ <https://zeromq.org>`_ pour l'échange de messages. "
+"Toutes les données transmises sont sérialisées en `Protobuf <https://developers.google.com/protocol-buffers>`_. "
+"Cependent, pour une intéropérabilitée future, l'utilisateur ne manipule jamais directement "
+"les sockets zmq ni les types protobufs. "
 
-#: ../../index.rst:16
-msgid "Installation"
-msgstr ""
-
-#: ../../index.rst:18
-msgid "Libpastis can be installed through pip:"
-msgstr ""
-
-#: ../../index.rst:39
+#: ../../index.rst:32
 msgid "Indices and tables"
-msgstr ""
+msgstr "Index et tableaux"
 
-#: ../../index.rst:41
+#: ../../index.rst:34
 msgid ":ref:`genindex`"
 msgstr ""
 
-#: ../../index.rst:42
+#: ../../index.rst:35
 msgid ":ref:`modindex`"
 msgstr ""
 
-#: ../../index.rst:43
+#: ../../index.rst:36
 msgid ":ref:`search`"
-msgstr ""
+msgstr "Recherche"
 
+#~ msgid "API usage"
+#~ msgstr "Utilisation de l'API"
+
+#~ msgid "Types"
+#~ msgstr ""
+
+#~ msgid "Installation"
+#~ msgstr ""
+
+#~ msgid "Libpastis can be installed through pip:"
+#~ msgstr "Libpastsis peut être installé via pip:"

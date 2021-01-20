@@ -1,6 +1,6 @@
 
-Installation
-------------
+libpastis installation
+----------------------
 
 Libpastis can be installed through pip:
 
