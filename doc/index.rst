@@ -10,6 +10,7 @@ or crash file is being generated. In the context of PASTIS it is
 thightly bound to ``libpastis`` for interacting with the broker.
 
 
+
 .. toctree::
    :caption: Getting started
    :maxdepth: 2

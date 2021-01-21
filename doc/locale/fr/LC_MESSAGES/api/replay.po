@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: HF-Wrapper \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-10 10:16+0100\n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,11 +17,30 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.9.0\n"
 
-#: ../../api/replay.rst:2
+#: ../../api/replay.rst:4
 msgid "Replay"
-msgstr ""
+msgstr "Rejeu"
 
-#: hfwrapper.Replay:1 of
+#: ../../api/replay.rst:6
+msgid ""
+"The Python module, provide a very basic replay engine allowing to re-run "
+"the target with a given input, to check its return code or its output. "
+"Using the ``subprocess`` module it is being used to analyse inputs *(for "
+"checking coverage and validating klocwork alerts)*. At the moment the "
+":py:class:`Replay` search for specific pattern ``rb\".*REACHED ID "
+"(\\d+)\"`` to identify PASTIS intrinsics covered. The following snippet "
+"shows how to re-run the target on a given input and checking various "
+"properties."
+msgstr ""
+"Ce module fourni des capacités de rejeu d'entrées très basique qui permet de rejouer "
+"une entrée sur la cible pour vérifier son code de retour et les messages de la sortie standard et d'erreur. "
+"En utilisant :py:mod:``subprocess``, le module analyse la sortie *(pour "
+"vérifier la couverture et valider les alertes klocwork)*. Pour le moment "
+":py:class:`Replay` cherche le pattern ``rb\".*REACHED ID "
+"(\\d+)\"`` *(spécifique à PASTIS)* pour identifier les fonctions intrinsèques couvertes. Le snippet suivant "
+"montre comment ré-exécuter la cible avec une entrée donnée puis vérifier certaines propriétés sur le résultat."
+
+#: hfwrapper.replay.Replay:1 of
 msgid "Bases: :class:`object`"
 msgstr ""
 
@@ -29,7 +48,7 @@ msgstr ""
 msgid "Alert covered"
 msgstr "list d'alertes couverte"
 
-#: hfwrapper.Replay.asan_info:1 of
+#: hfwrapper.replay.Replay.asan_info:1 of
 msgid "In case of crash return ASAN info gather by parsing"
 msgstr "En cas de crash renvoi les informations renvoyées par ASAN"
 
@@ -37,15 +56,17 @@ msgstr "En cas de crash renvoi les informations renvoyées par ASAN"
 msgid "Return the alert identifier that made the program to crash (last one seen)"
 msgstr "Renvoi l'identifiant de l'alerte qui a mené au crash (le dernier vu)"
 
-#: hfwrapper.Replay.has_crashed:1 of
+#: hfwrapper.replay.Replay.has_crashed:1 of
 msgid "Return whether the execution has crashed or not"
 msgstr "Renvoi si l'exécution à crashé ou non"
 
-#: hfwrapper.Replay.has_hanged:1 of
+#: hfwrapper.replay.Replay.has_hanged:1 of
 msgid "Return true if the target hanged during its replay"
 msgstr "Renvoi vrai si la cible à 'hang' pendant le rejeu"
 
-#: hfwrapper.Replay.is_asan_without_crash:1 of
+#: hfwrapper.replay.Replay.is_asan_without_crash:1 of
 msgid "Return True if an ASAN WARNING was shown without errors"
-msgstr "Renvoi vrai si un message ASAN a été trouvé bien que le code de retour soit 0"
+msgstr ""
+"Renvoi vrai si un message ASAN a été trouvé bien que le code de retour "
+"soit 0"
 

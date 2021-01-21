@@ -1,6 +1,6 @@
 .. _hfwrapper_bin:
 
-pastis-honggfuzz Usage
+pastis-honggfuzz usage
 ======================
 
 The program ``pastis-honggfuzz`` is the main binary using the hf-wrapper library to interact
@@ -25,6 +25,8 @@ Offline mode
 
 In offline mode, all parameters normally received by the broker have to be specified
 on the command line. Options are:
+
+.. highlight:: none
 
 .. code-block:: bash
 

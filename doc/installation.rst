@@ -1,5 +1,5 @@
-Installation
-============
+HF-Wrapper Installation
+=======================
 
 Installing ``hf-wrapper`` works by providing the honggfuzz binary path through
 environment variable. It thus has to be installed before the Python module.

@@ -1,7 +1,7 @@
 .. _hfwrapper_api_usage:
 
-API Usage
----------
+HF-wrapper API
+--------------
 
 .. toctree::
     :caption: Python API
