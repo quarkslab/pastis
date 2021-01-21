@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: HF-Wrapper \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-10 12:15+0100\n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -26,22 +26,10 @@ msgid " Usage"
 msgstr "Utilisation"
 
 #: ../../index.rst:13
-msgid " API usage"
-msgstr "Utilisation de l'API"
-
-#: ../../index.rst:13
 msgid "Getting started"
 msgstr "Démarrer"
 
-#: ../../index.rst:21
-msgid "Honggfuzz"
-msgstr ""
-
-#: ../../index.rst:21
-msgid "Replay"
-msgstr "Rejeu"
-
-#: ../../index.rst:21
+#: ../../index.rst:20
 msgid "Python API"
 msgstr "API Python"
 
@@ -59,25 +47,37 @@ msgid ""
 "is being generated. In the context of PASTIS it is thightly bound to "
 "``libpastis`` for interacting with the broker."
 msgstr ""
-"**Hf-Wrapper** est une API Python pour exécuter ``honggfuzz`` en Python. Plus"
-"specifiquement, ce module conçu pour PASTIS, interagis avec une version"
-"personnalisée de honggfuzz permettant d'injecter de nouvelles entrées ou de récuperer"
-"de la télemetrie à propos de l'état courant d'exécution. Grâce au module Python inotify "
-"il est aussi possible d'être notifié quand un nouveau fichier de corpus ou de crash est créée."
-"Ce module est fortement corrélé à PASTIS et ``libpastis`̀ pour interagir avec le broker."
+"**Hf-Wrapper** est une API Python pour exécuter ``honggfuzz`` en Python. "
+"Plusspecifiquement, ce module conçu pour PASTIS, interagis avec une "
+"versionpersonnalisée de honggfuzz permettant d'injecter de nouvelles "
+"entrées ou de récupererde la télemetrie à propos de l'état courant "
+"d'exécution. Grâce au module Python inotify il est aussi possible d'être "
+"notifié quand un nouveau fichier de corpus ou de crash est créée. Ce "
+"module est fortement corrélé à PASTIS et ``libpastis``  pour interagir "
+"avec le broker."
 
-#: ../../index.rst:30
+#: ../../index.rst:28
 msgid "Indices and tables"
 msgstr "Index et Sommaire"
 
-#: ../../index.rst:32
+#: ../../index.rst:30
 msgid ":ref:`genindex`"
 msgstr ""
 
-#: ../../index.rst:33
+#: ../../index.rst:31
 msgid ":ref:`modindex`"
 msgstr ""
 
-#: ../../index.rst:34
+#: ../../index.rst:32
 msgid ":ref:`search`"
 msgstr ""
+
+#~ msgid " API usage"
+#~ msgstr "Utilisation de l'API"
+
+#~ msgid "Honggfuzz"
+#~ msgstr ""
+
+#~ msgid "Replay"
+#~ msgstr "Rejeu"
+

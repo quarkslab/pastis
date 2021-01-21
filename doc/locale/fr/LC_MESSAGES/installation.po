@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: HF-Wrapper \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-10 12:15+0100\n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Generated-By: Babel 2.9.0\n"
 
 #: ../../installation.rst:2
-msgid "Installation"
+msgid "HF-Wrapper Installation"
 msgstr ""
 
 #: ../../installation.rst:4
@@ -27,8 +27,9 @@ msgid ""
 "through environment variable. It thus has to be installed before the "
 "Python module."
 msgstr ""
-"Utiliser ``hf-wrapper`` fonctionne en fournissant le chemin d'installation de honggfuzz"
-"via une variable d'environement. Ce module s'installe ensuite comme n'importe quel module Python."
+"Utiliser ``hf-wrapper`` fonctionne en fournissant le chemin "
+"d'installation de honggfuzzvia une variable d'environement. Ce module "
+"s'installe ensuite comme n'importe quel module Python."
 
 #: ../../installation.rst:8
 msgid "Installing Honggfuzz"
@@ -36,7 +37,9 @@ msgstr "Installation de Honggfuzz"
 
 #: ../../installation.rst:10
 msgid "Compiling the Honggfuzz tailored for PASTIS is as simple as:"
-msgstr "Compiler la version de Honggfuzz personnalisée pour PASTIS est aussi simple que:"
+msgstr ""
+"Compiler la version de Honggfuzz personnalisée pour PASTIS est aussi "
+"simple que:"
 
 #: ../../installation.rst:18
 msgid ""
@@ -45,11 +48,10 @@ msgid ""
 "moment the module does not intent to find automatically the honggfuzz "
 "binary."
 msgstr ""
-"La seul subtilité est l'export du répertoire de honggfuzz comme variable"
-"d'environment pour le rendre trouvable par ``hf-wrapper``. Pour le moment"
-"aucune détection automatique n'est faite pour essayer de trouver honggfuzz "
-"sans cet export."
-
+"La seul subtilité est l'export du répertoire de honggfuzz comme "
+"variabled'environment pour le rendre trouvable par ``hf-wrapper``. Pour "
+"le momentaucune détection automatique n'est faite pour essayer de trouver"
+" honggfuzz sans cet export."
 
 #: ../../installation.rst:24
 msgid "Installing HF-Wrapper"
@@ -61,5 +63,7 @@ msgid ""
 "installed first (see appropriate section). Then getting in the hf-wrapper"
 " directory and install the module with:"
 msgstr ""
-"La seule dépendance externe est ``libpastis``. Cela requiert de l'installer en premier"
-"(voir section appropriée). Ensuite en ce mettant dans le dossier du module il suffit de faire:"
+"La seule dépendance externe est ``libpastis``. Cela requiert de "
+"l'installer en premier(voir section appropriée). Ensuite en ce mettant "
+"dans le dossier du module il suffit de faire:"
+
