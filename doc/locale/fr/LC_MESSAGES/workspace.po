@@ -1,0 +1,40 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the pastis-broker
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pastis-broker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 14:37+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../workspace.rst:4
+msgid "Workspace"
+msgstr ""
+
+#: ../../workspace.rst:6
+msgid ""
+"All the corpus, crahes, clients logs and telemetry are stored in the "
+"workspace. It thus aggregate all data related to a campaign. If a "
+"klocwork report have been provided it also provides for each alertes data"
+" returned by clients, inputs triggered the crash of the alert etc. In "
+"this mode ``pastis-broker`` also export a final CSV indicating which "
+"alerts have been covered or triggered. The workspace folder also enables "
+"restarting an interrupted campaign. The workspace file structure is the "
+"following:"
+msgstr ""
+"Le corpus, les crashes, les logs des clients et la télémetrie sont stockés dans "
+"l'espace de travail (workspace). Il aggrège toutes les données liées à une campagne. Si un "
+"rapport Klocwork a été fourni, ce workspace contient aussi les données pour chaque "
+"alertes. Dans ce mode ``pastis-broker`` exporte aussi un CSV indiquant pour chaque "
+"alerte s'il a été couverte et validée. La structure est la suivante:"

@@ -42,7 +42,7 @@ the broker through command line. The command line arguments are the following:
   architecture can be provided. ``pastis-broker`` automatically detects the various
   variant in a given directory which simplifies the broker usage as it will automatically
   provide the appropriate variant depending on client's capabilities. By using
-  `LIEF <https://lief.quarkslab.com>` the following variants are detected:
+  `LIEF <https://lief.quarkslab.com>`_ the following variants are detected:
 
   * architecture : from ELF header
   * instrumentation : from functions of the program. If it contains references
@@ -54,11 +54,12 @@ the broker through command line. The command line arguments are the following:
    platforms would require extra engineering effort.
 
 * ``--mode`` defines the "broking" behavior for ``pastis-broker``. Possible values are:
+
   * ``FULL``: transmit all seeds to other clients. Performs the maximal sharing between peers
   * ``NO_TRANSMIT``: receive data from clients but does not forward to one-another seeds
   * ``COVERAGE_ORDERED``: transmit a seed to a client only if it has been launch with the
-  same or more broad coverage metric. The relation order between metrics are block < edge < path.
-  *(not implemented)*
+    same or more broad coverage metric. The relation order between metrics are block < edge < path.
+    *(not implemented)*
 
 * ``--seed`` allows specifying a file or a directory of files containing the initial corpus
   for the campain.

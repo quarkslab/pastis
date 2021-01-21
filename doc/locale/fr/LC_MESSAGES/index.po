@@ -1,0 +1,100 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the pastis-broker
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pastis-broker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 14:37+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../index.rst:28
+msgid " Installation"
+msgstr ""
+
+#: ../../index.rst:28
+msgid " Usage"
+msgstr "Utilisation"
+
+#: ../../index.rst:28
+msgid " Workspace"
+msgstr ""
+
+#: ../../index.rst:28
+msgid "Getting started"
+msgstr "Documentation"
+
+#: ../../index.rst:2
+msgid "Pastis Broker"
+msgstr ""
+
+#: ../../index.rst:4
+msgid ""
+"Pastis-broker is the head of the infrastructure, acting as an "
+"intermediate between each clients connected. In a general manner it is in"
+" charge of ensuring a maximal sharing of seeds between clients. Ensuring "
+"this sharing enable theoretically to have the same coverage for all "
+"clients."
+msgstr ""
+"Pastis-broker est l'autorité centrale de l'infrastructure. Il agit comme "
+"intermediaire entre chaques clients connectés. De manière générale, il assure "
+"le partage maximal des graines entre les clients. Assurer "
+"ce partage permet théoriquement d'obtenir la même couverture pour chaque clients."
+
+#: ../../index.rst:9
+msgid ""
+"That project is the main interface with the analyst as all configuration "
+"options of a campain are set in pastis-broker and propagated to all "
+"clients automatically. Indeed, it will transmit the appropriate binary, "
+"configuration, klocwork report, and initial seeds. Similarly all relevant"
+" information are meant to be returned to the broker thus it centralizes "
+"telemetry data. Upon timeout, or test requirement fulfillment and stop "
+"message will be transmitted to all connected nodes so that they stop "
+"their testing operations."
+msgstr ""
+"Ce projet est l'interface principale avec l'analyste car toutes les options de configuration "
+"d'une campagne sont fournies à :program:`pastis-broker` qui les propagent à tous "
+"les clients qui se connectent. Il va transmettre le binaire approprié, la configuration, "
+"le rapport klocwork et les corpus initial. De la même manière, il aggrège "
+"toutes les informations remontées par les clients et centralise donc l'information. "
+"Lors d'un timeout, où lorsque les objectifs de tests sont satisfaits il envoie "
+"un message d'arrêt à chaque clients connectés pour qu'ils arrêtent leurs traitements."
+
+#: ../../index.rst:17
+msgid ""
+"From a technical perspective, pastis-broker implement the broker side of "
+"libpastis by implementing the associated callbacks. It is possible to "
+"write its own broker by using directly libpastis or by sub-classing "
+"pastis-broker to take advantages of its existing functionnalities."
+msgstr ""
+"D'un point de vue technique, pastis-broker implémente le coté broker de "
+"libpastis en implémentant les callbacks associés. Il est possible d'écrire "
+"son propre broker en utilisant directement libpastis ou en héritant de "
+"pastis-broker pour tirer profit des fonctions déjà implémentées."
+
+#: ../../index.rst:38
+msgid "Indices and tables"
+msgstr "Index et tableaux"
+
+#: ../../index.rst:40
+msgid ":ref:`genindex`"
+msgstr ""
+
+#: ../../index.rst:41
+msgid ":ref:`modindex`"
+msgstr ""
+
+#: ../../index.rst:42
+msgid ":ref:`search`"
+msgstr ""
+
