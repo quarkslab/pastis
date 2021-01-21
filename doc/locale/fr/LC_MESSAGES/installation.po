@@ -1,0 +1,65 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the pastis-dse package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pastis-dse \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 21:59+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../installation.rst:2
+msgid "Pastis-DSE Installation"
+msgstr "Installation de Pastis-DSE"
+
+#: ../../installation.rst:4
+msgid ""
+"Pastis-dse relies on multiple dependencies. That must be installed "
+"beforehand. The steps to install it are:"
+msgstr ""
+"Pastis-DSE s'appuie sur plusieurs dépendences qui doivent être installées au préalable."
+"Les étapes pour les installer sont:"
+
+#: ../../installation.rst:7
+msgid "Installing libpastis"
+msgstr "installer libpastis"
+
+#: ../../installation.rst:8
+msgid "Installing klocwork module"
+msgstr "installer le module klocwork"
+
+#: ../../installation.rst:9
+msgid ""
+"Installing Triton `(documentation) "
+"<https://triton.quarkslab.com/documentation/doxygen/index.html#install_sec>`_"
+msgstr ""
+"Installer Triton `(documentation) "
+"<https://triton.quarkslab.com/documentation/doxygen/index.html#install_sec>`_"
+
+
+#: ../../installation.rst:10
+msgid "Installing tritondse"
+msgstr "Installer tritondse"
+
+#: ../../installation.rst:12
+msgid ""
+"Then once all these dependencies are installed the installation can be "
+"made with:"
+msgstr ""
+"Une fois que ces dépendences sont installées, l'installation se fait simplement avec:"
+
+#: ../../installation.rst:20
+msgid ""
+"After installation the utility ``pastis-triton`` should be available in "
+"the PATH."
+msgstr ""
+"Après installation l'utilitaire ``pastis-triton`` devrait être disponible dans le PATH."
