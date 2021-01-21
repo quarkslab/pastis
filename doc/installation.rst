@@ -1,5 +1,5 @@
-Installation
-============
+Pastis-DSE Installation
+=======================
 
 Pastis-dse relies on multiple dependencies. That must be installed beforehand.
 The steps to install it are:
