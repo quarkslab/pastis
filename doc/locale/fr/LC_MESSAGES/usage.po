@@ -1,0 +1,44 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the pastisd package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pastisd \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 22:22+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../usage.rst:4
+msgid "pastisd usage"
+msgstr "Utilisation de pastisd"
+
+#: ../../usage.rst:6
+msgid ""
+"The utility ``pastisd`` is solely meant to be used with a broker. It can "
+"be run with:"
+msgstr "L'utilitaire ``pastisd`` est uniquement conçu pour fonctionner avec un broker. "
+"Il peut être exécuté avec:"
+
+#: ../../usage.rst:12
+msgid ""
+"Under these settings the host reached is **pastis.lan:5555**. Otherwise "
+"the host can be specified with:"
+msgstr ""
+"Sous cette configuration, l'hôte contacté est **pastis.lan:5555**. Autrement, "
+"l'hôte peut être spécifié avec:"
+
+#: ../../usage.rst:19
+msgid ""
+"In both cases, to use Honggfuzz the environment variable ``HF_PATH`` "
+"should be exported."
+msgstr "Dans les deux cas, l'utilisation de Honggfuzz requiert d'exporter la variable "
+"d'environment ``HF_PATH``."

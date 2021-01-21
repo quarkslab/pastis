@@ -1,5 +1,5 @@
-Installation
-============
+Pastisd Installation
+====================
 
 As the ultimate top component of PASTIS, ``pastisd`` relies on all underlying components, namely hf-wrapper
 and pastisdse. The utility checks that both project can be imported which means they are installed before
