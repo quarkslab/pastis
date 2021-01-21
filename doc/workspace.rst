@@ -10,6 +10,9 @@ the crash of the alert etc. In this mode ``pastis-broker`` also export a final C
 indicating which alerts have been covered or triggered. The workspace folder also
 enables restarting an interrupted campaign. The workspace file structure is the following:
 
+
+.. highlight:: none
+
 ::
 
     workspace/

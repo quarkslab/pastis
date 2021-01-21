@@ -1,5 +1,5 @@
-Installation
-============
+Broker Installation
+===================
 
 Pastis-broker relies on ``libpastis`` and ``klocwork`` as PASTIS dependencies.
 Apart from that all dependencies can be install through pip. It is not dependent
