@@ -1,4 +1,5 @@
 from .hfwrapper import Honggfuzz, HonggfuzzNotFound
 from .replay import Replay
 
-__version__ = "2.3.1-qb-mod"
+__version__ = "0.2"
+

@@ -11,6 +11,7 @@ Compiling the Honggfuzz tailored for PASTIS is as simple as:
 
 .. code-block:: bash
 
+    $ sudo apt install binutils-dev libunwind-dev -y
     $ cd honggfuzz
     $ make
     $ echo "export HFUZZ_PATH=$PWD" >> ~/.profile
