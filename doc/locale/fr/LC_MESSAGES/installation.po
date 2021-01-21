@@ -1,0 +1,56 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the pastisd package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pastisd \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 22:22+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../installation.rst:2
+msgid "Pastisd Installation"
+msgstr "Installation de Pastisd"
+
+#: ../../installation.rst:4
+msgid ""
+"As the ultimate top component of PASTIS, ``pastisd`` relies on all "
+"underlying components, namely hf-wrapper and pastisdse. The utility "
+"checks that both project can be imported which means they are installed "
+"before advertizing their availability to the broker. So ``pastisd`` is "
+"not dependent, however having only one of them strongly reduces the "
+"relevancy of such utility."
+msgstr ""
+"En tant que composant ultime de PASTIS, ``pastisd`` s'appuie sur tous les autres "
+"sous-composants donc HF-wrapper et Pastis-DSE. L'utilitaire vérifie que les deux "
+"projets peuvent être importés avant d'annoncer leurs disponibilité aurpès du broker."
+"Donc, *stricto-sensus*, ``pastisd`` n'est pas dépendent des deux outils. Cependent, "
+"sont utilité n'est réelle que lorsque les deux sont présents."
+
+#: ../../installation.rst:9
+msgid "Installing pastisdse"
+msgstr "Installation de Pastis-DSE"
+
+#: ../../installation.rst:10
+msgid "Installing hf-wrapper"
+msgstr "Installation de HF-wrapper"
+
+#: ../../installation.rst:12
+msgid "Then the utility can be installed with:"
+msgstr "L'utilitaire peut alors être installé avec:"
+
+#: ../../installation.rst:19
+msgid ""
+"After installation the utility ``pastisd`` should be available in the "
+"$PATH."
+msgstr ""
+"Après installation du module, l'utilitaire ``pastisd`` devrait être disponible dans le PATH."
