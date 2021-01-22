@@ -23,4 +23,4 @@ msgstr "Installation de libpastis"
 
 #: ../../installation.rst:5
 msgid "Libpastis can be installed through pip:"
-msgstr "Libpastis peut être installé via pip:"
+msgstr "Libpastis peut être installée via pip:"
