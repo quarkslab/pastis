@@ -46,10 +46,10 @@ msgstr ""
 "Le projet PastisDSE utilise tritondse et fourni un programme satisfaisant les contraintes "
 "du projet. Il permet notamment les communications avec le broker, il "
 "effectue les traitements liés au rapport Klocwork, assure la vérification "
-"de la couverture et la validation des alertes. Enfin il envoi toutes les informations "
-"nécessaires au broker. Ce module, montre un exemple concrêt de l'utilisation de "
+"de la couverture et la validation des alertes. Enfin, il envoie toutes les informations "
+"nécessaires au broker. Ce module, montre un exemple concret de l'utilisation de "
 "tritondse pour faire un programme :program:`pastis-triton` effectuant des "
-"tâches particulières sur un programme."
+"tâches particulières sur un binaire."
 
 #: ../../index.rst:25
 msgid "Indices and tables"

@@ -26,7 +26,7 @@ msgid ""
 "Pastis-dse relies on multiple dependencies. That must be installed "
 "beforehand. The steps to install it are:"
 msgstr ""
-"Pastis-DSE s'appuie sur plusieurs dépendences qui doivent être installées au préalable."
+"Pastis-DSE s'appuie sur plusieurs dépendances qui doivent être installées au préalable."
 "Les étapes pour les installer sont:"
 
 #: ../../installation.rst:7
@@ -55,7 +55,7 @@ msgid ""
 "Then once all these dependencies are installed the installation can be "
 "made with:"
 msgstr ""
-"Une fois que ces dépendences sont installées, l'installation se fait simplement avec:"
+"Une fois que ces dépendances sont installées, l'installation se fait simplement avec:"
 
 #: ../../installation.rst:20
 msgid ""
