@@ -82,7 +82,8 @@ class PastisBroker(BrokerAgent):
         self.kl_report = KlocworkReport(kl_report) if kl_report else None
         if self.kl_report:
             if not self.kl_report.has_binding():
-                logging.warning(f"the klocwork report {kl_report} does not contain bindings")
+                logging.warning(f"the klocwork report {kl_report} does not contain bindings (auto-bind it)")
+                self.kl_report.auto_bind()
             self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
             self._init_alert_corpus()
 
