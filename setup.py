@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="libpastis",
-    version="0.1",
+    version="0.2",
     description="Python API to enable communication between PASTIS components",
     packages=find_packages(),
     setup_requires=[],
