@@ -18,7 +18,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine
 
 # Local imports
-from hfwrapper import Honggfuzz, HonggfuzzNotFound
+from hfwrapper import Honggfuzz, HonggfuzzNotFound, __version__
 
 
 coloredlogs.install(level=logging.DEBUG,
@@ -31,6 +31,7 @@ honggfuzz = None
 
 
 @click.group()
+@click.version_option(__version__)
 def cli():
     pass
 
