@@ -394,6 +394,9 @@ class Honggfuzz:
             if KLOCWORK_SUPPORTED:
                 logging.info("Loading klocwork report")
                 self.__report = KlocworkReport.from_json(kl_report)
+                if not self.__report.has_binding():
+                    logging.info("Report not binded (auto_bind it)")
+                    self.__report.auto_bind()
             else:
                 self.dual_log(LogLevel.ERROR, "Klocwork report provided while Klocwork not supported by host")
 
