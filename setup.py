@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pastisd",
-    version="0.1",
+    version="0.2",
     description="PASTIS deamon initializing connection with broker",
     packages=find_packages(),
     setup_requires=[],
