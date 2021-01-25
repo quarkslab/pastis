@@ -15,7 +15,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine, SeedType
 
 # Local imports
-from pastisdse import PastisDSE
+from pastisdse import PastisDSE, __version__
 
 pastis = None
 
@@ -28,6 +28,7 @@ coloredlogs.install(level=logging.INFO,
 
 
 @click.group()
+@click.version_option(__version__)
 def cli():
     pass
 
