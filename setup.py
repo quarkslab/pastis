@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pastis-dse",
-    version="0.1",
+    version="0.2",
     description="A library and utility using tritondse to perform PASTIS-related DSE",
     packages=find_packages(),
     setup_requires=[],
