@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pastis-broker",
-    version="0.1",
+    version="0.2",
     description="PASTIS broker that perform the proxy between all fuzzing engines",
     packages=find_packages(),
     setup_requires=[],
