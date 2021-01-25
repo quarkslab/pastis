@@ -11,7 +11,7 @@ from pathlib import Path
 import coloredlogs
 
 # Local imports
-from pastisbroker import PastisBroker, BrokingMode
+from pastisbroker import PastisBroker, BrokingMode, __version__
 from libpastis.types import CheckMode, FuzzingEngine
 
 
@@ -38,6 +38,7 @@ def iterate_file(file):
             yield sub_s
 
 @click.command()
+@click.version_option(__version__)
 @click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Klocwork report to use")
 @click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
