@@ -8,6 +8,7 @@
 
 # built-in imports
 import logging
+import sys
 from pathlib import Path
 from typing import Tuple, Optional
 
@@ -18,7 +19,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine
 
 # Local imports
-from hfwrapper import Honggfuzz, HonggfuzzNotFound, __version__
+from hfwrapper import Honggfuzz, HonggfuzzNotFound, __version__, check_honggfuzz_path
 
 
 coloredlogs.install(level=logging.DEBUG,
@@ -109,4 +110,8 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
 
 
 if __name__ == "__main__":
-    cli()
+    if check_honggfuzz_path():
+        cli()
+    else:
+        print("can't find Honggfuzz binary, please provide HFUZZ_PATH environment variable")
+        sys.exit(1)

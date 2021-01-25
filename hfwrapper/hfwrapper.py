@@ -31,6 +31,10 @@ class HonggfuzzNotFound(Exception):
     pass
 
 
+def check_honggfuzz_path() -> None:
+    return os.environ.get('HFUZZ_PATH') is not None
+
+
 class ManagedProcess:
 
     def __init__(self):
