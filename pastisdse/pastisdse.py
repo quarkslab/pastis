@@ -36,6 +36,10 @@ class PastisDSE(object):
         self._seed_lock = False
         self._seed_received = set()
 
+        # local attributes for telemetry
+        self.nb_to, self.nb_crash = 0, 0
+        self._cur_cov_count = 0
+        self._last_cov_update = time.time()
 
     def _init_callbacks(self):
         self.agent.register_seed_callback(self.seed_received)
@@ -104,6 +108,12 @@ class PastisDSE(object):
             if seed.content not in self._seed_received:  # Do not send back a seed that already came from broker
                 self.agent.send_seed(mapper[seed.status], seed.content)
 
+        # Update some stats
+        if se.seed.status == SeedStatus.CRASH:
+            self.nb_crash += 1
+        elif se.seed.status == SeedStatus.HANG:
+            self.nb_to += 1
+
         # Handle CRASH and ABV_GENERAL
         if se.seed.status == SeedStatus.CRASH and self._last_kid:
             alert = self.klreport.get_alert(binding_id=self._last_kid)
@@ -117,6 +127,30 @@ class PastisDSE(object):
         if self.klreport:
             d, v = self.klreport.get_stats()
             logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+
+    def cb_telemetry(self, dse: SymbolicExplorator):
+        """
+        Callback called after each execution to send telemetry to the broker
+
+        :param dse: SymbolicExplorator
+        :return: None
+        """
+
+        count = {CoverageStrategy.CODE_COVERAGE: dse.coverage.unique_instruction_covered,
+                 CoverageStrategy.EDGE_COVERAGE: dse.coverage.unique_edge_covered,
+                 CoverageStrategy.PATH_COVERAGE: dse.coverage.unique_path_covered}
+
+        if count != self._cur_cov_count:         # Coverage has been updated
+            self._cur_cov_count = count          # update count
+            self._last_cov_update = time.time()  # update last coverage update to be now
+
+        self.agent.send_telemetry(exec_per_sec=int(dse.execution_count / (time.time()-dse.ts)),
+                                  total_exec=dse.execution_count,
+                                  timeout=self.nb_to,
+                                  coverage_block=dse.coverage.unique_instruction_covered,
+                                  coverage_edge=dse.coverage.unique_edge_covered,
+                                  coverage_path=dse.coverage.unique_path_covered,
+                                  last_cov_update=int(self._last_cov_update))
 
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
@@ -192,6 +226,7 @@ class PastisDSE(object):
         #self.dse.callback_manager.register_new_input_callback(self.checksum_callback)   # must be the first cb
         # self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         self.dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
+        self.dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
         #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
