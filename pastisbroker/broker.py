@@ -101,7 +101,7 @@ class PastisBroker(BrokerAgent):
         self._load_workspace()
 
         # Create the stat manager
-        self.statmanager = StatManager()
+        self.statmanager = StatManager(self.workspace)
 
     @property
     def running(self) -> bool:
@@ -221,6 +221,7 @@ class PastisBroker(BrokerAgent):
         self.statmanager.set_coverage_edge(client, coverage_edge)
         self.statmanager.set_coverage_path(client, coverage_path)
         self.statmanager.set_last_coverage_update(client, last_cov_update)
+        self.statmanager.update_telemetry_client(client)
         # NOTE: Send an update signal for future UI ?
 
     def stop_coverage_received(self, cli_id: bytes):
@@ -276,6 +277,9 @@ class PastisBroker(BrokerAgent):
             logging.info(f"Send stop to {client.strid}")
             self.send_stop(client.netid)
         self._stop = True
+
+        # Call the statmanager to wrap-up values
+        self.statmanager.post_execution(list(self.clients.values()))
 
         if self.kl_report:  # If a klocwork report was loaded
             # Write the final CSV in the workspace

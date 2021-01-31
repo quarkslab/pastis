@@ -37,6 +37,7 @@ def iterate_file(file):
         for sub_s in p.iterdir():
             yield sub_s
 
+
 @click.command()
 @click.version_option(__version__)
 @click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
@@ -68,8 +69,9 @@ def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, tt_conf
             broker.add_engine_configuration(FuzzingEngine.HONGGFUZZ, conf.read_text())
 
     # Add all given seeds as initial seed
-    for s in seed:
-        broker.add_seed_file(s)
+    for s_src in seed:
+        for s in iterate_file(s_src):  # File if one file, or iterate dir if directory
+            broker.add_seed_file(s)
 
     # Bind it and start listening (clients can connect)
     broker.bind()
