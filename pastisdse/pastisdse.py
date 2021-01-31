@@ -28,6 +28,7 @@ class PastisDSE(object):
         self._init_callbacks()  # register callbacks on the given agent
 
         self.config     = Config(debug=False)
+        self.config.workspace = ""  # Reset workspace so that it will computed in start_received
         self.dse        = None
         self.program    = None
         self._stop      = False
@@ -82,6 +83,9 @@ class PastisDSE(object):
             else:
                 logging.error(f"explorator not meant to be in state: {st}")
                 break
+
+        # Exited loop because received stop (from broker)
+        self.agent.stop()
 
 
     def _wait_seed_event(self):
@@ -177,6 +181,12 @@ class PastisDSE(object):
         if engine_args:
             self.config = Config.from_json(engine_args)
             logging.root.level = logging.DEBUG if self.config.debug else logging.INFO  # dynamically change level
+
+        # If a workspace is given keep it other generate new unique one
+        if not self.config.workspace:
+            ws = f"/tmp/triton_workspace/{int(time.time())}"
+            logging.info(f"Configure workspace to be: {ws}")
+            self.config.workspace = ws
 
         # Write the binary in a temporary file
         tmp_dir = tempfile.mkdtemp()
@@ -279,7 +289,7 @@ class PastisDSE(object):
 
     def stop_received(self):
         """
-        This function is called when the broker says stop.
+        This function is called when the broker says stop. (Called from the agent thread)
         """
         logging.info(f"[BROKER] [STOP]")
         self.stop()
@@ -289,7 +299,7 @@ class PastisDSE(object):
         if self.dse:
             self.dse.stop_exploration()
         self._stop = True
-        self.agent.stop()
+        # self.agent.stop()  # Can't call it here as this function executed from within agent thread
 
 
     def dual_log(self, level: LogLevel, message: str) -> None:
