@@ -1,7 +1,8 @@
 # Built-in imports
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 from pathlib import Path
 import logging
+import inspect
 
 # Third-party imports
 from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode
@@ -128,3 +129,33 @@ class PastisClient(object):
             if e == engine:
                 return True
         return False
+
+    def to_dict(self) -> Dict:
+        return {
+            "id": self.id,
+            "strid": self.strid,
+            "engines": [x[0].name for x in self.engines],
+            "arch": self.arch.name,
+            "cpus": self.cpus,
+            "memory": self.memory,
+            "hostname": self.hostname,
+            "engine": self._engine.name,
+            "coverage_mode": self._coverage_mode.name,
+            "exec_mode": self._exec_mode.name,
+            "check_mode": self._check_mode.name,
+            "seed_received_count": len(self._seeds_received),
+            "exec_per_sec": self.exec_per_sec,
+            "total_exec": self.total_exec,
+            "cycle": self.cycle,
+            "timeout": self.timeout,
+            "coverage_block": self.coverage_block,
+            "coverage_edge": self.coverage_edge,
+            "coverage_path": self.coverage_path,
+            "last_cov_update": self.last_cov_update,
+            "seed_submitted_count": self.seed_submitted_count,
+            "seed_first": self.seed_first,
+            "default_count": self.defaut_count,
+            "default_first": self.defaut_first,
+            "vuln_count": self.vuln_count,
+            "vuln_first": self.vuln_first,
+        }
