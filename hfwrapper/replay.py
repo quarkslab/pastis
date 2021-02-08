@@ -20,6 +20,7 @@ class Replay(object):
     INTRINSIC_REGEX = rb".*REACHED ID (\d+)"
     ASAN_REGEX_1 = rb"^==\d+==ERROR: AddressSanitizer: (\S+) (.*)"
     ASAN_REGEX_2 = rb"^==\d+==AddressSanitizer:? ([^:]+): (.*)"
+    HF_FETCH = b"HonggfuzzFetchData()"
 
     def __init__(self):
         self._process = None
@@ -28,6 +29,7 @@ class Replay(object):
         self._is_hang = False
         self._asan_line = ""
         self._asan_bugtype = ""
+        self._is_hf_fetch = False
 
         # For debugging
         self.stdout, self.stderr = None, None
@@ -52,6 +54,13 @@ class Replay(object):
     def is_asan_without_crash(self) -> bool:
         """ Return True if an ASAN WARNING was shown without errors """
         return self._asan_bugtype and not self.has_crashed()
+
+    def is_hf_iter_crash(self) -> bool:
+        """
+        Check we did not hit a call to HF_ITER that would lead
+        to such unexpected return code -1
+        """
+        return self._is_hf_fetch and self.has_crashed()
 
     @property
     def returncode(self) -> int:
@@ -109,5 +118,8 @@ class Replay(object):
                 topic, details = m1.groups() if m1 else m2.groups()
                 self._asan_bugtype = topic.decode(errors="replace")
                 self._asan_line = details.decode(errors="replace")
+
+            if self.HF_FETCH in line:  # In case it is an issue with a HF_ITER read
+                self._is_hf_fetch = True
 
         return matched_vuln

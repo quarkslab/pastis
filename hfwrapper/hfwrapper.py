@@ -222,7 +222,8 @@ class Honggfuzz:
                 break  # Break when the fuzzer stops
             if self._queue_to_send:
                 filename, res = self._queue_to_send.pop(0)
-                self.__check_seed_alert(filename, is_crash=res)
+                if not self.__check_seed_alert(filename, is_crash=res):
+                    break
             time.sleep(0.05)
 
     @property
@@ -306,7 +307,7 @@ class Honggfuzz:
         self._agent.send_seed(SeedType.CRASH, file.read_bytes())
         self._queue_to_send.append((filename, True))
 
-    def __check_seed_alert(self, filename: Path, is_crash: bool):
+    def __check_seed_alert(self, filename: Path, is_crash: bool) -> bool:
         p = Path(filename)
         #logging.debug(f"Start replaying {filename}")
         # Only rerun the seed if in alert only mode and a klocwork report was provided
@@ -314,6 +315,10 @@ class Honggfuzz:
 
             # Rerun the program with the seed
             run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.__target_workspace['target']))
+
+            if run.is_hf_iter_crash():
+                self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
+                return False
 
             # Iterate all covered alerts
             for id in run.alert_covered:
@@ -340,7 +345,7 @@ class Honggfuzz:
 
             if run.has_hanged():  # Honggfuzz does not stores 'hangs' it will have been sent as corpus or crash
                 self.dual_log(LogLevel.WARNING, f"Seed {filename} was hanging in replay")
-
+        return True
 
     def __send_telemetry(self, filename: Path):
         self._tel_counter += 1
