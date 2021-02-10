@@ -153,7 +153,7 @@ class DirectoryEventWatcher:
 
 class Honggfuzz:
 
-    def __init__(self, agent: ClientAgent):
+    def __init__(self, agent: ClientAgent, telemetry_frequency: int=30):
         self._agent = agent
 
         # Parameters received through start_received
@@ -182,7 +182,9 @@ class Honggfuzz:
 
         self.__setup_agent()
 
-        self._tel_counter = 0
+        # Telemetry frequency
+        self._tel_frequency = telemetry_frequency
+        self._tel_last = time.time()
 
         # Runtime data
         self._tot_seeds = 0
@@ -348,9 +350,10 @@ class Honggfuzz:
         return True
 
     def __send_telemetry(self, filename: Path):
-        self._tel_counter += 1
-        if (self._tel_counter % 50) != 0:
+        now = time.time()
+        if now < (self._tel_last + self._tel_frequency):
             return
+        self._tel_last = now
 
         logging.debug(f'[TELEMETRY] Stats file updated: {filename}')
 
