@@ -1,5 +1,6 @@
 # builtin imports
 import inotify.adapters
+from inotify.calls import InotifyError
 import logging
 import os
 from pathlib import Path
@@ -24,6 +25,10 @@ except ImportError:
 
 # Local imports
 from hfwrapper.replay import Replay
+
+# Inotify logs are very talkative, set them to ERROR
+for logger in (logging.getLogger(x) for x in ["inotify.adapters", "inotify", "inotify.calls"]):
+    logger.setLevel(logging.ERROR)
 
 
 class HonggfuzzNotFound(Exception):
@@ -127,17 +132,19 @@ class DirectoryEventWatcher:
     def start(self):
         self.__terminate = False
 
+        # Start inotify here
+        self.__inotify.add_watch(str(self.__path))
+
         self.__thread = threading.Thread(target=self.__handler, daemon=True)
         self.__thread.start()
 
     def stop(self):
         self.__terminate = True
 
-        self.__thread.join()
+        if self.__thread is not None:
+            self.__thread.join()
 
     def __handler(self):
-        self.__inotify.add_watch(str(self.__path))
-
         for event in self.__inotify.event_gen():
             if self.__terminate:
                 break
@@ -202,7 +209,14 @@ class Honggfuzz:
         self.__target_args = argv
 
         self.__setup_watchers()
-        self.__start_watchers()
+
+        if not self.__start_watchers():
+            self.dual_log(LogLevel.CRITICAL, "cannot setup inotify watches")
+            logging.critical("make sure the max_user_watches limit is not reached (sysctl fs.inotify)")
+            # Remove the binary create just before
+            self.__target_path.unlink()
+            self.dual_log(LogLevel.INFO, "Ready to accept a new start message")
+            return
 
         logging.info("Start process")
         self.__hfuzz_process.start(self.__target_path.absolute(), " ".join(argv), self.__target_workspace, exmode, seed_inj, engine_args)
@@ -277,14 +291,20 @@ class Honggfuzz:
         self.__coverage_watcher = DirectoryEventWatcher(self.__target_workspace['coverage'], 'IN_CLOSE_WRITE', self.__send_seed)
         self.__crashes_watcher = DirectoryEventWatcher(self.__target_workspace['crashes'], 'IN_CLOSE_WRITE', self.__send_crash)
         self.__stats_watcher = DirectoryEventWatcher(self.__target_workspace['stats'], 'IN_MODIFY', self.__send_telemetry)
-        # Inotify logs are very talkative, set them to ERROR
-        for logger in (logging.getLogger(x) for x in ["inotify.adapters", "inotify", "inotify.calls"]):
-            logger.setLevel(logging.ERROR)
 
-    def __start_watchers(self):
-        self.__coverage_watcher.start()
-        self.__crashes_watcher.start()
-        self.__stats_watcher.start()
+    def __start_watchers(self) -> bool:
+        try:
+            self.__coverage_watcher.start()
+            self.__crashes_watcher.start()
+            self.__stats_watcher.start()
+            return True
+        except InotifyError as e:
+            # If this issue is raised sysctl fs.inotify to see limits set
+            # lsof | grep inotify | wc -l  to get the number of watchers/instances
+            # sysctl -n -w fs.inotify.max_user_watches=16384  to raise the number of watches
+            # sysctl -n -w fs.inotify.max_user_instances=512  to raise the number of instances
+            logging.error(f"Cannot setup inotify {e}")
+            return False
 
     def __stop_watchers(self):
         self.__coverage_watcher.stop()
