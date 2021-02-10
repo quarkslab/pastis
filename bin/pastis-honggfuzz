@@ -40,10 +40,11 @@ def cli():
 @cli.command()
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
-def online(host: str, port: int):
+@click.option('-tf', '--telemetry-frequency', type=int, default=30, help='Frequency at which send telemetry (in sec)')
+def online(host: str, port: int, telemetry_frequency: int):
     agent = ClientAgent()
     try:
-        hfuzz = Honggfuzz(agent)
+        hfuzz = Honggfuzz(agent, telemetry_frequency=telemetry_frequency)
     except HonggfuzzNotFound:
         logging.error("Cannot find HFUZZ_PATH environement variable")
         return
