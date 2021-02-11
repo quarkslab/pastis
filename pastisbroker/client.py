@@ -2,10 +2,11 @@
 from typing import Tuple, List, Dict
 from pathlib import Path
 import logging
+import time
 import inspect
 
 # Third-party imports
-from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode
+from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode, SeedType
 
 
 class PastisClient(object):
@@ -32,9 +33,10 @@ class PastisClient(object):
         self._coverage_mode = None
         self._exec_mode = None
         self._check_mode = None
-        self._seeds_received = set()
+        self._seeds_received = set()  # Seed sent to the client
+        self._seeds_submitted = set()  # Seed submitted by the client
 
-        # Runtime stats
+        # Runtime telemetry stats
         self.exec_per_sec = None
         self.total_exec = None
         self.cycle = None
@@ -44,13 +46,21 @@ class PastisClient(object):
         self.coverage_path = None
         self.last_cov_update = None
 
-        # Stats properties
-        self.seed_submitted_count = 0
+        # seed stats
+        self.input_submitted_count = 0
+        self.crash_submitted_count = 0
+        self.timeout_submitted_count = 0
         self.seed_first = 0
-        self.defaut_count = 0
-        self.defaut_first = 0
-        self.vuln_count = 0
-        self.vuln_first = 0
+
+        # klocwork parameters
+        self.alert_covered = set()
+        self.alert_covered_first = 0
+        self.alert_validated = set()
+        self.alert_validated_first = 0
+
+        # time series
+        self._timeline_seeds = []  # List[Tuple[float, int, typ]]  # history of submission
+        # self._timeline_coverage = []
 
     def _configure_logging(self, log_dir):
         hldr = logging.FileHandler(log_dir/f"client-{self.id}")
@@ -78,10 +88,13 @@ class PastisClient(object):
         :param seed: seed bytes
         :return: True if never sent to client
         """
-        return seed not in self._seeds_received
+        return seed not in self._seeds_received and seed not in self._seeds_submitted
 
-    def add_seed(self, seed: bytes) -> None:
+    def add_peer_seed(self, seed: bytes) -> None:
         self._seeds_received.add(seed)
+
+    def add_own_seed(self, seed: bytes) -> None:
+        self._seeds_submitted.add(seed)
 
     def is_running(self) -> bool:
         return self._running
@@ -152,10 +165,22 @@ class PastisClient(object):
             "coverage_edge": self.coverage_edge,
             "coverage_path": self.coverage_path,
             "last_cov_update": self.last_cov_update,
-            "seed_submitted_count": self.seed_submitted_count,
+            "input_submitted_count": self.input_submitted_count,
+            "crash_submitted_count": self.crash_submitted_count,
+            "timeout_submitted_count": self.timeout_submitted_count,
             "seed_first": self.seed_first,
-            "default_count": self.defaut_count,
-            "default_first": self.defaut_first,
-            "vuln_count": self.vuln_count,
-            "vuln_first": self.vuln_first,
+            "alert_covered": list(self.alert_covered),
+            "alert_covered_first": self.alert_covered_first,
+            "alert_validated": self.alert_validated,
+            "alert_validated_first": self.alert_validated_first,
         }
+
+    def add_covered_alert(self, a_id: int, cov: bool, cov_first: bool, val: bool, val_first: bool):
+        if cov:
+            self.alert_covered.add(a_id)
+        if cov_first:
+            self.alert_covered_first += 1
+        if val:
+            self.alert_validated.add(a_id)
+        if val_first:
+            self.alert_validated_first += 1

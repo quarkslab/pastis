@@ -148,21 +148,24 @@ class PastisBroker(BrokerAgent):
         if not cli:
             return
         is_new = seed not in self._seed_pool
-        self.statmanager.update_seed_stat(cli, typ, is_new)
+        h = md5(seed).hexdigest()
 
         # Show log message and save seed to file
         if is_new:
-            cli.log(LogLevel.INFO, f"new seed {md5(seed).hexdigest()} [{self._colored_seed_type(typ)}]")
-            cli.add_seed(seed)  # Add seed in client's seed
+            self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
+            cli.log(LogLevel.INFO, f"new seed {h} [{self._colored_seed_type(typ)}]")
+            cli.add_own_seed(seed)  # Add seed in client's seed
             self.write_seed(typ, cli, seed) # Write seed to file
             self._seed_pool[seed] = typ  # Save it in the local pool
+        else:
+            logging.warning(f"receive duplicate seed {h} by {cli.strid}")
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
             for c in self.iter_other_clients(cli):
                 if c.is_new_seed(seed):
                     self.send_seed(c.netid, typ, seed)  # send the seed to the client
-                    c.add_seed(seed)  # Add it in its list of seed
+                    c.add_peer_seed(seed)  # Add it in its list of seed
         # TODO: implementing BrokingMode.COVERAGE_ORDERED
 
     def add_seed_file(self, file: PathLike) -> None:
@@ -191,7 +194,7 @@ class PastisBroker(BrokerAgent):
             if self.broker_mode == BrokingMode.FULL:
                 for seed, typ in self._seed_pool.items():
                     self.send_seed(client.netid, typ, seed)  # necessarily a new seed
-                    client.add_seed(seed)  # Add it in its list of seed
+                    client.add_peer_seed(seed)  # Add it in its list of seed
                 # TODO: Implementing BrokingMode.COVERAGE_ORDERED
 
     def log_received(self, cli_id: bytes, level: LogLevel, message: str):
@@ -237,7 +240,7 @@ class PastisBroker(BrokerAgent):
         client = self.get_client(cli_id)
         if not client:
             return
-        res_improved = False
+        first_cov, first_val = False, False
 
         if not self.kl_report:
             logging.warning("Data received while no Klocwork report is loaded (drop data)")
@@ -253,18 +256,21 @@ class PastisBroker(BrokerAgent):
             logging.info(f"[{client.strid}] First to cover {alert}")
             alert.covered = alert_data.covered
             self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
-            res_improved = True
+            first_cov = True
 
         if not alert.validated and alert_data.validated:
             logging.info(f"[{client.strid}] First to validate {alert}")
             alert.validated = alert_data.validated
             self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
-            res_improved = True
+            first_val = True
+
+        # Update clients of and stats
+        client.add_covered_alert(alert.id, alert.covered, first_cov, alert.validated, first_val)
 
         # Save systematically the AlertData received
         self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
 
-        if res_improved:
+        if first_cov or first_val:
             d, v = self.kl_report.get_stats()
             logging.info(f"Klocwork results updated: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
