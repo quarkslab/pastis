@@ -13,7 +13,7 @@ import psutil
 
 # local imports
 from libpastis.proto import InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, \
-                            TelemetryMsg, StopCoverageCriteria, DataMsg
+                            TelemetryMsg, StopCoverageCriteria, DataMsg, EnvelopeMsg
 from libpastis.types import SeedType, Arch, FuzzingEngine, PathLike, ExecMode, CheckMode, CoverageMode, SeedInjectLoc, \
                             LogLevel, State, AlertData
 from libpastis.utils import get_local_architecture
@@ -22,15 +22,15 @@ Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg,
 
 
 class MessageType(Enum):  # Topics in the ZMQ terminology
-    HELLO = b'H'
+    HELLO = 'hello_msg'
     # STATE = 1
-    START = b'S'
-    INPUT_SEED = b'I'
-    TELEMETRY = b'T'
-    LOG = b'L'
-    STOP_COVERAGE_DONE = b'C'
-    STOP = b"P"
-    DATA = b"D"
+    START = 'start_msg'
+    INPUT_SEED = 'input_msg'
+    TELEMETRY = 'telemetry_msg'
+    LOG = 'log_msg'
+    STOP_COVERAGE_DONE = 'stop_crit_msg'
+    STOP = "stop_msg"
+    DATA = "data_msg"
 
 
 class AgentMode(Enum):
@@ -86,15 +86,13 @@ class NetworkAgent(object):
                 return
             try:
                 if self.mode == AgentMode.BROKER:
-                    uid, topic, data = self.socket.recv_multipart()
-                    self.__broker_transfer_to_callback(uid, MessageType(topic), data)
+                    uid, data = self.socket.recv_multipart()
+                    self.__broker_transfer_to_callback(uid, data)
                 else:
-                    topic, data = self.socket.recv_multipart()
-                    self.__client_transfer_to_callback(MessageType(topic), data)
+                    data = self.socket.recv()
+                    self.__client_transfer_to_callback(data)
             except zmq.error.Again:
                 pass
-            except ValueError:
-                logging.error(f"Invalid topic: {topic}")
 
     def send_to(self, id: bytes, msg: Message, msg_type: MessageType=None):
         if self.mode == AgentMode.CLIENT:
@@ -102,7 +100,9 @@ class NetworkAgent(object):
             return
         if msg_type is None:
             msg_type = self.msg_to_type(msg)
-        self.socket.send_multipart([id, msg_type.value, msg.SerializeToString()])
+        final_msg = EnvelopeMsg()
+        getattr(final_msg, msg_type.value).MergeFrom(msg)
+        self.socket.send_multipart([id, final_msg.SerializeToString()])
 
     def send(self, msg: Message, msg_type: MessageType=None):
         if self.mode == AgentMode.BROKER:
@@ -110,7 +110,9 @@ class NetworkAgent(object):
             return
         if msg_type is None:
             msg_type = self.msg_to_type(msg)
-        self.socket.send_multipart([msg_type.value, msg.SerializeToString()])
+        final_msg = EnvelopeMsg()
+        getattr(final_msg, msg_type.value).CopyFrom(msg)
+        self.socket.send(final_msg.SerializeToString())
 
     @staticmethod
     def msg_to_type(msg: Message) -> MessageType:
@@ -133,46 +135,50 @@ class NetworkAgent(object):
         else:
             logging.error(f"invalid message type: {type(msg)} (cannot find associated topic)")
 
-    def __broker_transfer_to_callback(self, id: bytes, topic: MessageType, message: bytes):
+    def __broker_transfer_to_callback(self, id: bytes, message: bytes):
+        msg = EnvelopeMsg()
+        msg.ParseFromString(message)
+        message, topic = self._unpack_message(msg)
         if topic in [MessageType.START]:
             logging.error(f"Invalid message of type {topic.name} received")
         if not self._cbs[topic]:
             logging.warning(f"[broker] message of type {topic.name} (but no callback)")
-        args = self._unpack_message(topic, message)
+        args = self._message_args(topic, message)
         for cb in self._cbs[topic]:
             cb(id, *args)
 
-    def __client_transfer_to_callback(self, topic: MessageType, message: bytes):
+    def __client_transfer_to_callback(self, message: bytes):
+        msg = EnvelopeMsg()
+        msg.ParseFromString(message)
+        message, topic = self._unpack_message(msg)
         if topic in [MessageType.HELLO, MessageType.TELEMETRY, MessageType.LOG, MessageType.STOP_COVERAGE_DONE]:
             logging.error(f"Invalid message of type {topic.name} received")
         if not self._cbs[topic]:
             logging.warning(f"[agent] message of type {topic.name} (but no callback)")
-        args = self._unpack_message(topic, message)
+        args = self._message_args(topic, message)
         for cb in self._cbs[topic]:
             cb(*args)
 
-    def _unpack_message(self, topic: MessageType, message: bytes):
+    def _unpack_message(self, message: EnvelopeMsg) -> Tuple[MessageType, Message]:
+        typ = message.WhichOneof('msg')
+        return getattr(message, typ), MessageType(typ)
+
+    def _message_args(self, topic: MessageType, msg: Message):
         if topic == MessageType.INPUT_SEED:
-            msg = InputSeedMsg.FromString(message)
             return [SeedType(msg.type), msg.seed]
         elif topic == MessageType.LOG:
-            msg = LogMsg.FromString(message)
             return [LogLevel(msg.level), msg.message]
         elif topic == MessageType.TELEMETRY:
-            msg = TelemetryMsg.FromString(message)
             return [msg.state, msg.exec_per_sec, msg.total_exec, msg.cycle, msg.timeout, msg.coverage_block,
                     msg.coverage_edge, msg.coverage_path, msg.last_cov_update]
         elif topic == MessageType.HELLO:
-            msg = HelloMsg.FromString(message)
             engs = [(FuzzingEngine(x), y) for x, y in zip(msg.engines, msg.versions)]
             return [engs, Arch(msg.architecture), msg.cpus, msg.memory, msg.hostname]
         elif topic == MessageType.START:
-            msg = StartMsg.FromString(message)
             return [msg.binary_filename, msg.binary, FuzzingEngine(msg.engine), ExecMode(msg.exec_mode),
                     CheckMode(msg.check_mode), CoverageMode(msg.coverage_mode), SeedInjectLoc(msg.seed_location),
                     msg.engine_args, [x for x in msg.program_argv], msg.klocwork_report]
         elif topic == MessageType.DATA:
-            msg = DataMsg.FromString(message)
             return [msg.data]
         else:  # for stop and store_coverage_done nothing to unpack
             return []
