@@ -21,6 +21,8 @@ import lief
 from .client import PastisClient
 from .stat_manager import StatManager
 
+lief.logging.disable()
+
 
 class BrokingMode(Enum):
     FULL = 1              # Transmit all seeds to all peers
@@ -377,6 +379,8 @@ class PastisBroker(BrokerAgent):
                 covs = Counter({c: 0 for c in CoverageMode})
                 # Count how many times each coverage strategies have been launched
                 covs.update(x.coverage_mode for x in self.clients.values() if x.is_running() and x.engine == engine)
+                if sum(covs.values()) == 0:  # No configuration has been triggered yet launch in edge
+                    return CoverageMode.EDGE
                 # Revert dictionnary to have freq -> [covmodes]
                 d = {v: [] for v in covs.values()}
                 for cov, count in covs.items():

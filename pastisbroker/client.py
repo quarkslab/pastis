@@ -171,7 +171,7 @@ class PastisClient(object):
             "seed_first": self.seed_first,
             "alert_covered": list(self.alert_covered),
             "alert_covered_first": self.alert_covered_first,
-            "alert_validated": self.alert_validated,
+            "alert_validated": list(self.alert_validated),
             "alert_validated_first": self.alert_validated_first,
         }
 
