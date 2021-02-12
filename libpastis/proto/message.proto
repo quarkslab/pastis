@@ -109,3 +109,16 @@ message TelemetryMsg {
 message StopCoverageCriteria {
     //  Nothing specific to transmit
 }
+
+message EnvelopeMsg{
+    oneof msg {
+        InputSeedMsg input_msg = 1;
+        DataMsg data_msg       = 2;
+        StartMsg start_msg     = 3;
+        StopMsg stop_msg       = 4;
+        HelloMsg hello_msg     = 5;
+        LogMsg log_msg         = 6;
+        TelemetryMsg telemetry_msg         = 7;
+        StopCoverageCriteria stop_crit_msg = 8;
+    }
+}
