@@ -96,8 +96,5 @@ class StatManager(object):
         """
         self._tel_file.flush()  # Flush the csv if it has not been
 
-        for cli in clients:
-            print(cli.to_dict())
-
         with open(self._workspace/"clients-stats.json", "w") as f:
             json.dump([cli.to_dict() for cli in clients], f, indent=2)
