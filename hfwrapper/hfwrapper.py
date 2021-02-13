@@ -188,6 +188,7 @@ class Honggfuzz:
         self.__setup_target_workspace()
 
         self.__setup_agent()
+        self.__setup_watchers()
 
         # Telemetry frequency
         self._tel_frequency = telemetry_frequency
@@ -208,7 +209,7 @@ class Honggfuzz:
         self.__target_path.chmod(stat.S_IRWXU)  # Change target mode to execute.
         self.__target_args = argv
 
-        self.__setup_watchers()
+        # self.__setup_watchers()
 
         if not self.__start_watchers():
             self.dual_log(LogLevel.CRITICAL, "cannot setup inotify watches")
