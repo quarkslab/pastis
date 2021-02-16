@@ -187,7 +187,7 @@ class PastisBroker(BrokerAgent):
 
     def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
         uid = self.new_uid()
-        client = PastisClient(uid, cli_id, self.workspace/self.LOG_DIR, engines, arch, cpus, memory, hostname)
+        client = PastisClient(uid, cli_id, engines, arch, cpus, memory, hostname)
         logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
         self.clients[client.netid] = client
 
@@ -334,7 +334,7 @@ class PastisBroker(BrokerAgent):
         # Update internal client info and send him the message
         logging.info(f"send start client {client.id}: {engine.name} {covmode.name} {exmode.name}")
         client.set_running(engine, covmode, exmode, self.ck_mode)
-        client.reconfigure_logger(random.choice(COLORS))  # Assign custom color client
+        client.configure_logger(self.workspace/self.LOG_DIR, random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
                         program,
                         self.argv,
