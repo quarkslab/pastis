@@ -40,6 +40,10 @@ def check_honggfuzz_path() -> None:
     return os.environ.get('HFUZZ_PATH') is not None
 
 
+def hash_seed(seed: bytes):
+    return hashlib.md5(seed).hexdigest()
+
+
 class ManagedProcess:
 
     def __init__(self):
@@ -196,6 +200,7 @@ class Honggfuzz:
 
         # Runtime data
         self._tot_seeds = 0
+        self._seed_recvs = set()  # Seed received to make sure NOT to send them back
 
         # Variables for replay
         self._replay_thread = None
@@ -317,18 +322,22 @@ class Honggfuzz:
         return int(time.time())
 
     def __send_seed(self, filename: Path):
-        self._tot_seeds += 1
-        file = Path(filename)
-        logging.debug(f'[SEED] Sending new seed: {file.name} [{self._tot_seeds}]')
-        self._agent.send_seed(SeedType.INPUT, file.read_bytes())
-        self._queue_to_send.append((filename, False))
+        self.__send(filename, SeedType.INPUT)
 
     def __send_crash(self, filename: Path):
+        self.__send(filename, SeedType.CRASH)
+
+    def __send(self, filename: Path, typ: SeedType):
         self._tot_seeds += 1
         file = Path(filename)
-        logging.debug(f'[CRASH] Sending new crash: {file.name} [{self._tot_seeds}]')
-        self._agent.send_seed(SeedType.CRASH, file.read_bytes())
-        self._queue_to_send.append((filename, True))
+        raw = file.read_bytes()
+        h = hash_seed(raw)
+        logging.debug(f'[{typ.name}] Sending new: {h} [{self._tot_seeds}]')
+        if h not in self._seed_recvs:
+            self._agent.send_seed(typ, raw)
+        else:
+            logging.info("seed (previously sent) do not send it back")
+        self._queue_to_send.append((filename, True if typ == SeedType.CRASH else False))
 
     def __check_seed_alert(self, filename: Path, is_crash: bool) -> bool:
         p = Path(filename)
@@ -434,7 +443,9 @@ class Honggfuzz:
         self.start(fname, binary, argv, exmode, seed_inj, engine_args)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
-        logging.info(f"[SEED] received  {hashlib.md5(seed).hexdigest()} ({typ.name})")
+        h = hash_seed(seed)
+        logging.info(f"[SEED] received  {h} ({typ.name})")
+        self._seed_recvs.add(h)
         self.add_seed(seed)
 
     def __stop_received(self):
