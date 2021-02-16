@@ -15,7 +15,7 @@ class PastisClient(object):
     a client connected to the broker.
     """
 
-    def __init__(self, id: int, netid: bytes, log_dir: Path, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
+    def __init__(self, id: int, netid: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
         self.id = id
         self.netid = netid
         self.engines = engines
@@ -24,8 +24,7 @@ class PastisClient(object):
         self.memory = memory
         self.hostname = hostname
 
-        self.logger = logging.getLogger(f"client-{id}")
-        self._configure_logging(log_dir)
+        self.logger = None
 
         # Runtime properties
         self._running = False
@@ -62,14 +61,14 @@ class PastisClient(object):
         self._timeline_seeds = []  # List[Tuple[float, int, typ]]  # history of submission
         # self._timeline_coverage = []
 
-    def _configure_logging(self, log_dir):
-        hldr = logging.FileHandler(log_dir/f"client-{self.id}")
+    def configure_logger(self, log_dir, colorid: int):
+        self.logger = logging.getLogger(f"\033[7m\033[{colorid}m[{self.strid}]\033[0m")
+
+        # Add a file handler
+        hldr = logging.FileHandler(log_dir/f"{self.id}.log")
         hldr.setLevel(logging.DEBUG)
         hldr.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s"))
         self.logger.addHandler(hldr)
-
-    def reconfigure_logger(self, colorid: int):
-        self.logger.name = f"\033[7m\033[{colorid}m[{self.strid}]\033[0m"
 
     @property
     def strid(self):
@@ -104,7 +103,10 @@ class PastisClient(object):
 
     def log(self, level: LogLevel, message: str):
         # Get the function in the logger (warning, debug, info) and call it with message
-        getattr(self.logger, level.name.lower())(message)
+        if self.logger is None:  # Client has not yet been configured
+            getattr(logging, level.name.lower())(message)
+        else:  # Log in client logger
+            getattr(self.logger, level.name.lower())(message)
 
     @property
     def engine(self):
