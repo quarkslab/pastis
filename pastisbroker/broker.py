@@ -125,6 +125,7 @@ class PastisBroker(BrokerAgent):
         Generate a new unique id for a client (int)
 
         :return: int, unique (in an execution)
+        :return: int, unique (in an execution)
         """
         v = self._cur_id
         self._cur_id += 1
@@ -428,57 +429,65 @@ class PastisBroker(BrokerAgent):
         d = Path(binaries_dir)
         for file in d.iterdir():
             if file.is_file():
-                p = lief.parse(str(file))
-                if not p:
-                    continue
-                if not isinstance(p, lief.ELF.Binary):
-                    logging.warning(f"binary {file} not supported (only ELF at the moment)")
-                    continue
-
-                # Try to find intrinsic in program if so it is a good one!
-                good = False
-                honggfuzz = False
-                for f in p.functions:
-                    name = f.name
-                    if '__klocwork' in name:
-                        good = True
-                    if '__sanitizer' in name:
-                        honggfuzz = True
-                if not good:
-                    logging.debug(f"ignore binary: {file} (does not contain klocwork intrinsics)")
-                    continue
-
-                # Try to find the Honggfuzz PERSISTENT magic in binary
-                exmode = ExecMode.SINGLE_EXEC  # by default single_exec
-                sections = {x.name: x for x in p.sections}
-                if '.rodata' in sections:
-                    rodata_content = bytearray(sections['.rodata'].content)
-                    if self.HF_PERSISTENT_SIG in rodata_content:
-                        exmode = ExecMode.PERSISTENT
-                else:
-                    if 'HF_ITER' in (x.name for x in p.imported_functions):  # More dummy method
-                        exmode = ExecMode.PERSISTENT
-
-                # Determine the architecture of the binary
-                mapping = {lief.ELF.ARCH.x86_64: Arch.X86_64,
-                           lief.ELF.ARCH.i386: Arch.X86,
-                           lief.ELF.ARCH.ARM: Arch.ARMV7,
-                           lief.ELF.ARCH.AARCH64: Arch.AARCH64}
-                arch = mapping.get(p.header.machine_type)
-                if arch:
-                    engine = FuzzingEngine.HONGGFUZZ if honggfuzz else FuzzingEngine.TRITON
-                    tup = (arch, engine, exmode)
-                    if tup in self.programs:
-                        logging.warning(f"binary with same properties {tup} already detected, drop: {file}")
+                data = self.read_binary_infos(file)
+                if data:
+                    if data in self.programs:
+                        logging.warning(f"binary with same properties {data} already detected, drop: {file}")
                     else:
-                        logging.info(f"new binary detected [{arch}, {engine}, {exmode}]: {file}")
+                        arch, engine, execmode = data
+                        logging.info(f"new binary detected [{arch}, {engine}, {execmode}]: {file}")
                         # Copy binary in workspace
                         dst_file = self.workspace / self.BINS_DIR / file.name
                         if dst_file.absolute() != file.absolute(): # If not already in the workspace copy them in workspace
                             dst_file.write_bytes(file.read_bytes())
                             dst_file.chmod(stat.S_IRWXU)  # Change target mode to execute.
                         # Add it in the internal structure
-                        self.programs[tup] = dst_file
+                        self.programs[data] = dst_file
+
+    @staticmethod
+    def read_binary_infos(file: Path) -> Optional[Tuple[Arch, FuzzingEngine, ExecMode]]:
+            p = lief.parse(str(file))
+            if not p:
+                return None
+            if not isinstance(p, lief.ELF.Binary):
+                logging.warning(f"binary {file} not supported (only ELF at the moment)")
+                return None
+
+            # Try to find intrinsic in program if so it is a good one!
+            good = False
+            honggfuzz = False
+            for f in p.functions:
+                name = f.name
+                if '__klocwork' in name:
+                    good = True
+                if '__sanitizer' in name:
+                    honggfuzz = True
+            if not good:
+                logging.debug(f"ignore binary: {file} (does not contain klocwork intrinsics)")
+                return None
+
+            # Try to find the Honggfuzz PERSISTENT magic in binary
+            exmode = ExecMode.SINGLE_EXEC  # by default single_exec
+            sections = {x.name: x for x in p.sections}
+            if '.rodata' in sections:
+                rodata_content = bytearray(sections['.rodata'].content)
+                if PastisBroker.HF_PERSISTENT_SIG in rodata_content:
+                    exmode = ExecMode.PERSISTENT
+            else:
+                if 'HF_ITER' in (x.name for x in p.imported_functions):  # More dummy method
+                    exmode = ExecMode.PERSISTENT
+
+            # Determine the architecture of the binary
+            mapping = {lief.ELF.ARCH.x86_64: Arch.X86_64,
+                       lief.ELF.ARCH.i386: Arch.X86,
+                       lief.ELF.ARCH.ARM: Arch.ARMV7,
+                       lief.ELF.ARCH.AARCH64: Arch.AARCH64}
+            arch = mapping.get(p.header.machine_type)
+            if arch:
+                engine = FuzzingEngine.HONGGFUZZ if honggfuzz else FuzzingEngine.TRITON
+                return arch, engine, exmode
+            else:
+                return None
 
     def _init_workspace(self):
         """ Create the directory for inputs, crashes and logs"""
