@@ -95,7 +95,8 @@ class PastisBroker(BrokerAgent):
 
         # Runtime infos
         self._running = False
-        self._seed_pool = {}  # Seed bytes -> (SeedType, origin)
+        self._seed_pool = {}  # Seed bytes -> SeedType
+        self._init_seed_pool = {}  # Used for NO_TRANSMIT mode
         self._start_time = None
         self._stop = False
 
@@ -171,13 +172,15 @@ class PastisBroker(BrokerAgent):
                     c.add_peer_seed(seed)  # Add it in its list of seed
         # TODO: implementing BrokingMode.COVERAGE_ORDERED
 
-    def add_seed_file(self, file: PathLike) -> None:
+    def add_seed_file(self, file: PathLike, initial: bool = False) -> None:
         p = Path(file)
         logging.info(f"Add seed {p.name} in pool")
         out = self.workspace / self._seed_typ_to_dir(SeedType.INPUT) / p.name
         seed = p.read_bytes()
         out.write_bytes(seed)
         self._seed_pool[seed] = SeedType.INPUT
+        if initial:
+            self._init_seed_pool[seed] = SeedType.INPUT
 
     def write_seed(self, typ: SeedType, from_cli: PastisClient, seed: bytes):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
@@ -191,14 +194,20 @@ class PastisBroker(BrokerAgent):
         logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
         self.clients[client.netid] = client
 
+        # TODO: Put the following in a separate function to dissociate the two
         if self.running: # A client is coming in the middle of a session
             self.start_client(client)
             # Iterate all the seed pool and send it to the client
             if self.broker_mode == BrokingMode.FULL:
-                for seed, typ in self._seed_pool.items():
-                    self.send_seed(client.netid, typ, seed)  # necessarily a new seed
-                    client.add_peer_seed(seed)  # Add it in its list of seed
+                self._transmit_pool(client, self._seed_pool)
                 # TODO: Implementing BrokingMode.COVERAGE_ORDERED
+            elif self.broker_mode == BrokingMode.NO_TRANSMIT:
+                self._transmit_pool(client, self._init_seed_pool)
+
+    def _transmit_pool(self, client, pool) -> None:
+        for seed, typ in pool.items():
+            self.send_seed(client.netid, typ, seed)  # necessarily a new seed
+            client.add_peer_seed(seed)  # Add it in its list of seed
 
     def log_received(self, cli_id: bytes, level: LogLevel, message: str):
         client = self.get_client(cli_id)
