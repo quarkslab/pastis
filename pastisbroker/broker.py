@@ -7,6 +7,7 @@ from hashlib import md5
 from enum import Enum
 from collections import Counter
 import re
+import datetime
 import random
 import stat
 import json
@@ -184,7 +185,8 @@ class PastisBroker(BrokerAgent):
 
     def write_seed(self, typ: SeedType, from_cli: PastisClient, seed: bytes):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
-        fname = f"{t}_{from_cli.strid}_{md5(seed).hexdigest()}.cov"
+        elapsed = str(datetime.timedelta(seconds=time.time() - self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
+        fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(seed).hexdigest()}.cov"
         p = self.workspace / self._seed_typ_to_dir(typ) / fname
         p.write_bytes(seed)
 
@@ -404,7 +406,7 @@ class PastisBroker(BrokerAgent):
 
     def start(self):
         super(PastisBroker, self).start()  # Start the listening thread
-        self._start_time = time.localtime()
+        self._start_time = time.time()
         self._running = True
         logging.info("start broking")
 
@@ -548,7 +550,8 @@ class PastisBroker(BrokerAgent):
 
     def _save_alert_seed(self, from_cli: PastisClient, alert: AlertData):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
-        fname = f"{t}_{from_cli.strid}_{md5(alert.seed).hexdigest()}-{'CRASH' if alert.validated else 'COVERAGE'}.cov"
+        elapsed = str(datetime.timedelta(seconds=time.time()-self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
+        fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(alert.seed).hexdigest()}-{'CRASH' if alert.validated else 'COVERAGE'}.cov"
         logging.debug(f"Save alert  [{alert.id}] file: {fname}")
         p = ((self.workspace / "alerts_data") / str(alert.id)) / fname
         p.write_bytes(alert.seed)
