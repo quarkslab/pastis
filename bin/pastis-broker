@@ -71,7 +71,7 @@ def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, tt_conf
     # Add all given seeds as initial seed
     for s_src in seed:
         for s in iterate_file(s_src):  # File if one file, or iterate dir if directory
-            broker.add_seed_file(s)
+            broker.add_seed_file(s, initial=True)
 
     # Bind it and start listening (clients can connect)
     broker.bind()
