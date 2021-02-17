@@ -65,7 +65,7 @@ class PastisClient(object):
         self.logger = logging.getLogger(f"\033[7m\033[{colorid}m[{self.strid}]\033[0m")
 
         # Add a file handler
-        hldr = logging.FileHandler(log_dir/f"{self.id}.log")
+        hldr = logging.FileHandler(log_dir/f"{self.strid}.log")
         hldr.setLevel(logging.DEBUG)
         hldr.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s"))
         self.logger.addHandler(hldr)
