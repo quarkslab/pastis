@@ -34,7 +34,7 @@ class PastisDSE(object):
         self._stop      = False
         self.klreport   = None
         self._last_kid  = None
-        self._seed_lock = False
+        self._seed_wait = False
         self._seed_received = set()
 
         # local attributes for telemetry
@@ -89,8 +89,8 @@ class PastisDSE(object):
 
 
     def _wait_seed_event(self):
-        self._seed_lock = True
-        while self._seed_lock:
+        self._seed_wait = True
+        while self._seed_wait:
             time.sleep(0.5)
 
 
@@ -284,7 +284,7 @@ class PastisDSE(object):
             self.dse.add_input_seed(seed)
         else:
             logging.warning("receiving seeds while the DSE is not instanciated")
-        self._seed_lock = False  # Unlock the run() thread if it was waiting for a seed
+        self._seed_wait = False  # Unlock the run() thread if it was waiting for a seed
 
 
     def stop_received(self):
