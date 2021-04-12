@@ -82,13 +82,9 @@ class PastisBroker(BrokerAgent):
         self._find_binary_workspace(binaries_dir)
 
         # Klocwork informations
-        self.kl_report = KlocworkReport(kl_report) if kl_report else None
-        if self.kl_report:
-            if not self.kl_report.has_binding():
-                logging.warning(f"the klocwork report {kl_report} does not contain bindings (auto-bind it)")
-                self.kl_report.auto_bind()
-            self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
-            self._init_alert_corpus()
+        self.kl_report = None
+        if kl_report:
+            self.initialize_klocwork_report(kl_report)
 
         # Client infos
         self.clients = {}   # bytes -> Client
@@ -106,6 +102,14 @@ class PastisBroker(BrokerAgent):
 
         # Create the stat manager
         self.statmanager = StatManager(self.workspace)
+
+    def initialize_klocwork_report(self, report: PathLike):
+        self.kl_report = KlocworkReport(report)
+        if not self.kl_report.has_binding():
+            logging.warning(f"the klocwork report {report} does not contain bindings (auto-bind it)")
+            self.kl_report.auto_bind()
+        self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
+        self._init_alert_corpus()
 
     @property
     def running(self) -> bool:
@@ -196,15 +200,8 @@ class PastisBroker(BrokerAgent):
         logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
         self.clients[client.netid] = client
 
-        # TODO: Put the following in a separate function to dissociate the two
         if self.running: # A client is coming in the middle of a session
-            self.start_client(client)
-            # Iterate all the seed pool and send it to the client
-            if self.broker_mode == BrokingMode.FULL:
-                self._transmit_pool(client, self._seed_pool)
-                # TODO: Implementing BrokingMode.COVERAGE_ORDERED
-            elif self.broker_mode == BrokingMode.NO_TRANSMIT:
-                self._transmit_pool(client, self._init_seed_pool)
+            self.start_client_and_send_corpus(client)
 
     def _transmit_pool(self, client, pool) -> None:
         for seed, typ in pool.items():
@@ -307,6 +304,15 @@ class PastisBroker(BrokerAgent):
             # And also re-write the Klocwork report (that also contains resutls)
             self.kl_report.write(self.workspace / self.KL_REPORT_COPY)
 
+    def start_client_and_send_corpus(self, client: PastisClient) -> None:
+        self.start_client(client)
+        # Iterate all the seed pool and send it to the client
+        if self.broker_mode == BrokingMode.FULL:
+            self._transmit_pool(client, self._seed_pool)
+            # TODO: Implementing BrokingMode.COVERAGE_ORDERED
+        elif self.broker_mode == BrokingMode.NO_TRANSMIT:
+            self._transmit_pool(client, self._init_seed_pool)
+
     def start_client(self, client: PastisClient):
         program = None  # The program yet to be selected
         engine = None
@@ -404,16 +410,17 @@ class PastisBroker(BrokerAgent):
             return CoverageMode.BLOCK  # Dummy value (for honggfuzz)
 
 
-    def start(self):
+    def start(self, running: bool=True):
         super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.time()
-        self._running = True
+        self._running = running
         logging.info("start broking")
 
         # Send the start message to all clients
-        for c in self.clients.values():
-            if not c.is_running():
-                self.start_client(c)
+        if self._running:  # If we want to run now (cmdline mode)
+            for c in self.clients.values():
+                if not c.is_running():
+                    self.start_client(c)
 
     def run(self):
         self.start()
