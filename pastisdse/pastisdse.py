@@ -36,6 +36,7 @@ class PastisDSE(object):
         self._last_kid  = None
         self._seed_wait = False
         self._seed_received = set()
+        self.enable_dump = False
 
         # local attributes for telemetry
         self.nb_to, self.nb_crash = 0, 0
@@ -90,7 +91,7 @@ class PastisDSE(object):
 
     def _wait_seed_event(self):
         self._seed_wait = True
-        while self._seed_wait:
+        while self._seed_wait and not self._stop:
             time.sleep(0.5)
 
 
@@ -237,7 +238,8 @@ class PastisDSE(object):
         # self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         self.dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
         self.dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
-        #self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
+        if self.enable_dump:
+            self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
            self.dse.callback_manager.register_probe_callback(UAFSanitizer())
@@ -259,7 +261,7 @@ class PastisDSE(object):
         :param instruction: The current instruction executed
         :return: None
         """
-        print("[tid:%d] %#x: %s" %(instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
+        print("[tid:%d] %#x: %s" % (instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
 
     def seed_received(self, typ: SeedType, seed: bytes):

@@ -65,6 +65,7 @@ def online(host: str, port: int):
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in CheckMode]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
 @click.option('-cov', '--covmode', type=click.Choice([x.name for x in CoverageMode]), help="Coverage strategy", default=CoverageMode.EDGE.name)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
+@click.option('--dump-trace/--no-dump-trace', default=False, help="Dump complete execution trace to stdout")
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
             kl_report: Optional[str],
@@ -75,7 +76,8 @@ def offline(program: str,
             chkmode: CheckMode,
             covmode: CoverageMode,
             seedinj: SeedInjectLoc,
-            pargvs: Tuple[str]):
+            pargvs: Tuple[str],
+            dump_trace: bool):
     """
     This is the offline mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will be able to work without a remote broker. In
@@ -114,6 +116,9 @@ def offline(program: str,
         config = Path(config).read_text()
     else:
         config = ""
+
+    if dump_trace:
+        pastis.enable_dump = True
 
     # Load the report if anyone provided
     report = Path(kl_report).read_text() if kl_report else ""
