@@ -13,7 +13,7 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 
-from pastisbroker.dash.widgets.base import WidgetBase
+from pastisbroker.dash.widgets import WidgetBase
 from pastisbroker.broker import BrokingMode
 from pastisbroker.utils import read_binary_infos
 from pastisbroker.workspace import Workspace
