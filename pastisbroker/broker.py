@@ -6,10 +6,8 @@ import time
 from hashlib import md5
 from enum import Enum
 from collections import Counter
-import re
 import datetime
 import random
-import stat
 import json
 
 # Third-party imports
@@ -21,6 +19,7 @@ import lief
 # Local imports
 from .client import PastisClient
 from .stat_manager import StatManager
+from .workspace import Workspace
 
 lief.logging.disable()
 
@@ -49,22 +48,11 @@ class Bcolors:
 
 class PastisBroker(BrokerAgent):
 
-    INPUT_DIR = "corpus"
-    HANGS_DIR = "hangs"
-    CRASH_DIR = "crashes"
-    LOG_DIR = "logs"
-    BINS_DIR = "binaries"
-
-    KL_REPORT_COPY = "klreport.json"
-    CSV_FILE = "results.csv"
-
     HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
-
 
     def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = []):
         super(PastisBroker, self).__init__()
-        self.workspace = Path(workspace)
-        self._init_workspace()
+        self.workspace = Workspace(workspace)
         self._configure_logging()
 
         # Register all agent callbacks
@@ -79,7 +67,7 @@ class PastisBroker(BrokerAgent):
 
         # Initialize availables binaries
         self.programs = {}  # Tuple[(Arch, Fuzzer, ExecMode)] -> Path
-        self._find_binary_workspace(binaries_dir)
+        self._find_binaries(binaries_dir)
 
         # Klocwork informations
         self.kl_report = None
@@ -108,8 +96,8 @@ class PastisBroker(BrokerAgent):
         if not self.kl_report.has_binding():
             logging.warning(f"the klocwork report {report} does not contain bindings (auto-bind it)")
             self.kl_report.auto_bind()
-        self.kl_report.write(self.workspace / self.KL_REPORT_COPY)  # Keep a copy of the report
-        self._init_alert_corpus()
+        self.kl_report.write(self.workspace.klocwork_report_file)  # Keep a copy of the report
+        self.workspace.initialize_alert_corpus(self.kl_report)
 
     @property
     def running(self) -> bool:
@@ -180,9 +168,10 @@ class PastisBroker(BrokerAgent):
     def add_seed_file(self, file: PathLike, initial: bool = False) -> None:
         p = Path(file)
         logging.info(f"Add seed {p.name} in pool")
-        out = self.workspace / self._seed_typ_to_dir(SeedType.INPUT) / p.name
+        # Save seed in the workspace
+        self.workspace.save_seed_file(SeedType.INPUT, p)
+
         seed = p.read_bytes()
-        out.write_bytes(seed)
         self._seed_pool[seed] = SeedType.INPUT
         if initial:
             self._init_seed_pool[seed] = SeedType.INPUT
@@ -191,8 +180,7 @@ class PastisBroker(BrokerAgent):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         elapsed = str(datetime.timedelta(seconds=time.time() - self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
         fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(seed).hexdigest()}.cov"
-        p = self.workspace / self._seed_typ_to_dir(typ) / fname
-        p.write_bytes(seed)
+        self.workspace.save_seed(typ, fname, seed)
 
     def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
         uid = self.new_uid()
@@ -266,13 +254,13 @@ class PastisBroker(BrokerAgent):
         if not alert.covered and alert_data.covered:
             logging.info(f"[{client.strid}] First to cover {alert}")
             alert.covered = alert_data.covered
-            self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
+            self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
             first_cov = True
 
         if not alert.validated and alert_data.validated:
             logging.info(f"[{client.strid}] First to validate {alert}")
             alert.validated = alert_data.validated
-            self.kl_report.write_csv(self.workspace / self.CSV_FILE)  # Update CSV to keep it updated
+            self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
             first_val = True
 
         # Update clients of and stats
@@ -296,13 +284,13 @@ class PastisBroker(BrokerAgent):
         self._stop = True
 
         # Call the statmanager to wrap-up values
-        self.statmanager.post_execution(list(self.clients.values()))
+        self.statmanager.post_execution(list(self.clients.values()), self.workspace)
 
         if self.kl_report:  # If a klocwork report was loaded
             # Write the final CSV in the workspace
-            self.kl_report.write_csv(self.workspace / self.CSV_FILE)
+            self.kl_report.write_csv(self.workspace.csv_result_file)
             # And also re-write the Klocwork report (that also contains resutls)
-            self.kl_report.write(self.workspace / self.KL_REPORT_COPY)
+            self.kl_report.write(self.workspace.klocwork_report_file)
 
     def start_client_and_send_corpus(self, client: PastisClient) -> None:
         self.start_client(client)
@@ -351,7 +339,7 @@ class PastisBroker(BrokerAgent):
         # Update internal client info and send him the message
         logging.info(f"send start client {client.id}: {engine.name} {covmode.name} {exmode.name}")
         client.set_running(engine, covmode, exmode, self.ck_mode)
-        client.configure_logger(self.workspace/self.LOG_DIR, random.choice(COLORS))  # Assign custom color client
+        client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
                         program,
                         self.argv,
@@ -436,7 +424,7 @@ class PastisBroker(BrokerAgent):
             logging.info("stop required (Ctrl+C)")
         self.stop_broker()
 
-    def _find_binary_workspace(self, binaries_dir) -> None:
+    def _find_binaries(self, binaries_dir) -> None:
         """
         Iterate the whole directory to find suitables binaries in the
         various architecture, and compiled for the various engines.
@@ -454,11 +442,10 @@ class PastisBroker(BrokerAgent):
                     else:
                         arch, engine, execmode = data
                         logging.info(f"new binary detected [{arch}, {engine}, {execmode}]: {file}")
+
                         # Copy binary in workspace
-                        dst_file = self.workspace / self.BINS_DIR / file.name
-                        if dst_file.absolute() != file.absolute(): # If not already in the workspace copy them in workspace
-                            dst_file.write_bytes(file.read_bytes())
-                            dst_file.chmod(stat.S_IRWXU)  # Change target mode to execute.
+                        dst_file = self.workspace.add_binary(file)
+
                         # Add it in the internal structure
                         self.programs[data] = dst_file
 
@@ -507,36 +494,21 @@ class PastisBroker(BrokerAgent):
             else:
                 return None
 
-    def _init_workspace(self):
-        """ Create the directory for inputs, crashes and logs"""
-        if not self.workspace.exists():
-            self.workspace.mkdir()
-        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR, self.BINS_DIR]:
-            p = self.workspace / s
-            if not p.exists():
-                p.mkdir()
-
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
-        for typ, d in [(SeedType.INPUT, self.INPUT_DIR), (SeedType.CRASH, self.CRASH_DIR), (SeedType.HANG, self.HANGS_DIR)]:
-            directory = self.workspace / d
-            for file in directory.iterdir():
+        for typ in SeedType:  # iter seed types: input, crash, hang..
+            for file in self.workspace.iter_corpus_directory(typ):
                 logging.debug(f"Load seed in pool: {file.name}")
                 content = file.read_bytes()
                 self._seed_pool[content] = typ
         # TODO: Also dumping the current state to a file in case
         # TODO: of exit. And being able to reload it. (not to resend all seeds to clients)
 
-    def _seed_typ_to_dir(self, typ: SeedType):
-        return {SeedType.INPUT: self.INPUT_DIR,
-                SeedType.CRASH: self.CRASH_DIR,
-                SeedType.HANG: self.HANGS_DIR}[typ]
-
     def add_engine_configuration(self, engine: FuzzingEngine, args: str):
         self.engines_args[engine].append(args)
 
     def _configure_logging(self):
-        hldr = logging.FileHandler(self.workspace/f"broker.log")
+        hldr = logging.FileHandler(self.workspace.broker_log_file)
         hldr.setLevel(logging.root.level)
         hldr.setFormatter(logging.Formatter("%(asctime)s [%(name)s] [%(levelname)s]: %(message)s"))
         logging.root.addHandler(hldr)
@@ -547,18 +519,9 @@ class PastisBroker(BrokerAgent):
                   SeedType.CRASH: Bcolors.FAIL}
         return mapper[typ]+typ.name+Bcolors.ENDC
 
-    def _init_alert_corpus(self):
-        """ Create a directory for each alert where to store coverage / vuln corpus """
-        p = self.workspace / "alerts_data"
-        p.mkdir(exist_ok=True)
-        for alert in self.kl_report.counted_alerts:
-            a_dir = p / str(alert.id)
-            a_dir.mkdir(exist_ok=True)
-
     def _save_alert_seed(self, from_cli: PastisClient, alert: AlertData):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         elapsed = str(datetime.timedelta(seconds=time.time()-self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
         fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(alert.seed).hexdigest()}-{'CRASH' if alert.validated else 'COVERAGE'}.cov"
         logging.debug(f"Save alert  [{alert.id}] file: {fname}")
-        p = ((self.workspace / "alerts_data") / str(alert.id)) / fname
-        p.write_bytes(alert.seed)
+        self.workspace.save_alert_seed(alert.id, fname, alert.seed)
