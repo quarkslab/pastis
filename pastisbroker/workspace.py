@@ -41,6 +41,9 @@ class Workspace(object):
         for file in dir.iterdir():
             yield file
 
+    def count_corpus_directory(self, typ: SeedType) -> int:
+        return sum(1 for _ in self.iter_corpus_directory(typ))
+
     @property
     def telemetry_file(self) -> Path:
         return self.root / self.TELEMETRY_FILE
@@ -77,6 +80,24 @@ class Workspace(object):
             dst_file.write_bytes(binary_path.read_bytes())
             dst_file.chmod(stat.S_IRWXU)  # Change target mode to execute.
         return dst_file
+
+    def add_binary_data(self, name: str, content: bytes) -> Path:
+        """
+        Add a binary in the workspace directory structure.
+
+        :param name: Name of the executable file
+        :param content: Content of the executable
+        :return: the final executable file path
+        """
+        dst_file = self.root / self.BINS_DIR / name
+        dst_file.write_bytes(content)
+        dst_file.chmod(stat.S_IRWXU)  # Change target mode to execute.
+        return dst_file
+
+    def add_klocwork_report(self, report: KlocworkReport) -> Path:
+        f = self.root / self.KL_REPORT_COPY
+        f.write_text(report.to_json())
+        return f
 
     @property
     def binaries(self) -> Generator[Path, None, None]:

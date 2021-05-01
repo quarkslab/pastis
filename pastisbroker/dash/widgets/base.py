@@ -1,6 +1,6 @@
 import dash
 
-from typing import List, Callable, Tuple
+from typing import List, Callable, Tuple, Any
 from libpastis.agent import MessageType
 
 
@@ -10,3 +10,6 @@ class WidgetBase:
 
     def callbacks(self) -> List[Tuple[MessageType, Callable]]:
         return []
+
+    def widget(self):
+        raise NotImplementedError()
