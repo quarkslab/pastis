@@ -36,6 +36,13 @@ class BrokerDash(PastisBroker):
         # TODO: (initiale seeds should have been set by the upload form)
         # TODO: set argv with the value from the
         # TODO: envoyer le start_client_and_send_corpus (à tous les node connectés)
+        # TODO: Send the timer widget the Go !
+
+    def stop_button_clicked(self):
+        pass
+        # TODO: Send stop to timer
+
+        # TODO: Traditional stopping (send stop clients etc..)
 
     def run(self):
         self.app.run_server(debug=self.debug)
