@@ -10,18 +10,17 @@ from libpastis.types import SeedType
 
 # Local imports
 from pastisbroker.client import PastisClient
+from pastisbroker.workspace import Workspace
 
 
 class StatManager(object):
     """
     Keeps temporal statistics to plot them.
     """
-    def __init__(self, log_dir: Path):
-        self._workspace = log_dir
-
+    def __init__(self, workspace: Workspace):
         # Configure CSV writer that will write stats
         names = ['date', 'id', 'exec_per_sec', 'total_exec', 'cycle', 'timeout', 'block', 'edge', 'path', 'last_cov_update']
-        self._tel_file = open(log_dir/"telemetry.csv", "w")
+        self._tel_file = open(workspace.telemetry_file, "w")
         self.writer = csv.DictWriter(self._tel_file, fieldnames=names)
         self.writer.writeheader()
 
@@ -89,12 +88,12 @@ class StatManager(object):
         })
 
 
-    def post_execution(self, clients: List[PastisClient]) -> None:
+    def post_execution(self, clients: List[PastisClient], workspace: Workspace) -> None:
         """
         Called at the end of the execution. Export
         :return: None
         """
         self._tel_file.flush()  # Flush the csv if it has not been
 
-        with open(self._workspace/"clients-stats.json", "w") as f:
+        with open(workspace.clients_stat_file, "w") as f:
             json.dump([cli.to_dict() for cli in clients], f, indent=2)
