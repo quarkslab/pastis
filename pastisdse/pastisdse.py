@@ -389,7 +389,7 @@ class PastisDSE(object):
                     self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
                     validated = True
                     if se.seed.is_status_set():
-                        logging.warning(f"Status already set ({se.seed.status}) for seed {se.seed.get_hash()} (override with CRASH)")
+                        logging.warning(f"Status already set ({se.seed.status}) for seed {se.seed.hash} (override with CRASH)")
                     se.seed.status = SeedStatus.CRASH  # Mark the seed as crash, as it validates an alert
                 else:
                     logging.info(f"Alert [{alert.id}] in {alert.file}:{alert.line}: validation [FAIL]")
