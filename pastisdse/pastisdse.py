@@ -242,10 +242,10 @@ class PastisDSE(object):
             self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
 
         if chkmode == CheckMode.CHECK_ALL:
-           self.dse.callback_manager.register_probe_callback(UAFSanitizer())
-           self.dse.callback_manager.register_probe_callback(NullDerefSanitizer())
-           self.dse.callback_manager.register_probe_callback(FormatStringSanitizer())
-           self.dse.callback_manager.register_probe_callback(IntegerOverflowSanitizer())
+           self.dse.callback_manager.register_probe(UAFSanitizer())
+           self.dse.callback_manager.register_probe(NullDerefSanitizer())
+           self.dse.callback_manager.register_probe(FormatStringSanitizer())
+           self.dse.callback_manager.register_probe(IntegerOverflowSanitizer())
            # TODO Buffer overflow
 
         elif chkmode == CheckMode.ALERT_ONLY:
