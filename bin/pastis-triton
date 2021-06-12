@@ -12,7 +12,7 @@ from typing import List, Tuple, Optional
 import click
 import coloredlogs
 from libpastis import ClientAgent, FileAgent
-from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine, SeedType
+from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngineInfo, SeedType
 
 # Local imports
 from pastisdse import PastisDSE, __version__
@@ -124,7 +124,7 @@ def offline(program: str,
     report = Path(kl_report).read_text() if kl_report else ""
 
     # Mimick a callback to start_received
-    pastis.start_received(program.name, program.read_bytes(), FuzzingEngine.TRITON, exmode, chkmode, covmode, seedinj, config, pargvs, report)
+    pastis.start_received(program.name, program.read_bytes(), FuzzingEngineInfo("TRITON", __version__, ""), exmode, chkmode, covmode, seedinj, config, pargvs, report)
 
     # Set the number of execution limit
     pastis.config.exploration_limit = count
