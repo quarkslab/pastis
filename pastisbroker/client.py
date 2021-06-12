@@ -6,7 +6,7 @@ import time
 import inspect
 
 # Third-party imports
-from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode, SeedType
+from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode, SeedType, Platform
 
 
 class PastisClient(object):
@@ -15,7 +15,7 @@ class PastisClient(object):
     a client connected to the broker.
     """
 
-    def __init__(self, id: int, netid: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
+    def __init__(self, id: int, netid: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
         self.id = id
         self.netid = netid
         self.engines = engines
@@ -23,6 +23,7 @@ class PastisClient(object):
         self.cpus = cpus
         self.memory = memory
         self.hostname = hostname
+        self.platform = platform
 
         self.logger = None
 
@@ -154,6 +155,7 @@ class PastisClient(object):
             "cpus": self.cpus,
             "memory": self.memory,
             "hostname": self.hostname,
+            "platform": self.platform.name,
             "engine": self._engine.name,
             "coverage_mode": self._coverage_mode.name,
             "exec_mode": self._exec_mode.name,

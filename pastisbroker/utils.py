@@ -7,13 +7,13 @@ from typing import Optional, Tuple
 import lief
 
 # local imports
-from libpastis.types import Arch, FuzzingEngine, ExecMode
+from libpastis.types import Arch, FuzzingEngine, ExecMode, Platform
 
 
 HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
 
 
-def read_binary_infos(file: Path) -> Optional[Tuple[Arch, FuzzingEngine, ExecMode]]:
+def read_binary_infos(file: Path) -> Optional[Tuple[Platform, Arch, FuzzingEngine, ExecMode]]:
     p = lief.parse(str(file))
     if not p:
         return None
@@ -51,8 +51,16 @@ def read_binary_infos(file: Path) -> Optional[Tuple[Arch, FuzzingEngine, ExecMod
                lief.ELF.ARCH.ARM: Arch.ARMV7,
                lief.ELF.ARCH.AARCH64: Arch.AARCH64}
     arch = mapping.get(p.header.machine_type)
-    if arch:
+
+    # Determine the platform from its format
+    mapping_elf = {lief.EXE_FORMATS.ELF: Platform.LINUX,
+                   lief.EXE_FORMATS.PE: Platform.WINDOWS,
+                   lief.EXE_FORMATS.MACHO: Platform.MACOS}
+    # FIXME: differentiating between ELF (Linux, Android ..) and MACHO (MacOS, iOS..)
+    fmt = mapping_elf.get(p.format)
+
+    if arch and fmt:
         engine = FuzzingEngine.HONGGFUZZ if honggfuzz else FuzzingEngine.TRITON
-        return arch, engine, exmode
+        return fmt, arch, engine, exmode
     else:
         return None
