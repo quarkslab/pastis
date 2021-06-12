@@ -9,12 +9,13 @@ import threading
 
 
 # Pastis & triton imports
+import pastisdse
 from triton               import MemoryAccess, CPUSIZE
 from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
 from libpastis.agent      import ClientAgent
-from libpastis.types      import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData
+from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -49,7 +50,7 @@ class PastisDSE(object):
         self.agent.register_start_callback(self.start_received) # register start because launched manually
         self.agent.connect(remote, port)
         self.agent.start()
-        self.agent.send_hello([(FuzzingEngine.TRITON, TRITON_VERSION)])
+        self.agent.send_hello([FuzzingEngineInfo("TRITON", pastisdse.__version__, "pastisttbroker")])
 
 
     def start(self):
@@ -155,7 +156,7 @@ class PastisDSE(object):
                                   last_cov_update=int(self._last_cov_update))
 
 
-    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
+    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
         """
         This function is called when the broker says to start the fuzzing session. Here, we receive all information about
@@ -174,6 +175,10 @@ class PastisDSE(object):
         :return: None
         """
         logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
+
+        if engine.version != pastisdse.__version__:
+            logging.error(f"Pastis-DSE mismatch with one from the server {engine.version} (local: {pastisdse.__version__})")
+            return
 
         # Parse triton specific parameters and update conf if needed
         if engine_args:
