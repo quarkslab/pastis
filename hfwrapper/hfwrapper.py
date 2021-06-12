@@ -15,8 +15,9 @@ from typing import Callable, List, Dict, Union
 
 # Third party imports
 from libpastis import FileAgent, ClientAgent
-from libpastis.types import Arch, CheckMode, CoverageMode, ExecMode, FuzzingEngine, SeedInjectLoc, SeedType, State, \
+from libpastis.types import Arch, CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
                             PathLike, LogLevel, AlertData
+
 try:  # Make the klocwork support optional
     from klocwork import KlocworkReport
     KLOCWORK_SUPPORTED = True
@@ -24,6 +25,7 @@ except ImportError:
     KLOCWORK_SUPPORTED = False
 
 # Local imports
+import hfwrapper
 from hfwrapper.replay import Replay
 
 # Inotify logs are very talkative, set them to ERROR
@@ -262,7 +264,7 @@ class Honggfuzz:
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self._agent.send_hello([(FuzzingEngine.HONGGFUZZ, self.__hfuzz_version)])
+        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", hfwrapper.__version__, "hfbroker")])
 
     def run(self):
         self.__hfuzz_process.wait()
@@ -416,16 +418,20 @@ class Honggfuzz:
             except:
                 logging.error(f'Error retrieving stats!')
 
-    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
+    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, chkmode: CheckMode,
                          _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
             return
 
-        if engine != FuzzingEngine.HONGGFUZZ:
-            logging.error(f"Wrong fuzzing engine received {engine} while I am Honggfuzz")
-            self._agent.send_log(LogLevel.ERROR, "Invalid fuzzing engine received {engine} can't do anything")
+        if engine.name != "HONGGFUZZ":
+            logging.error(f"Wrong fuzzing engine received {engine.name} while I am Honggfuzz")
+            self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine received {engine.name} can't do anything")
+            return
+        if engine.version != hfwrapper.__version__:
+            logging.error(f"Wrong fuzzing engine version {engine.version} received")
+            self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine version {engine.version} do nothing")
             return
 
         if kl_report:

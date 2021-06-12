@@ -16,7 +16,7 @@ from typing import Tuple, Optional
 import click
 import coloredlogs
 from libpastis import ClientAgent, FileAgent
-from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine
+from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngineInfo
 
 # Local imports
 from hfwrapper import Honggfuzz, HonggfuzzNotFound, __version__, check_honggfuzz_path
@@ -91,7 +91,7 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
     report = Path(kl_report).read_text() if kl_report else ""
 
     # Mimick a callback to start_received
-    honggfuzz.start_received(program.name, program.read_bytes(), FuzzingEngine.HONGGFUZZ, exmode, chkmode, CoverageMode.EDGE, seedinj, "", pargvs, report)
+    honggfuzz.start_received(program.name, program.read_bytes(), FuzzingEngineInfo("HONGGFUZZ", __version__, None), exmode, chkmode, CoverageMode.EDGE, seedinj, "", pargvs, report)
 
     # Provide it all our seeds
     for s in seed:
