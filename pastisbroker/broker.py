@@ -12,7 +12,7 @@ import json
 
 # Third-party imports
 from libpastis import BrokerAgent, do_engine_support_coverage_strategy
-from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData, PathLike
+from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData, PathLike, Platform
 from klocwork import KlocworkReport
 import lief
 
@@ -51,7 +51,7 @@ class PastisBroker(BrokerAgent):
 
     def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = []):
         super(PastisBroker, self).__init__()
-        self.workspace = Workspace(workspace)
+        self.workspace = Workspace(Path(workspace))
         self._configure_logging()
 
         # Register all agent callbacks
@@ -181,9 +181,9 @@ class PastisBroker(BrokerAgent):
         fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(seed).hexdigest()}.cov"
         self.workspace.save_seed(typ, fname, seed)
 
-    def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str):
+    def hello_received(self, cli_id: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
         uid = self.new_uid()
-        client = PastisClient(uid, cli_id, engines, arch, cpus, memory, hostname)
+        client = PastisClient(uid, cli_id, engines, arch, cpus, memory, hostname, platform)
         logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
         self.clients[client.netid] = client
 
@@ -313,11 +313,11 @@ class PastisBroker(BrokerAgent):
                 continue
 
             # Try finding a suitable binary for the current engine and the client arch
-            program = self.programs.get((client.arch, eng, ExecMode.PERSISTENT))
+            program = self.programs.get((client.platform, client.arch, eng, ExecMode.PERSISTENT))
             if program:
                 exmode = ExecMode.PERSISTENT  # a program was found in persistent mode
             else:
-                program = self.programs.get((client.arch, eng, ExecMode.SINGLE_EXEC))
+                program = self.programs.get((client.platform, client.arch, eng, ExecMode.SINGLE_EXEC))
             if not program:  # If still no program was found continue iterating engines
                 continue
 
@@ -439,14 +439,15 @@ class PastisBroker(BrokerAgent):
                     if data in self.programs:
                         logging.warning(f"binary with same properties {data} already detected, drop: {file}")
                     else:
-                        arch, engine, execmode = data
-                        logging.info(f"new binary detected [{arch}, {engine}, {execmode}]: {file}")
+                        platform, arch, engine, execmode = data
+                        logging.info(f"new binary detected [{platform.name}, {arch.name}, {engine.name}, {execmode.name}]: {file}")
 
                         # Copy binary in workspace
                         dst_file = self.workspace.add_binary(file)
 
                         # Add it in the internal structure
                         self.programs[data] = dst_file
+                        self.programs[(Platform.ANY, arch, engine, execmode)] = dst_file  # Also add an entry for any platform
 
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
