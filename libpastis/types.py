@@ -12,10 +12,6 @@ class State(Enum):
     IDLE = 1
 
 
-class FuzzingEngine(Enum):
-    HONGGFUZZ = 0
-    TRITON = 1
-
 
 class Platform(Enum):
     ANY = 0
@@ -88,3 +84,14 @@ class AlertData(object):
                            'covered': self.covered,
                            'validated': self.validated,
                            'seed': base64.b64encode(self.seed).decode()})
+
+
+class FuzzingEngineInfo(object):
+    def __init__(self, name: str, version: str, pymodule: str):
+        self.name = name
+        self.version = version
+        self.pymodule = pymodule
+
+    @staticmethod
+    def from_pb(pb):
+        return FuzzingEngineInfo(pb.name, pb.version, pb.pymodule)
