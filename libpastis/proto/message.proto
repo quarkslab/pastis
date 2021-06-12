@@ -13,6 +13,15 @@ enum FuzzingEngine {
     // Add support for other tools
 }
 
+enum Platform {
+    ANY = 0;
+    LINUX = 1;
+    WINDOWS = 2;
+    MACOS = 3;
+    ANDROID = 4;
+    IOS = 5;
+}
+
 message InputSeedMsg {
     enum SeedType {
         INPUT = 0;
@@ -76,6 +85,7 @@ message HelloMsg {
     repeated FuzzingEngine engines = 4;
     repeated string versions       = 5;
     string hostname                = 6;
+    Platform platform              = 7;
 }
 
 message LogMsg {

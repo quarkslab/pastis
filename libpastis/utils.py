@@ -1,11 +1,12 @@
 # builtin imports
+import platform
 from typing import Optional
 
 # Third-party import
 import psutil
 
 # Local imports
-from .types import FuzzingEngine, Arch
+from .types import FuzzingEngine, Arch, Platform
 
 
 def do_engine_support_coverage_strategy(engine: FuzzingEngine) -> bool:
@@ -24,6 +25,11 @@ def do_engine_support_coverage_strategy(engine: FuzzingEngine) -> bool:
 
 def get_local_architecture() -> Optional[Arch]:
     mapping = {"i386": Arch.X86, "x86_64": Arch.X86_64, "armv7l": Arch.ARMV7, "aarch64": Arch.AARCH64}
-    a = psutil.os.uname().machine
-    # FIXME: Make sure psutil.os.uname().machine returns this string as architecture
-    return mapping.get(a)
+    # FIXME: Make sure platform.machine() returns this string for architectures
+    return mapping.get(platform.machine())
+
+
+def get_local_platform() -> Optional[Platform]:
+    mapping = {"Linux": Platform.LINUX, "Windows": Platform.WINDOWS, "MacOS": Platform.MACOS, "iOS": Platform.IOS}
+    # FIXME: Make sure platform.system() returns this string for other platforms
+    return mapping.get(platform.system())

@@ -6,6 +6,7 @@ import logging
 import threading
 from pathlib import Path
 import socket
+import platform
 
 # third-party libs
 import zmq
@@ -15,8 +16,8 @@ import psutil
 from libpastis.proto import InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, \
                             TelemetryMsg, StopCoverageCriteria, DataMsg, EnvelopeMsg
 from libpastis.types import SeedType, Arch, FuzzingEngine, PathLike, ExecMode, CheckMode, CoverageMode, SeedInjectLoc, \
-                            LogLevel, State, AlertData
-from libpastis.utils import get_local_architecture
+                            LogLevel, State, AlertData, Platform
+from libpastis.utils import get_local_architecture, get_local_platform
 
 Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg, StopCoverageCriteria, DataMsg]
 
@@ -173,7 +174,7 @@ class NetworkAgent(object):
                     msg.coverage_edge, msg.coverage_path, msg.last_cov_update]
         elif topic == MessageType.HELLO:
             engs = [(FuzzingEngine(x), y) for x, y in zip(msg.engines, msg.versions)]
-            return [engs, Arch(msg.architecture), msg.cpus, msg.memory, msg.hostname]
+            return [engs, Arch(msg.architecture), msg.cpus, msg.memory, msg.hostname, Platform(msg.platform)]
         elif topic == MessageType.START:
             return [msg.binary_filename, msg.binary, FuzzingEngine(msg.engine), ExecMode(msg.exec_mode),
                     CheckMode(msg.check_mode), CoverageMode(msg.coverage_mode), SeedInjectLoc(msg.seed_location),
@@ -237,16 +238,21 @@ class BrokerAgent(NetworkAgent):
 
 class ClientAgent(NetworkAgent):
 
-    def send_hello(self, engines: List[Tuple[FuzzingEngine, str]], arch: Arch = None) -> bool:
+    def send_hello(self, engines: List[Tuple[FuzzingEngine, str]], arch: Arch = None, platform: Platform = None) -> bool:
         msg = HelloMsg()
         arch = get_local_architecture() if arch is None else arch
         if arch is None:
-            logging.error(f"current architecture: {psutil.os.uname().machine} is not supported")
+            logging.error(f"current architecture: {platform.machine()} is not supported")
+            return False
+        plfm = get_local_platform() if platform is None else platform
+        if plfm is None:
+            logging.error(f"current platform is not supported")
             return False
         msg.architecture = arch.value
         msg.cpus = psutil.cpu_count()
         msg.memory = psutil.virtual_memory().total
         msg.hostname = socket.gethostname()
+        msg.platform = plfm.value
         for eng, version in engines:
             msg.engines.append(eng.value)
             msg.versions.append(version)
@@ -369,7 +375,7 @@ class FileAgent(ClientAgent):
         if isinstance(msg, InputSeedMsg):
             msg = f"{SeedType(msg.type).name}: {msg.seed[:20]}.."
         elif isinstance(msg, HelloMsg):
-            msg = f"{msg.hostname}: {Arch(msg.architecture)} CPU:{msg.cpus} engines:{[FuzzingEngine(x).name for x in msg.engines]}"
+            msg = f"{msg.hostname}: {Platform(msg.platform)}({Arch(msg.architecture)}) CPU:{msg.cpus} engines:{[FuzzingEngine(x).name for x in msg.engines]}"
         elif isinstance(msg, TelemetryMsg):
             msg = f"{State(msg.state).name} exec/s: {msg.exec_per_sec} total:{msg.total_exec}"
         elif isinstance(msg, LogMsg):

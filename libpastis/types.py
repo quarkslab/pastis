@@ -17,6 +17,15 @@ class FuzzingEngine(Enum):
     TRITON = 1
 
 
+class Platform(Enum):
+    ANY = 0
+    LINUX = 1
+    WINDOWS = 2
+    MACOS = 3
+    ANDROID = 4
+    IOS = 5
+
+
 class SeedType(Enum):
     INPUT = 0
     CRASH = 1
