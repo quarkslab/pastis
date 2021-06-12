@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import logging
-from typing import Tuple
+from typing import Tuple, List
 import sys
 from pathlib import Path
 
 import inotify.adapters
 
 from libpastis.agent import BrokerAgent
-from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State
+from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 
@@ -18,12 +18,12 @@ def seed_received(cli_id: bytes, typ: SeedType, seed: bytes):
     logging.info(f"[{cli_id.hex()}] [SEED] {seed.hex()} ({typ.name})")
 
 
-def hello_received(cli_id: bytes, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):
+def hello_received(cli_id: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int):
     global clients
     if cli_id not in clients:
         logging.info(f"[broker] new client: {cli_id.hex()}")
         clients.add(cli_id)
-    logging.info(f"[{cli_id.hex()}] [HELLO] Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
+    logging.info(f"[{cli_id.hex()}] [HELLO] Arch:{arch.name} engines:{[x.name for x in engines]} (cpu:{cpus}, mem:{memory})")
 
 
 def log_received(cli_id: bytes, level: LogLevel, message: str):
@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 bts = file.read_bytes()
                 print(f"send: {filename}")
                 for cli in clients:
-                    agent.send_seed(cli, SeedType.INPUT, bts, FuzzingEngine.HONGGFUZZ)
+                    agent.send_seed(cli, SeedType.INPUT, bts)
 
 '''
 PYTHONPATH=. python3  ./tests/broker_fw_honggfuzz_seed.py /tmp/toto 

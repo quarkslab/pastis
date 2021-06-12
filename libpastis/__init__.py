@@ -1,4 +1,4 @@
 from .agent import FileAgent, BrokerAgent, ClientAgent
-from .utils import do_engine_support_coverage_strategy
+from .enginedesc import EngineConfiguration, FuzzingEngineDescriptor
 
 __version__ = "0.2"

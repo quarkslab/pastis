@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import logging
-from typing import Tuple
+from typing import Tuple, List
 
 
 from libpastis.agent import BrokerAgent
-from libpastis.types import SeedType, FuzzingEngine, LogLevel, Arch, State
+from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 
@@ -15,8 +15,8 @@ def seed_received(cli_id: bytes, typ: SeedType, seed: bytes):
     agent.send_seed(cli_id, typ, seed[::-1])
 
 
-def hello_received(cli_id: bytes, engines: Tuple[FuzzingEngine, str], arch: Arch, cpus: int, memory: int):
-    logging.info(f"[{cli_id.hex()}] [HELLO] Arch:{arch.name} engines:{[x[0].name for x in engines]} (cpu:{cpus}, mem:{memory})")
+def hello_received(cli_id: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int):
+    logging.info(f"[{cli_id.hex()}] [HELLO] Arch:{arch.name} engines:{[x.name for x in engines]} (cpu:{cpus}, mem:{memory})")
 
 
 def log_received(cli_id: bytes, level: LogLevel, message: str):

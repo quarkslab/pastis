@@ -5,12 +5,12 @@ import logging
 from typing import List
 
 from libpastis.agent import ClientAgent
-from libpastis.types import SeedType, FuzzingEngine, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
+from libpastis.types import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(message)s")
 
 
-def start_received(fname: str, binary: bytes, engine: FuzzingEngine, exmode: ExecMode, chkmode: CheckMode,
+def start_received(fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, chkmode: CheckMode,
                    covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
     logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     agent.register_stop_callback(stop_received)
 
     agent.start()
-    agent.send_hello([(FuzzingEngine.TRITON, "v0.8")])
+    agent.send_hello([FuzzingEngineInfo("TRITON", "v0.8", "pastistriton")])
     logging.info("Hello sent!")
     # agent.run()
     # exit(0)
