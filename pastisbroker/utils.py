@@ -2,48 +2,27 @@
 import logging
 from pathlib import Path
 from typing import Optional, Tuple
+import importlib
+import inspect
 
 # third-party imports
 import lief
 
 # local imports
-from libpastis.types import Arch, FuzzingEngine, ExecMode, Platform
+from libpastis.types import Arch, ExecMode, Platform
+from libpastis.enginedesc import FuzzingEngineDescriptor
 
 
 HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
 
 
-def read_binary_infos(file: Path) -> Optional[Tuple[Platform, Arch, FuzzingEngine, ExecMode]]:
+def read_binary_infos(file: Path) -> Optional[Tuple[Platform, Arch]]:
     p = lief.parse(str(file))
     if not p:
         return None
     if not isinstance(p, lief.ELF.Binary):
         logging.warning(f"binary {file} not supported (only ELF at the moment)")
         return None
-
-    # Try to find intrinsic in program if so it is a good one!
-    good = False
-    honggfuzz = False
-    for f in p.functions:
-        name = f.name
-        if '__klocwork' in name:
-            good = True
-        if '__sanitizer' in name:
-            honggfuzz = True
-    if not good:
-        logging.debug(f"ignore binary: {file} (does not contain klocwork intrinsics)")
-        return None
-
-    # Try to find the Honggfuzz PERSISTENT magic in binary
-    exmode = ExecMode.SINGLE_EXEC  # by default single_exec
-    sections = {x.name: x for x in p.sections}
-    if '.rodata' in sections:
-        rodata_content = bytearray(sections['.rodata'].content)
-        if HF_PERSISTENT_SIG in rodata_content:
-            exmode = ExecMode.PERSISTENT
-    else:
-        if 'HF_ITER' in (x.name for x in p.imported_functions):  # More dummy method
-            exmode = ExecMode.PERSISTENT
 
     # Determine the architecture of the binary
     mapping = {lief.ELF.ARCH.x86_64: Arch.X86_64,
@@ -60,7 +39,21 @@ def read_binary_infos(file: Path) -> Optional[Tuple[Platform, Arch, FuzzingEngin
     fmt = mapping_elf.get(p.format)
 
     if arch and fmt:
-        engine = FuzzingEngine.HONGGFUZZ if honggfuzz else FuzzingEngine.TRITON
-        return fmt, arch, engine, exmode
+        return fmt, arch
     else:
         return None
+
+
+def load_engine_descriptor(py_module: str) -> Optional[FuzzingEngineDescriptor]:
+    try:
+        mod = importlib.import_module(py_module)
+        mems = inspect.getmembers(mod, lambda x: inspect.isclass(x) and issubclass(x, FuzzingEngineDescriptor) and x != FuzzingEngineDescriptor)
+        if not mems:
+            logging.error(f"can't find FuzzingEngineDescriptor in module {py_module}")
+            return None
+        else:
+            if len(mems) > 1:
+                logging.warning(f"module {py_module} contain multiple subclass of {FuzzingEngineDescriptor} (take first)")
+            return mems[0][1]
+    except ImportError:
+        logging.error(f"cannot import py_module: {py_module}")

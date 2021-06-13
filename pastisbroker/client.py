@@ -6,7 +6,8 @@ import time
 import inspect
 
 # Third-party imports
-from libpastis.types import FuzzingEngine, Arch, LogLevel, ExecMode, CheckMode, CoverageMode, SeedType, Platform
+from libpastis.types import FuzzingEngineInfo, Arch, LogLevel, ExecMode, CheckMode, CoverageMode, SeedType, Platform
+from libpastis import FuzzingEngineDescriptor
 
 
 class PastisClient(object):
@@ -15,7 +16,7 @@ class PastisClient(object):
     a client connected to the broker.
     """
 
-    def __init__(self, id: int, netid: bytes, engines: List[Tuple[FuzzingEngine, str]], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
+    def __init__(self, id: int, netid: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
         self.id = id
         self.netid = netid
         self.engines = engines
@@ -29,7 +30,7 @@ class PastisClient(object):
 
         # Runtime properties
         self._running = False
-        self._engine = None
+        self._engine = None  # FuzzingEngineDescriptor
         self._coverage_mode = None
         self._exec_mode = None
         self._check_mode = None
@@ -73,13 +74,8 @@ class PastisClient(object):
 
     @property
     def strid(self):
-        return f"CLI-{self.id}{self._engine_short()}"
+        return f"CLI-{self.id}-{self._engine.SHORT_NAME if self._engine else 'N/A'}"
 
-    def _engine_short(self):
-        if self._engine:
-            return {FuzzingEngine.HONGGFUZZ: "-HF", FuzzingEngine.TRITON: "-TT"}[self._engine]
-        else:
-            return ""
 
     def is_new_seed(self, seed: bytes) -> bool:
         """
@@ -133,16 +129,16 @@ class PastisClient(object):
         self._exec_mode = None
         self._check_mode = None
 
-    def set_running(self, engine: FuzzingEngine, covmode: CoverageMode, exmode: ExecMode, ckmode: CheckMode):
+    def set_running(self, engine: FuzzingEngineDescriptor, covmode: CoverageMode, exmode: ExecMode, ckmode: CheckMode):
         self._running = True
         self._engine = engine
         self._coverage_mode = covmode
         self._exec_mode = exmode
         self._check_mode = ckmode
 
-    def is_supported_engine(self, engine: FuzzingEngine) -> bool:
-        for e, v in self.engines:
-            if e == engine:
+    def is_supported_engine(self, engine: FuzzingEngineDescriptor) -> bool:
+        for e in self.engines:
+            if e.name == engine.NAME:
                 return True
         return False
 
@@ -150,13 +146,13 @@ class PastisClient(object):
         return {
             "id": self.id,
             "strid": self.strid,
-            "engines": [x[0].name for x in self.engines],
+            "engines": [x.name for x in self.engines],
             "arch": self.arch.name,
             "cpus": self.cpus,
             "memory": self.memory,
             "hostname": self.hostname,
             "platform": self.platform.name,
-            "engine": self._engine.name,
+            "engine": self._engine.NAME if self._engine else "",
             "coverage_mode": self._coverage_mode.name,
             "exec_mode": self._exec_mode.name,
             "check_mode": self._check_mode.name,
