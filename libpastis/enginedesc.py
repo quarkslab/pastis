@@ -1,6 +1,6 @@
 # builtin imports
 from pathlib import Path
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 
 
@@ -22,7 +22,7 @@ class FuzzingEngineDescriptor(object):
     VERSION = "1.0"
 
     @staticmethod
-    def accept_file(binary_file: Path) -> Union[bool, Tuple[bool, ExecMode]]:
+    def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode]]:
         raise NotImplementedError()
 
     @staticmethod
