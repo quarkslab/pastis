@@ -321,7 +321,7 @@ class PastisBroker(BrokerAgent):
         exmode = ExecMode.SINGLE_EXEC
         engine_args = ""
         engines = Counter({e: 0 for e in self.engines})
-        engines.update(c.engine for c in self.clients.values() if c.is_running())  # Count instances of each engine running
+        engines.update(c.engine.NAME for c in self.clients.values() if c.is_running())  # Count instances of each engine running
         for eng, _ in engines.most_common()[::-1]:
             eng_desc = self.engines[eng]
             # If the engine is not supported by the client continue
