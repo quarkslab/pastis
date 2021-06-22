@@ -55,7 +55,7 @@ def online(host: str, port: int):
     pastis.run(wait_idle=True)
 
 
-@cli.command()
+@cli.command(context_settings=dict(show_default=True))
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
 @click.option('-c', "--count", type=int, default=0, help="Number of execution")
