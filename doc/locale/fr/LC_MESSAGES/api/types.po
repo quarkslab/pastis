@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libpastis \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-10 17:53+0100\n"
+"POT-Creation-Date: 2021-06-23 10:18+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,20 +21,20 @@ msgstr ""
 msgid "Types"
 msgstr ""
 
-#: libpastis.types.AlertData:1 of
+#: libpastis.types.AlertData:1 libpastis.types.FuzzingEngineInfo:1 of
 msgid "Bases: :class:`object`"
 msgstr ""
 
 #: libpastis.types.Arch:1 libpastis.types.CheckMode:1
-#: libpastis.types.ExecMode:1 libpastis.types.FuzzingEngine:1
-#: libpastis.types.LogLevel:1 libpastis.types.SeedInjectLoc:1
+#: libpastis.types.ExecMode:1 libpastis.types.LogLevel:1
+#: libpastis.types.Platform:1 libpastis.types.SeedInjectLoc:1
 #: libpastis.types.SeedType:1 libpastis.types.State:1 of
 msgid "Bases: :class:`enum.Enum`"
 msgstr ""
 
 #: libpastis.types.Arch:1 libpastis.types.CheckMode:1
 #: libpastis.types.CoverageMode:1 libpastis.types.ExecMode:1
-#: libpastis.types.FuzzingEngine:1 libpastis.types.LogLevel:1
+#: libpastis.types.LogLevel:1 libpastis.types.Platform:1
 #: libpastis.types.SeedInjectLoc:1 libpastis.types.SeedType:1
 #: libpastis.types.State:1 of
 msgid "An enumeration."
@@ -48,25 +48,24 @@ msgstr ""
 msgid "Utility functions"
 msgstr "Fonctions utilitaires"
 
-#: libpastis.utils.do_engine_support_coverage_strategy:1 of
-msgid ""
-"Utility function to check whether the fuzzing engine support different "
-"coverage strategy"
-msgstr "Fonction utilitaire qui vérifie que le moteur de fuzzing supporte"
-"différentes stratégies de couverture"
+#~ msgid ""
+#~ "Utility function to check whether the"
+#~ " fuzzing engine support different coverage"
+#~ " strategy"
+#~ msgstr ""
+#~ "Fonction utilitaire qui vérifie que le"
+#~ " moteur de fuzzing supportedifférentes "
+#~ "stratégies de couverture"
 
-#: libpastis.utils.do_engine_support_coverage_strategy of
-msgid "Parameters"
-msgstr "Paramètres"
+#~ msgid "Parameters"
+#~ msgstr "Paramètres"
 
-#: libpastis.utils.do_engine_support_coverage_strategy:6 of
-msgid "engine to check"
-msgstr "moteur à vérifier"
+#~ msgid "engine to check"
+#~ msgstr "moteur à vérifier"
 
-#: libpastis.utils.do_engine_support_coverage_strategy of
-msgid "Returns"
-msgstr "Renvoi"
+#~ msgid "Returns"
+#~ msgstr "Renvoi"
 
-#: libpastis.utils.do_engine_support_coverage_strategy:7 of
-msgid "boolean if engine support variadic coverage strategies"
-msgstr "booléen vrai si le moteur supporte différentes stratégies de couverture"
+#~ msgid "boolean if engine support variadic coverage strategies"
+#~ msgstr "booléen vrai si le moteur supporte différentes stratégies de couverture"
+
