@@ -246,7 +246,7 @@ class PastisDSE(object):
            self.dse.callback_manager.register_probe(UAFSanitizer())
            self.dse.callback_manager.register_probe(NullDerefSanitizer())
            self.dse.callback_manager.register_probe(FormatStringSanitizer())
-           self.dse.callback_manager.register_probe(IntegerOverflowSanitizer())
+           #self.dse.callback_manager.register_probe(IntegerOverflowSanitizer())
            # TODO Buffer overflow
 
         elif chkmode == CheckMode.ALERT_ONLY:
