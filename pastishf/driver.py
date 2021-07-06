@@ -1,22 +1,16 @@
 # builtin imports
-import inotify.adapters
-from inotify.calls import InotifyError
 import logging
-import os
 from pathlib import Path
-import signal
 import stat
-import subprocess
 import threading
 import time
 import hashlib
-import re
-from typing import Callable, List, Dict, Union
+from typing import List, Union
 
 # Third party imports
-from libpastis import FileAgent, ClientAgent
-from libpastis.types import Arch, CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
-                            PathLike, LogLevel, AlertData
+from libpastis import ClientAgent
+from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
+                            LogLevel, AlertData
 
 try:  # Make the klocwork support optional
     from klocwork import KlocworkReport
@@ -25,149 +19,25 @@ except ImportError:
     KLOCWORK_SUPPORTED = False
 
 # Local imports
-import hfwrapper
-from hfwrapper.replay import Replay
+import pastishf
+from pastishf.replay import Replay
+from pastishf.honggfuzz import HonggfuzzProcess
+from pastishf.workspace import Workspace
+
 
 # Inotify logs are very talkative, set them to ERROR
-for logger in (logging.getLogger(x) for x in ["inotify.adapters", "inotify", "inotify.calls"]):
+for logger in (logging.getLogger(x) for x in ["watchdog.observers.inotify_buffer", 'watchdog.observers', "watchdog"]):
     logger.setLevel(logging.ERROR)
 
 
-class HonggfuzzNotFound(Exception):
-    """ Issue raised on """
-    pass
+class HonggfuzzDriver:
 
+    def __init__(self, agent: ClientAgent, telemetry_frequency: int = 30):
 
-def check_honggfuzz_path() -> None:
-    return os.environ.get('HFUZZ_PATH') is not None
-
-
-def hash_seed(seed: bytes):
-    return hashlib.md5(seed).hexdigest()
-
-
-class ManagedProcess:
-
-    def __init__(self):
-        self.__process = None
-
-    @property
-    def instanciated(self):
-        return self.__process is not None
-
-    def start(self, command: str, workspace: str = '.'):
-        logging.debug(f'Starting process...')
-        logging.debug(f'\tCommand: {command}')
-        logging.debug(f'\tWorkspace: {workspace}')
-
-        # Remove empty strings when converting the command to a list.
-        command = list(filter(None, command.split(' ')))
-
-        # Create a new fuzzer process and set it apart into a new process group.
-        self.__process = subprocess.Popen(command, cwd=str(workspace), preexec_fn=os.setsid)
-
-        logging.debug(f'Process pid: {self.__process.pid}')
-
-    def stop(self):
-        if self.__process:
-            logging.debug(f'Stopping process with pid: {self.__process.pid}')
-            os.killpg(os.getpgid(self.__process.pid), signal.SIGTERM)
-        else:
-            logging.debug(f"Honggfuzz process seem's already killed")
-
-    def wait(self):
-        while not self.instanciated:
-            time.sleep(0.1)
-        self.__process.wait()
-
-
-class HonggfuzzProcess:
-
-    def __init__(self, path: PathLike):
-        self.__path = Path(path) / 'honggfuzz'
-        self.__process = ManagedProcess()
-
-        if not self.__path.exists():
-            raise Exception('Invalid Honggfuzz path!')
-
-    def start(self, target: str, target_arguments: str, target_workspace: Dict, exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
-        # Build target command line.
-        target_cmdline = f"{target} {target_arguments}"
-
-        # Build fuzzer arguments.
-        # NOTE: Assuming the target receives inputs from stdin.
-        hfuzz_arguments = ' '.join([
-            f"--statsfile {target_workspace['stats']}/statsfile.log",
-            f"--stdin_input" if seed_inj == SeedInjectLoc.STDIN else "",
-            f"--persistent" if exmode == ExecMode.PERSISTENT else "",
-            re.sub(r"\s", " ", engine_args),  # Any arguments coming right from the broker (remove \r\n)
-            f"--logfile logfile.log",
-            f"--sanitizers_del_report true",
-            f"--input {target_workspace['inputs']}",
-            f"--dynamic_input {target_workspace['dynamic-inputs']}",
-            f"--output {target_workspace['coverage']}",
-            f"--crashdir {target_workspace['crashes']}",
-            f"--workspace {target_workspace['main']}"
-        ])
-
-        # Build fuzzer command line.
-        hfuzz_cmdline = f'{self.__path} {hfuzz_arguments} -- {target_cmdline}'
-
-        logging.info(f"Run Honggfuzz with: {hfuzz_cmdline}")
-
-        # Start fuzzer.
-        self.__process.start(hfuzz_cmdline, target_workspace['main'])
-
-    def stop(self):
-        self.__process.stop()
-
-    def wait(self):
-        self.__process.wait()
-
-
-class DirectoryEventWatcher:
-
-    def __init__(self, path: Path, event_type: str, callback: Callable):
-        self.__path = path
-        self.__event_type = event_type
-        self.__callback = callback
-        self.__inotify = inotify.adapters.Inotify()
-        self.__thread = None
-        self.__terminate = False
-
-    def start(self):
-        self.__terminate = False
-
-        # Start inotify here
-        self.__inotify.add_watch(str(self.__path))
-
-        self.__thread = threading.Thread(target=self.__handler, daemon=True)
-        self.__thread.start()
-
-    def stop(self):
-        self.__terminate = True
-
-        if self.__thread is not None:
-            self.__thread.join()
-
-    def __handler(self):
-        for event in self.__inotify.event_gen():
-            if self.__terminate:
-                break
-
-            if event is not None:
-                (header, type_names, watch_path, filename) = event
-
-                if self.__event_type in type_names:
-                    self.__callback(Path(watch_path) / filename)
-
-        self.__inotify.remove_watch(str(self.__path))
-
-
-class Honggfuzz:
-
-    def __init__(self, agent: ClientAgent, telemetry_frequency: int=30):
+        # Internal objects
         self._agent = agent
+        self.workspace = Workspace()
+        self.honggfuzz = HonggfuzzProcess()
 
         # Parameters received through start_received
         self.__exec_mode = None   # SINGLE_RUN, PERSISTENT
@@ -175,26 +45,16 @@ class Honggfuzz:
         self.__seed_inj = None    # STDIN or ARGV
         self.__report = None      # Klocwork report if supported
 
-        # File watcher threads
-        self.__coverage_watcher = None
-        self.__crashes_watcher = None
-        self.__stats_watcher = None
-
-        self.__hfuzz_path = os.environ.get('HFUZZ_PATH')
-        if self.__hfuzz_path is None:
-            raise HonggfuzzNotFound()
-        self.__hfuzz_version = '2.1'
-        self.__hfuzz_workspace = Path(os.environ.get('HFUZZ_WS', '/tmp/hfuzz_workspace'))
-        self.__hfuzz_process = HonggfuzzProcess(self.__hfuzz_path)
-
-        self.__target_id = self.__generate_id()
+        # Target data
         self.__target_path = None
         self.__target_args = None  # Kept for replay
-        self.__target_workspace = None
-        self.__setup_target_workspace()
 
         self.__setup_agent()
-        self.__setup_watchers()
+
+        # Configure hookds on workspace
+        self.workspace.add_creation_hook(self.workspace.corpus_dir, self.__send_seed)
+        self.workspace.add_creation_hook(self.workspace.crash_dir, self.__send_crash)
+        self.workspace.add_file_modification_hook(self.workspace.stats_dir, self.__send_telemetry)
 
         # Telemetry frequency
         self._tel_frequency = telemetry_frequency
@@ -209,35 +69,35 @@ class Honggfuzz:
         self._queue_to_send = []
         self._started = False
 
+    @staticmethod
+    def hash_seed(seed: bytes):
+        return hashlib.md5(seed).hexdigest()
+
     def start(self, bin_name: str, binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
-        self.__target_path = self.__target_workspace['target'] / bin_name
+        self.__target_path = self.workspace.target_dir / bin_name
         self.__target_path.write_bytes(binary)
         self.__target_path.chmod(stat.S_IRWXU)  # Change target mode to execute.
         self.__target_args = argv
 
-        # self.__setup_watchers()
-
-        if not self.__start_watchers():
-            self.dual_log(LogLevel.CRITICAL, "cannot setup inotify watches")
-            logging.critical("make sure the max_user_watches limit is not reached (sysctl fs.inotify)")
-            # Remove the binary create just before
-            self.__target_path.unlink()
-            self.dual_log(LogLevel.INFO, "Ready to accept a new start message")
-            return
+        self.workspace.start()  # Start looking at directories
 
         logging.info("Start process")
-        self.__hfuzz_process.start(self.__target_path.absolute(), " ".join(argv), self.__target_workspace, exmode, seed_inj, engine_args)
+        self.honggfuzz.start(self.__target_path.absolute(),
+                             " ".join(argv),
+                             self.workspace,
+                             exmode == ExecMode.PERSISTENT,
+                             seed_inj == SeedInjectLoc.STDIN,
+                             engine_args)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
         self._replay_thread = threading.Thread(target=self.replay_worker, daemon=True)
         self._replay_thread.start()
 
-
     def stop(self):
-        self.__hfuzz_process.stop()
-        self.__stop_watchers()
+        self.honggfuzz.stop()
+        self.workspace.stop()
         self._started = False  # should stop the replay thread
 
     def replay_worker(self):
@@ -255,8 +115,7 @@ class Honggfuzz:
         return self._started
 
     def add_seed(self, seed: bytes):
-        # Write seed to disk.
-        seed_path = self.__target_workspace['dynamic-inputs'] / f'seed-{self.__generate_id()}'
+        seed_path = self.workspace.dynamic_input_dir / f"seed-{hashlib.md5(seed).hexdigest()}"
         seed_path.write_bytes(seed)
 
     def init_agent(self, remote: str = "localhost", port: int = 5555):
@@ -264,64 +123,15 @@ class Honggfuzz:
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", hfwrapper.__version__, "hfbroker")])
+        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", pastishf.__version__, "hfbroker")])
 
     def run(self):
-        self.__hfuzz_process.wait()
-
-    def __setup_target_workspace(self):
-        target_main_workspace = self.__hfuzz_workspace / f'{self.__target_id}'
-
-        # Make sure there's no directory for the job id.
-        if target_main_workspace.exists():
-            raise Exception('Target workspace already exists.')
-
-        self.__target_workspace = {
-            'main': target_main_workspace,
-            'target': target_main_workspace / 'target',
-            'inputs': target_main_workspace / 'inputs' / 'initial',
-            'dynamic-inputs': target_main_workspace / 'inputs' / 'dynamic',
-            'outputs': target_main_workspace / 'outputs',
-            'coverage': target_main_workspace / 'outputs' / 'coverage',
-            'crashes': target_main_workspace / 'outputs' / 'crashes',
-            'stats': target_main_workspace / 'stats',
-        }
-
-        for _, path in self.__target_workspace.items():
-            path.mkdir(parents=True)
+        self.honggfuzz.wait()
 
     def __setup_agent(self):
         # Register callbacks.
         self._agent.register_seed_callback(self.__seed_received)
         self._agent.register_stop_callback(self.__stop_received)
-
-    def __setup_watchers(self):
-        self.__coverage_watcher = DirectoryEventWatcher(self.__target_workspace['coverage'], 'IN_CLOSE_WRITE', self.__send_seed)
-        self.__crashes_watcher = DirectoryEventWatcher(self.__target_workspace['crashes'], 'IN_CLOSE_WRITE', self.__send_crash)
-        self.__stats_watcher = DirectoryEventWatcher(self.__target_workspace['stats'], 'IN_MODIFY', self.__send_telemetry)
-
-    def __start_watchers(self) -> bool:
-        try:
-            self.__coverage_watcher.start()
-            self.__crashes_watcher.start()
-            self.__stats_watcher.start()
-            return True
-        except InotifyError as e:
-            # If this issue is raised sysctl fs.inotify to see limits set
-            # lsof | grep inotify | wc -l  to get the number of watchers/instances
-            # sysctl -n -w fs.inotify.max_user_watches=16384  to raise the number of watches
-            # sysctl -n -w fs.inotify.max_user_instances=512  to raise the number of instances
-            logging.error(f"Cannot setup inotify {e}")
-            return False
-
-    def __stop_watchers(self):
-        self.__coverage_watcher.stop()
-        self.__crashes_watcher.stop()
-        self.__stats_watcher.stop()
-
-    @staticmethod
-    def __generate_id():
-        return int(time.time())
 
     def __send_seed(self, filename: Path):
         self.__send(filename, SeedType.INPUT)
@@ -333,7 +143,7 @@ class Honggfuzz:
         self._tot_seeds += 1
         file = Path(filename)
         raw = file.read_bytes()
-        h = hash_seed(raw)
+        h = self.hash_seed(raw)
         logging.debug(f'[{typ.name}] Sending new: {h} [{self._tot_seeds}]')
         if h not in self._seed_recvs:
             self._agent.send_seed(typ, raw)
@@ -343,12 +153,11 @@ class Honggfuzz:
 
     def __check_seed_alert(self, filename: Path, is_crash: bool) -> bool:
         p = Path(filename)
-        #logging.debug(f"Start replaying {filename}")
         # Only rerun the seed if in alert only mode and a klocwork report was provided
         if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
 
             # Rerun the program with the seed
-            run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.__target_workspace['target']))
+            run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
 
             if run.is_hf_iter_crash():
                 self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
@@ -410,16 +219,18 @@ class Honggfuzz:
                 coverage_block = int(stats[8])      # aka block_cov.
 
                 # NOTE: `cycle` and `coverage_path` does not apply for Honggfuzz.
-                self._agent.send_telemetry(state=state, exec_per_sec=exec_per_sec,
-                                            total_exec=total_exec, timeout=timeout,
-                                            coverage_block=coverage_block,
-                                            coverage_edge=coverage_edge,
-                                            last_cov_update=last_cov_update)
+                self._agent.send_telemetry(state=state,
+                                           exec_per_sec=exec_per_sec,
+                                           total_exec=total_exec,
+                                           timeout=timeout,
+                                           coverage_block=coverage_block,
+                                           coverage_edge=coverage_edge,
+                                           last_cov_update=last_cov_update)
             except:
                 logging.error(f'Error retrieving stats!')
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, chkmode: CheckMode,
-                         _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
+                       _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
@@ -429,7 +240,7 @@ class Honggfuzz:
             logging.error(f"Wrong fuzzing engine received {engine.name} while I am Honggfuzz")
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine received {engine.name} can't do anything")
             return
-        if engine.version != hfwrapper.__version__:
+        if engine.version != pastishf.__version__:
             logging.error(f"Wrong fuzzing engine version {engine.version} received")
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine version {engine.version} do nothing")
             return
@@ -449,7 +260,7 @@ class Honggfuzz:
         self.start(fname, binary, argv, exmode, seed_inj, engine_args)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
-        h = hash_seed(seed)
+        h = self.hash_seed(seed)
         logging.info(f"[SEED] received  {h} ({typ.name})")
         self._seed_recvs.add(h)
         self.add_seed(seed)
@@ -481,5 +292,8 @@ class Honggfuzz:
         p = Path(file)
         logging.info(f"add initial seed {file.name}")
         # Write seed to disk.
-        seed_path = self.__target_workspace['inputs'] / p.name
+        seed_path = self.workspace.input_dir / p.name
         seed_path.write_bytes(p.read_bytes())
+
+    def honggfuzz_available(self):
+        return self.honggfuzz.hfuzz_environ_check()

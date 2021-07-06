@@ -19,7 +19,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngineInfo
 
 # Local imports
-from hfwrapper import Honggfuzz, HonggfuzzNotFound, __version__, check_honggfuzz_path
+from pastishf import HonggfuzzDriver, __version__
 
 
 coloredlogs.install(level=logging.DEBUG,
@@ -43,9 +43,9 @@ def cli():
 @click.option('-tf', '--telemetry-frequency', type=int, default=30, help='Frequency at which send telemetry (in sec)')
 def online(host: str, port: int, telemetry_frequency: int):
     agent = ClientAgent()
-    try:
-        hfuzz = Honggfuzz(agent, telemetry_frequency=telemetry_frequency)
-    except HonggfuzzNotFound:
+
+    hfuzz = HonggfuzzDriver(agent, telemetry_frequency=telemetry_frequency)
+    if not hfuzz.honggfuzz_available():
         logging.error("Cannot find HFUZZ_PATH environement variable")
         return
 
@@ -81,9 +81,9 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
     agent = FileAgent(level=logging.DEBUG, log_file=logfile)
 
     # Instanciate the pastis that will register the appropriate callbacks
-    try:
-        honggfuzz = Honggfuzz(agent)
-    except HonggfuzzNotFound:
+
+    honggfuzz = HonggfuzzDriver(agent)
+    if not honggfuzz.honggfuzz_available():
         logging.error("Cannot find HFUZZ_PATH environement variable")
         return
 
@@ -111,8 +111,4 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
 
 
 if __name__ == "__main__":
-    if check_honggfuzz_path():
-        cli()
-    else:
-        print("can't find Honggfuzz binary, please provide HFUZZ_PATH environment variable")
-        sys.exit(1)
+    cli()
