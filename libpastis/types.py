@@ -12,7 +12,6 @@ class State(Enum):
     IDLE = 1
 
 
-
 class Platform(Enum):
     ANY = 0
     LINUX = 1
@@ -29,8 +28,15 @@ class SeedType(Enum):
 
 
 class ExecMode(Enum):
-    SINGLE_EXEC = 0
-    PERSISTENT = 1
+    AUTO_EXEC = 0
+    SINGLE_EXEC = 1
+    PERSISTENT = 2
+
+
+class FuzzMode(Enum):
+    AUTO_FUZZ = 0
+    INSTRUMENTED = 1
+    BINARY_ONLY = 2
 
 
 class CheckMode(Enum):
