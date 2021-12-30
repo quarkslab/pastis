@@ -3,14 +3,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="aflwrapper",
+    name="pastis-aflpp-broker-addon",
     version="0.2",
-    description="AFL++ wrapper",
+    description="AFLPP wrapper - Broker Addon",
     packages=find_packages(),
     install_requires=[
-        "inotify",
-        "coloredlogs",
-        "click"
+        "lief"        # Should install whether as client or broker !
     ],
-    scripts=['bin/pastis-afl']
 )
