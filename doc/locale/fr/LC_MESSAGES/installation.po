@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
-# This file is distributed under the same license as the HF-Wrapper package.
+# This file is distributed under the same license as the Pastis-HF package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: HF-Wrapper \n"
+"Project-Id-Version: Pastis-HF \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -18,16 +18,16 @@ msgstr ""
 "Generated-By: Babel 2.9.0\n"
 
 #: ../../installation.rst:2
-msgid "HF-Wrapper Installation"
+msgid "Pastis-HF Installation"
 msgstr ""
 
 #: ../../installation.rst:4
 msgid ""
-"Installing ``hf-wrapper`` works by providing the honggfuzz binary path "
+"Installing ``pastis-hf`` works by providing the honggfuzz binary path "
 "through environment variable. It thus has to be installed before the "
 "Python module."
 msgstr ""
-"L'utilisation de ``hf-wrapper`` fonctionne en fournissant le chemin "
+"L'utilisation de ``pastis-hf`` fonctionne en fournissant le chemin "
 "d'installation de honggfuzz via une variable d'environnement. Ce module "
 "s'installe ensuite comme n'importe quel module Python."
 
@@ -44,23 +44,23 @@ msgstr ""
 #: ../../installation.rst:18
 msgid ""
 "The only tricky part is the export of the honggfuzz directory as "
-"environment variable to make it discoverable by ``hf-wrapper``. At the "
+"environment variable to make it discoverable by ``pastis-hf``. At the "
 "moment the module does not intent to find automatically the honggfuzz "
 "binary."
 msgstr ""
 "La seule subtilité est l'export du répertoire de honggfuzz comme "
-"variable d'environnement pour le rendre trouvable par ``hf-wrapper``. Pour "
+"variable d'environnement pour le rendre trouvable par ``pastis-hf``. Pour "
 "le moment aucune détection automatique n'est faite pour essayer de trouver"
 " honggfuzz sans cet export."
 
 #: ../../installation.rst:24
-msgid "Installing HF-Wrapper"
-msgstr "Installer HF-Wrapper"
+msgid "Installing Pastis-HF"
+msgstr "Installer Pastis-HF"
 
 #: ../../installation.rst:26
 msgid ""
 "The only external dependency is ``libpastis``. It thus need to be "
-"installed first (see appropriate section). Then getting in the hf-wrapper"
+"installed first (see appropriate section). Then getting in the pastis-hf"
 " directory and install the module with:"
 msgstr ""
 "La seule dépendance externe est ``libpastis``. Cela requiert de "

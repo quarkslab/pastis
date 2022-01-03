@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
-# This file is distributed under the same license as the HF-Wrapper package.
+# This file is distributed under the same license as the Pastis-HF package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: HF-Wrapper \n"
+"Project-Id-Version: Pastis-HF \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -23,12 +23,12 @@ msgstr "Utilisation de pastis-honggfuzz"
 
 #: ../../usage.rst:6
 msgid ""
-"The program ``pastis-honggfuzz`` is the main binary using the hf-wrapper "
+"The program ``pastis-honggfuzz`` is the main binary using the pastis-hf "
 "library to interact with the broker. It can either be launched locally in"
 " offline mode or with the broker in an online mode."
 msgstr ""
 "Le programme ``pastis-honggfuzz`` est le programme principal utilisant la"
-" bibliothèque hf-wrapper pour interagir avec le broker. Il peut être "
+" bibliothèque pastis-hf pour interagir avec le broker. Il peut être "
 "lancé localement en mode 'offline' ou avec le broker en mode 'online'."
 
 #: ../../usage.rst:11
