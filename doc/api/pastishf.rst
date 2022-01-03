@@ -15,7 +15,7 @@ seed.
     from pathlib import Path
     from libpastis import FileAgent
     from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngine
-    from hfwrapper import Honggfuzz, HonggfuzzNotFound
+    from pastishf import HonggfuzzProcess, HonggfuzzNotFound
 
     # Create a dummy FileAgent
     agent = FileAgent(level=logging.DEBUG, log_file=logfile)
@@ -25,7 +25,7 @@ seed.
 
     # Instanciate the pastis that will register the appropriate callbacks
     try:
-        honggfuzz = Honggfuzz(agent)
+        honggfuzz = HonggfuzzProcess(agent)
     except HonggfuzzNotFound:
         logging.error("Cannot find HFUZZ_PATH environement variable")
         sys.exit(1)
@@ -51,10 +51,11 @@ seed.
         honggfuzz.stop()
 
 
-------------
+``pastishf.Honggfuzz``
+----------------------
 
 
-.. autoclass:: hfwrapper.Honggfuzz
+.. autoclass:: pastishf.Honggfuzz
     :members:
     :show-inheritance:
     :inherited-members:

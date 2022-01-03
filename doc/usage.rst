@@ -3,7 +3,7 @@
 pastis-honggfuzz usage
 ======================
 
-The program ``pastis-honggfuzz`` is the main binary using the hf-wrapper library to interact
+The program ``pastis-honggfuzz`` is the main binary using the pastis-hf library to interact
 with the broker. It can either be launched locally in offline mode or with the broker in an
 online mode.
 
