@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
-# This file is distributed under the same license as the HF-Wrapper package.
+# This file is distributed under the same license as the Pastis-HF package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: HF-Wrapper \n"
+"Project-Id-Version: Pastis-HF \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -30,6 +30,6 @@ msgid "Python API"
 msgstr "API Python"
 
 #: ../../api.rst:4
-msgid "HF-wrapper API"
-msgstr "API HF-wrapper"
+msgid "Pastis-HF API"
+msgstr "API Pastis-HF"
 

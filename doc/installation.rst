@@ -1,7 +1,7 @@
-HF-Wrapper Installation
+Pastis-HF Installation
 =======================
 
-Installing ``hf-wrapper`` works by providing the honggfuzz binary path through
+Installing ``pastis-hf`` works by providing the honggfuzz binary path through
 environment variable. It thus has to be installed before the Python module.
 
 Installing Honggfuzz
@@ -17,15 +17,15 @@ Compiling the Honggfuzz tailored for PASTIS is as simple as:
     $ echo "export HFUZZ_PATH=$PWD" >> ~/.profile
 
 The only tricky part is the export of the honggfuzz directory as environment variable to make
-it discoverable by ``hf-wrapper``. At the moment the module does not intent to find automatically
+it discoverable by ``pastis-hf``. At the moment the module does not intent to find automatically
 the honggfuzz binary.
 
 
-Installing HF-Wrapper
+Installing Pastis-HF
 ---------------------
 
 The only external dependency is ``libpastis``. It thus need to be installed first (see appropriate
-section). Then getting in the hf-wrapper directory and install the module with:
+section). Then getting in the pastis-hf directory and install the module with:
 
 .. code-block:: bash
 
