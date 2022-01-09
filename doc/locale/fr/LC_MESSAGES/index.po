@@ -1,12 +1,12 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
-# This file is distributed under the same license as the HF-Wrapper package.
+# This file is distributed under the same license as the Pastis-HF package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: HF-Wrapper \n"
+"Project-Id-Version: Pastis-HF \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 09:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -34,12 +34,12 @@ msgid "Python API"
 msgstr "API Python"
 
 #: ../../index.rst:2
-msgid "HF-Wrapper documentation"
-msgstr "Documentation de HF-Wrapper"
+msgid "Pastis-HF documentation"
+msgstr "Documentation de Pastis-HF"
 
 #: ../../index.rst:4
 msgid ""
-"**Hf-Wrapper** is a Python API to run ``honggfuzz`` via Python. More "
+"**Pastis-HF** is a Python API to run ``honggfuzz`` via Python. More "
 "specifically, this module built for the PASTIS project, interact with a "
 "custom version of honggfuzz allowing to inject new input files and to get"
 " telemetry about the current running state. Built around the inotify "
@@ -47,7 +47,7 @@ msgid ""
 "is being generated. In the context of PASTIS it is thightly bound to "
 "``libpastis`` for interacting with the broker."
 msgstr ""
-"**Hf-Wrapper** est une API Python pour exécuter ``honggfuzz`` en Python. "
+"**Pastis-HF** est une API Python pour exécuter ``honggfuzz`` en Python. "
 "Plus spécifiquement, ce module conçu pour PASTIS, interagit avec une "
 "version personnalisée de honggfuzz permettant d'injecter de nouvelles "
 "entrées ou de récuperer de la télémétrie à propos de l'état courant "

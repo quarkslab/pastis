@@ -1,11 +1,11 @@
 .. _hfwrapper_api_usage:
 
-HF-wrapper API
---------------
+Pastis-HF API
+-------------
 
 .. toctree::
     :caption: Python API
     :maxdepth: 3
 
-    Honggfuzz <api/hfwrapper>
+    Honggfuzz <api/pastishf>
     Replay <api/replay>

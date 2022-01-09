@@ -14,7 +14,7 @@ a given input and checking various properties.
 
 .. code-block:: python
 
-    from hfwrapper.replay import Replay
+    from pastishf.replay import Replay
 
     # Rerun the program with the seed
     run = Replay.run("/tmp/target.bin",
@@ -33,10 +33,10 @@ a given input and checking various properties.
         else:
             print("ok")
 
+``pastishf.Replay``
+-------------------
 
-------------
-
-.. autoclass:: hfwrapper.Replay
+.. autoclass:: pastishf.Replay
     :members:
     :show-inheritance:
     :inherited-members:

@@ -1,7 +1,7 @@
-HF-Wrapper documentation
+Pastis-HF documentation
 ========================
 
-**Hf-Wrapper** is a Python API to run ``honggfuzz`` via Python.
+**Pastis-HF** is a Python API to run ``honggfuzz`` via Python.
 More specifically, this module built for the PASTIS project, interact
 with a custom version of honggfuzz allowing to inject new input files
 and to get telemetry about the current running state. Built around
