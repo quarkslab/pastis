@@ -33,14 +33,20 @@ message InputSeedMsg {
 }
 
 message DataMsg {
-    string data = 1;  // Arbitrary serialized data. 
+    string data = 1;  // Arbitrary serialized data.
 }                     // The the peer is meant to understand it
 
 /* ------------- Broker -> Agent ----------- */
 message StartMsg {
     enum ExecMode {
-        SINGLE_EXEC = 0;
-        PERSISTENT  = 1;
+        AUTO_EXEC   = 0;
+        SINGLE_EXEC = 1;
+        PERSISTENT  = 2;
+    }
+    enum FuzzMode {
+        AUTO_FUZZ    = 0;
+        INSTRUMENTED = 1;
+        BINARY_ONLY  = 2;
     }
     enum CheckMode {
         CHECK_ALL  = 0;
@@ -60,11 +66,12 @@ message StartMsg {
     string klocwork_report = 3;       // klocwork report (JSON serialized)
     FuzzingEngine engine   = 4;       // fuzzing engine (when client support multiple of them)
     ExecMode exec_mode     = 5;       // mode of execution
-    CheckMode check_mode   = 6;       // check mode for Triton (ignored by Honggfuzz)
-    CoverageMode coverage_mode   = 7; // coverage strategy for Triton (ignored by Triton)
-    SeedInjectLoc seed_location  = 8;
-    string engine_args           = 9; // Serialized JSON of engine parameters
-    repeated string program_argv = 10;
+    FuzzMode fuzz_mode     = 6;       // mode of fuzzing
+    CheckMode check_mode   = 7;       // check mode for Triton (ignored by Honggfuzz)
+    CoverageMode coverage_mode   = 8; // coverage strategy for Triton (ignored by Triton)
+    SeedInjectLoc seed_location  = 9;
+    string engine_args           = 10; // Serialized JSON of engine parameters
+    repeated string program_argv = 11;
 }
 
 message StopMsg {

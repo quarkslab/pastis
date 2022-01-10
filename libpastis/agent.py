@@ -16,7 +16,7 @@ import psutil
 from libpastis.proto import InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, \
                             TelemetryMsg, StopCoverageCriteria, DataMsg, EnvelopeMsg
 from libpastis.types import SeedType, Arch, FuzzingEngineInfo, PathLike, ExecMode, CheckMode, CoverageMode, SeedInjectLoc, \
-                            LogLevel, State, AlertData, Platform
+                            LogLevel, State, AlertData, Platform, FuzzMode
 from libpastis.utils import get_local_architecture, get_local_platform
 
 Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg, StopCoverageCriteria, DataMsg]
@@ -176,7 +176,7 @@ class NetworkAgent(object):
             engs = [(FuzzingEngineInfo.from_pb(x)) for x in msg.engines]
             return [engs, Arch(msg.architecture), msg.cpus, msg.memory, msg.hostname, Platform(msg.platform)]
         elif topic == MessageType.START:
-            return [msg.binary_filename, msg.binary, FuzzingEngineInfo.from_pb(msg.engine), ExecMode(msg.exec_mode),
+            return [msg.binary_filename, msg.binary, FuzzingEngineInfo.from_pb(msg.engine), ExecMode(msg.exec_mode), FuzzMode(msg.fuzz_mode),
                     CheckMode(msg.check_mode), CoverageMode(msg.coverage_mode), SeedInjectLoc(msg.seed_location),
                     msg.engine_args, [x for x in msg.program_argv], msg.klocwork_report]
         elif topic == MessageType.DATA:
@@ -193,7 +193,7 @@ class BrokerAgent(NetworkAgent):
         msg.seed = seed
         self.send_to(id, msg, msg_type=MessageType.INPUT_SEED)
 
-    def send_start(self, id: bytes, program: PathLike, argv: List[str], exmode: ExecMode, ckmode: CheckMode,
+    def send_start(self, id: bytes, program: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, ckmode: CheckMode,
                    covmode: CoverageMode, engine: FuzzingEngineInfo, engine_args: str,
                    seed_loc: SeedInjectLoc, kl_report: str=None):
         msg = StartMsg()
@@ -204,6 +204,7 @@ class BrokerAgent(NetworkAgent):
         msg.engine.name = engine.name
         msg.engine.version = engine.version
         msg.exec_mode = exmode.value
+        msg.fuzz_mode = fuzzmode.value
         msg.check_mode = ckmode.value
         msg.coverage_mode = covmode.value
         msg.seed_location = seed_loc.value
