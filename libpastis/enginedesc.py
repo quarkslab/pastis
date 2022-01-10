@@ -5,7 +5,7 @@ from typing import List, Union, Tuple, Optional
 
 
 # Local imports
-from libpastis.types import CoverageMode, ExecMode
+from libpastis.types import CoverageMode, ExecMode, FuzzMode
 
 
 class EngineConfiguration(object):
@@ -22,7 +22,7 @@ class FuzzingEngineDescriptor(object):
     VERSION = "1.0"
 
     @staticmethod
-    def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode]]:
+    def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode], Optional[FuzzMode]]:
         raise NotImplementedError()
 
     @staticmethod
