@@ -12,7 +12,7 @@ import json
 
 # Third-party imports
 from libpastis import BrokerAgent, FuzzingEngineDescriptor
-from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData, PathLike, Platform
+from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData, PathLike, Platform, FuzzMode
 from klocwork import KlocworkReport
 import lief
 
@@ -319,6 +319,7 @@ class PastisBroker(BrokerAgent):
         program = None  # The program yet to be selected
         engine = None
         exmode = ExecMode.SINGLE_EXEC
+        fuzzmode = FuzzMode.INSTRUMENTED
         engine_args = ""
         engines = Counter({e: 0 for e in self.engines})
         engines.update(c.engine.NAME for c in self.clients.values() if c.is_running())  # Count instances of each engine running
@@ -333,15 +334,15 @@ class PastisBroker(BrokerAgent):
             program = None
             exmode = None
             for p in programs:
-                res, xmod = eng_desc.accept_file(p)  # Iterate all files on that engine descriptor to check it accept it
+                res, xmod, fmod = eng_desc.accept_file(p)  # Iterate all files on that engine descriptor to check it accept it
                 if res:
                     if exmode:
                         if exmode == ExecMode.SINGLE_EXEC and xmod == ExecMode.PERSISTENT:  # persistent supersede single_exec
-                            program, exmode = p, xmod
+                            program, exmode, fuzzmode = p, xmod, fmod
                         else:
                             pass  # Program is suitable but we already had found a PERSISTENT one
                     else:
-                        program, exmode = p, xmod  # first suitable program found
+                        program, exmode, fuzzmode = p, xmod, fmod  # first suitable program found
 
             if not program:  # If still no program was found continue iterating engines
                 continue
@@ -368,6 +369,7 @@ class PastisBroker(BrokerAgent):
                         program,
                         self.argv,
                         exmode,
+                        fuzzmode,
                         self.ck_mode,
                         covmode,
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
