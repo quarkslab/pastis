@@ -16,10 +16,12 @@ class EngineConfiguration(object):
     # TODO: Making basic from_file, to_str (pour transmission
     # TODO: Plus tard description des champs en pydantic ou autre directement en dash
 
-    def from_file(self, filepath: Path) -> 'EngineConfiguration':
+    @staticmethod
+    def from_file(filepath: Path) -> 'EngineConfiguration':
         raise NotImplementedError
 
-    def from_str(self, s: str) -> 'EngineConfiguration':
+    @staticmethod
+    def from_str(s: str) -> 'EngineConfiguration':
         raise NotImplementedError
 
     def to_str(self) -> str:
