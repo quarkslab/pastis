@@ -1,6 +1,6 @@
 # built-in imports
 import logging
-from typing import Tuple, Generator, List, Optional
+from typing import Tuple, Generator, List, Optional, Union
 from pathlib import Path
 import time
 from hashlib import md5
@@ -378,11 +378,12 @@ class PastisBroker(BrokerAgent):
                         self.ck_mode,
                         covmode,
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
-                        engine_args,
+                        engine_args.to_str(),
                         self.inject,
                         self.kl_report.to_json() if self.kl_report else "")
 
-    def _find_configuration(self, engine: FuzzingEngineDescriptor) -> str:
+
+    def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:
         """
         Find a coverage mode for the engine. It will iterate all configuration
         available or automatically balance de configuration if there is multiple of
@@ -399,34 +400,36 @@ class PastisBroker(BrokerAgent):
                 confs.append(conf)  # Rotate the configuration
                 return conf
         else:
-            return ""
+            return None
 
-    def _find_coverage_mode(self, engine: FuzzingEngineDescriptor, conf: str) -> CoverageMode:
+    def _find_coverage_mode(self, engine: FuzzingEngineDescriptor, conf: Union[EngineConfiguration]) -> CoverageMode:
+
+        # Get coverage modes supported by the engine
+        supported_mods = engine.supported_coverage_strategies()
 
         # Now that program have been found select coverage strategy
-        if len(engine.supported_coverage_strategies()) > 1:
+        if len(supported_mods) > 1:
 
-            if conf:
-                data = json.loads(conf)  # FIXME: dirty as it assume we knows the format and the key
-                if "coverage_strategy" in data:
-                    mapper = {"CODE_COVERAGE": CoverageMode.BLOCK, "EDGE_COVERAGE": CoverageMode.EDGE, "PATH_COVERAGE": CoverageMode.PATH}
-                    return mapper[data["coverage_strategy"]]  # Return the CoverageMode of the config file
+            if conf:  # In the case we wanted to launch engines with specific configuration
+                return conf.get_coverage_mode()    # return the appropriate coverage mode in that configuration
 
-            else:  # Auto-balance the CoverageMode
-                covs = Counter({c: 0 for c in CoverageMode})
+            else:
+                # auto-balance the CoverageMode instances
+                covs = Counter({c: 0 for c in supported_mods})
                 # Count how many times each coverage strategies have been launched
                 covs.update(x.coverage_mode for x in self.clients.values() if x.is_running() and x.engine == engine)
-                if sum(covs.values()) == 0:  # No configuration has been triggered yet launch in edge
-                    return CoverageMode.EDGE
-                # Revert dictionnary to have freq -> [covmodes]
-                d = {v: [] for v in covs.values()}
-                for cov, count in covs.items():
-                    d[count].append(cov)
-                # pick in-order BLOCK < EDGE < PATH among the least frequently launched modes
-                return sorted(d[min(d)])[0]
+
+                if sum(covs.values()) == 0:  # No configuration has been triggered yet
+                    if CoverageMode.EDGE in supported_mods:  # launch preferably edge first
+                        return CoverageMode.EDGE
+                    else:
+                        return supported_mods[0]  # Return first supported mode
+
+                reverted = {v: k for k, v in covs.items()}  # Revert dictionnary to have freq -> covmodes
+                return reverted[min(reverted)]  # Select mode if least instances
 
         else:
-            return CoverageMode.BLOCK  # Dummy value (for honggfuzz)
+            return supported_mods[0]
 
 
     def start(self, running: bool=True):
@@ -495,11 +498,14 @@ class PastisBroker(BrokerAgent):
         # TODO: Also dumping the current state to a file in case
         # TODO: of exit. And being able to reload it. (not to resend all seeds to clients)
 
-    def add_engine_configuration(self, engine: str, args: str):
-        if engine in self.engines_args:
-            self.engines_args[engine].append(args)
+    def add_engine_configuration(self, name: str, config_file: PathLike):
+        if name in self.engines_args:
+            engine = self.engines[name]
+            conf_cls = engine.get_configuration_cls()
+            conf = conf_cls.from_file(config_file)
+            self.engines_args[name].append(conf)
         else:
-            logging.error(f"can't find engine {engine} (shall preload it to add a configuration)")
+            logging.error(f"can't find engine {name} (shall preload it to add a configuration)")
 
     def _configure_logging(self):
         hldr = logging.FileHandler(self.workspace.broker_log_file)
