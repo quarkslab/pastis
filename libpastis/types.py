@@ -44,11 +44,12 @@ class CheckMode(Enum):
     ALERT_ONLY = 1
 
 
-class CoverageMode(IntEnum):
-    BLOCK = 0
-    EDGE = 1
-    PATH = 2
-    STATE = 3
+CoverageMode = str
+# class CoverageMode(IntEnum):
+#     BLOCK = 0
+#     EDGE = 1
+#     PATH = 2
+#     STATE = 3
 
 
 class SeedInjectLoc(Enum):

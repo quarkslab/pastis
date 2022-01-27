@@ -52,11 +52,6 @@ message StartMsg {
         CHECK_ALL  = 0;
         ALERT_ONLY = 1;
     }
-    enum CoverageMode {
-        BLOCK = 0;
-        PATH  = 1;
-        STATE = 2;
-    }
     enum SeedInjectLoc {
         STDIN = 0;
         ARGV  = 1;
@@ -68,7 +63,7 @@ message StartMsg {
     ExecMode exec_mode     = 5;       // mode of execution
     FuzzMode fuzz_mode     = 6;       // mode of fuzzing
     CheckMode check_mode   = 7;       // check mode for Triton (ignored by Honggfuzz)
-    CoverageMode coverage_mode   = 8; // coverage strategy for Triton (ignored by Triton)
+    string coverage_mode   = 8;       // coverage strategy for Triton (ignored by Triton)
     SeedInjectLoc seed_location  = 9;
     string engine_args           = 10; // Serialized JSON of engine parameters
     repeated string program_argv = 11;
