@@ -42,7 +42,7 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
 
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
-        return [CoverageMode.EDGE]
+        return [CoverageMode.AUTO]
 
     @staticmethod
     def configuration() -> EngineConfiguration:
