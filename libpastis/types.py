@@ -1,5 +1,5 @@
 import json
-from enum import Enum, IntEnum
+from aenum import Enum, extend_enum
 from pathlib import Path
 from typing import Union
 import base64
@@ -44,12 +44,20 @@ class CheckMode(Enum):
     ALERT_ONLY = 1
 
 
-CoverageMode = str
-# class CoverageMode(IntEnum):
-#     BLOCK = 0
-#     EDGE = 1
-#     PATH = 2
-#     STATE = 3
+class CoverageMode(str, Enum):
+    DEFAULT = "default"
+    BLOCK = "block"
+    EDGE = "edge"
+    PATH = "path"
+    STATE = "state"
+
+    @classmethod
+    def _missing_(cls, val) -> 'CoverageMode':
+        """ Method used to dynmically creating an entry """
+        enum_name = val.upper().replace(" ", "_")
+        if enum_name in cls.__members__:
+            return cls.__members__[enum_name]
+        return extend_enum(cls, enum_name, val)
 
 
 class SeedInjectLoc(Enum):
