@@ -1,0 +1,67 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the Pastis-AFLPP package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Pastis-AFLPP \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../api/pastisaflpp.rst:4
+msgid "AFLPP"
+msgstr ""
+
+#: ../../api/pastisaflpp.rst:6
+msgid ""
+"A mandatory field of the :py:class:`AFLPPDriver` is a libpastis agent. When"
+" running afl-fuzz locally one can provide a :py:class:`FileAgent` that "
+"will act as a stub by simply logging messages that shall have been sent "
+"in online mode. The script shown below shows a basic example on how to "
+"kickstart afl-fuzz with an initial seed."
+msgstr "Un champ obligatoire de :py:class:`AFLPPDriver` est l'agent libpastis à utiliser. Quand"
+" afl-fuzz tourne localement il est possible de fournir un :py:class:`FileAgent` qui "
+"va agir comme un simple stub, en loggant les messages qui auraient du être envoyés autrement "
+"dans le mode en ligne. Le script ci-dessous montre un script simple exécutant afl-fuzz avec une graine initiale."
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver:1 of
+msgid "Bases: :class:`object`"
+msgstr ""
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver.dual_log:1 of
+msgid ""
+"Helper function to log message both in the local log system and also to "
+"the broker."
+msgstr ""
+"Fonction utilitaire pour logger un message localement mais aussi "
+"l'envoyer au broker"
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver.dual_log of
+msgid "Parameters"
+msgstr "Paramètres"
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver.dual_log:4 of
+msgid "LogLevel message type"
+msgstr "LogLevel du type de message"
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver.dual_log:5 of
+msgid "string message to log"
+msgstr "message à logger"
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver.dual_log of
+msgid "Returns"
+msgstr "Renvoi"
+
+#: pastisaflpp.pastisaflpp.AFLPPDriver.dual_log:6 of
+msgid "None"
+msgstr ""
+
