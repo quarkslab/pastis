@@ -7,7 +7,7 @@ import json
 import lief
 
 from libpastis import FuzzingEngineDescriptor, EngineConfiguration
-from libpastis.types import ExecMode, CoverageMode
+from libpastis.types import ExecMode, CoverageMode, FuzzMode
 
 # WARNING: This module is made in such a way that it does
 # not directly depend on tritondse (to facilitate installation)
@@ -56,7 +56,7 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
         pass
 
     @staticmethod
-    def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode]]:
+    def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode], Optional[FuzzMode]]:
         p = lief.parse(str(binary_file))
         if not p:
             return False, None
@@ -65,13 +65,13 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
         for f in p.functions:
             for item in TritonEngineDescriptor.FUNCTION_BLACKLIST_PREFIX:
                 if f.name.startswith(item):
-                    return False, None
+                    return False, None, None
 
         for f in p.imported_functions:
             if f.name in TritonEngineDescriptor.IMPORT_BLACKLIST:
-                return False, None
+                return False, None, None
 
-        return True, ExecMode.SINGLE_EXEC
+        return True, ExecMode.SINGLE_EXEC, FuzzMode.BINARY_ONLY  # Only support single_exec, binary only (not instrumented)
 
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
