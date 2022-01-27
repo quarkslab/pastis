@@ -139,9 +139,9 @@ class PastisDSE(object):
         :return: None
         """
 
-        count = {CoverageStrategy.CODE_COVERAGE: dse.coverage.unique_instruction_covered,
-                 CoverageStrategy.EDGE_COVERAGE: dse.coverage.unique_edge_covered,
-                 CoverageStrategy.PATH_COVERAGE: dse.coverage.unique_path_covered}
+        count = {CoverageStrategy.BLOCK: dse.coverage.unique_instruction_covered,
+                 CoverageStrategy.EDGE: dse.coverage.unique_edge_covered,
+                 CoverageStrategy.PATH: dse.coverage.unique_path_covered}
 
         if count != self._cur_cov_count:         # Coverage has been updated
             self._cur_cov_count = count          # update count
