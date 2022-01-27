@@ -28,13 +28,13 @@ class SeedType(Enum):
 
 
 class ExecMode(Enum):
-    AUTO_EXEC = 0
+    AUTO = 0
     SINGLE_EXEC = 1
     PERSISTENT = 2
 
 
 class FuzzMode(Enum):
-    AUTO_FUZZ = 0
+    AUTO = 0
     INSTRUMENTED = 1
     BINARY_ONLY = 2
 
@@ -45,7 +45,7 @@ class CheckMode(Enum):
 
 
 class CoverageMode(str, Enum):
-    DEFAULT = "default"
+    AUTO = "auto"
     BLOCK = "block"
     EDGE = "edge"
     PATH = "path"
