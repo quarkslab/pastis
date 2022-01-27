@@ -1,12 +1,38 @@
 # built-in imports
 from pathlib import Path
-from typing import Union, Tuple, List, Optional
+from typing import Union, Tuple, List, Optional, Type
 
 # third-party import
 import lief
 
 from libpastis import FuzzingEngineDescriptor, EngineConfiguration
 from libpastis.types import ExecMode, CoverageMode, FuzzMode
+
+
+class AFLConfiguration(EngineConfiguration):
+    """
+    Small wrapping function for AFL++ additional parameters
+    """
+    def __init__(self, data: str):
+        """
+        :param data: command line to provide AFL++ as-is
+        """
+        self.data = data
+
+    @staticmethod
+    def from_file(filepath: Path) -> 'AFLConfiguration':
+        return AFLConfiguration(Path(filepath).read_text())
+
+    @staticmethod
+    def from_str(s: str) -> 'AFLConfiguration':
+        return AFLConfiguration(s)
+
+    def to_str(self) -> str:
+        return self.data
+
+    def get_coverage_mode(self) -> CoverageMode:
+        """ Current coverage mode selected in the file """
+        raise CoverageMode.AUTO
 
 
 class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
@@ -36,14 +62,14 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
             # it can also be SINGLE_EXEC. Therefore, ExecMode would not be the
             # right place to add the BINARY_ONLY option (it was done this way
             # to keep things simple).
-            return True, ExecMode.AUTO_EXEC, FuzzMode.BINARY_ONLY
+            return True, ExecMode.AUTO, FuzzMode.BINARY_ONLY
 
-        return True, ExecMode.AUTO_EXEC, FuzzMode.INSTRUMENTED
+        return True, ExecMode.AUTO, FuzzMode.INSTRUMENTED
 
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
-        return [CoverageMode.EDGE]
+        return [CoverageMode.AUTO]
 
     @staticmethod
-    def configuration() -> EngineConfiguration:
-        raise NotImplementedError()
+    def get_configuration_cls() -> Type[EngineConfiguration]:
+        return AFLConfiguration
