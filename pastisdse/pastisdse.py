@@ -206,9 +206,9 @@ class PastisDSE(object):
 
         # Update the coverage strategy in the current config (it overrides the config file one)
         try:
-            self.config.coverage_strategy = CoverageStrategy(covmode.name)  # names are meant to match
-        except:
-            logging.info(f"Invalid covmode. Not supported by the tritondse library")
+            self.config.coverage_strategy = CoverageStrategy(covmode.value)  # names are meant to match
+        except Exception as e:
+            logging.info(f"Invalid covmode. Not supported by the tritondse library {e}")
             self.agent.stop()
             return
 
