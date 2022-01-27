@@ -19,21 +19,22 @@ class TritonConfigurationInterface(EngineConfiguration):
     def __init__(self, data):
         self.data = data
 
-    def from_file(self, filepath: Path) -> 'TritonConfigurationInterface':
+    @staticmethod
+    def from_file(filepath: Path) -> 'TritonConfigurationInterface':
         with open(filepath, "r") as f:
-            json.load(f)
+            return TritonConfigurationInterface(json.load(f))
 
-    def from_str(self, s: str) -> 'TritonConfigurationInterface':
-        return json.laods(s)
+    @staticmethod
+    def from_str(s: str) -> 'TritonConfigurationInterface':
+        return TritonConfigurationInterface(json.laods(s))
 
     def to_str(self) -> str:
         json.dumps(self.data)
 
     def get_coverage_mode(self) -> CoverageMode:
         """ Current coverage mode selected in the file """
-
-        raise NotImplementedError
-
+        v = self.data['coverage_strategy']
+        return CoverageMode(v)
 
 
 class TritonEngineDescriptor(FuzzingEngineDescriptor):
@@ -50,8 +51,6 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
     IMPORT_BLACKLIST = [
         "HF_ITER"       # honggfuzz functions
     ]
-
-    mapper = {"CODE": CoverageMode.BLOCK, "EDGE": CoverageMode.EDGE, "PATH": CoverageMode.PATH}
 
     def __init__(self):
         pass
@@ -74,10 +73,9 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
 
         return True, ExecMode.SINGLE_EXEC
 
-
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
-        return [TritonEngineDescriptor.mapper.get(st, CoverageMode(st.name)) for st in TRITON_DSE_COVS]
+        return [CoverageMode(st) for st in TRITON_DSE_COVS]
 
     @staticmethod
     def get_configuration_cls() -> EngineConfiguration:
