@@ -35,7 +35,7 @@ mode. The script shown below shows a basic exemple on how to kickstart
                          program.read_bytes(),
                          FuzzingEngine.AFLPP,
                          CheckMode.CHECK_ALL,
-                         CoverageMode.EDGE,
+                         CoverageMode.AUTO,
                          SeedInjectLoc.STDIN,
                          "-n 16",  # arguments forward to aflpp command line
                          "a b c",  # program argv
