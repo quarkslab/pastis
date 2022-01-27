@@ -102,6 +102,7 @@ def offline(program: str,
     # Transform the type of parameters
     program = Path(program)
     exmode = ExecMode[exmode]
+    fuzzmode = FuzzMode[fuzzmode]
     chkmode = CheckMode[chkmode]
     covmode = CoverageMode[covmode]
     seedinj = SeedInjectLoc[seedinj]
