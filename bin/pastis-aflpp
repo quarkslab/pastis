@@ -68,12 +68,13 @@ def online(host: str, port: int, telemetry_frequency: int):
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.option('--logfile', type=str, default="aflpp-fileagent-broker.log", help='Log file of all messages received by the broker')
 @click.argument('pargvs', nargs=-1)
-def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, chkmode, seedinj, logfile, pargvs: Tuple[str]):
+def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, fuzzmode, chkmode, seedinj, logfile, pargvs: Tuple[str]):
     global aflpp
 
     # Transform the type of parameters
     program = Path(program)
     exmode = ExecMode[exmode]
+    fuzzmode = FuzzMode[fuzzmode]
     chkmode = CheckMode[chkmode]
     seedinj = SeedInjectLoc[seedinj]
     pargvs = list(pargvs)
@@ -92,7 +93,7 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, ch
     report = Path(kl_report).read_text() if kl_report else ""
 
     # Mimick a callback to start_received
-    aflpp.start_received(program.name, program.read_bytes(), FuzzingEngineInfo("AFLPP", __version__, None), exmode, chkmode, CoverageMode.EDGE, seedinj, "", pargvs, report)
+    aflpp.start_received(program.name, program.read_bytes(), FuzzingEngineInfo("AFLPP", __version__, None), exmode, fuzzmode, chkmode, CoverageMode.EDGE, seedinj, "", pargvs, report)
 
     # Provide it all our seeds
     for s in seed:
