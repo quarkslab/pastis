@@ -12,7 +12,8 @@ import json
 
 # Third-party imports
 from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration
-from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, ExecMode, AlertData, PathLike, Platform
+from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
+                            ExecMode, AlertData, PathLike, Platform, FuzzMode
 from klocwork import KlocworkReport
 import lief
 
@@ -319,6 +320,7 @@ class PastisBroker(BrokerAgent):
         program = None  # The program yet to be selected
         engine = None
         exmode = ExecMode.SINGLE_EXEC
+        fuzzmode = FuzzMode.INSTRUMENTED
         engine_args = ""
         engines = Counter({e: 0 for e in self.engines})
         engines.update(c.engine.NAME for c in self.clients.values() if c.is_running())  # Count instances of each engine running
@@ -332,16 +334,20 @@ class PastisBroker(BrokerAgent):
             programs = self.programs.get((client.platform, client.arch))
             program = None
             exmode = None
+            fuzzmod = FuzzMode.AUTO
             for p in programs:
-                res, xmod = eng_desc.accept_file(p)  # Iterate all files on that engine descriptor to check it accept it
+                res, xmod, fmod = eng_desc.accept_file(p)  # Iterate all files on that engine descriptor to check it accept it
                 if res:
                     if exmode:
                         if exmode == ExecMode.SINGLE_EXEC and xmod == ExecMode.PERSISTENT:  # persistent supersede single_exec
-                            program, exmode = p, xmod
+                            program, exmode, fuzzmod = p, xmod, fmod
                         else:
-                            pass  # Program is suitable but we already had found a PERSISTENT one
+                            if fuzzmod == FuzzMode.BINARY_ONLY and fmod == FuzzMode.INSTRUMENTED:  # instrumented supersede binary only
+                                program, exmode, fuzzmod = p, xmod, fmod
+                            else:
+                                pass  # Program is suitable but we already had found a PERSISTENT one
                     else:
-                        program, exmode = p, xmod  # first suitable program found
+                        program, exmode, fuzzmod = p, xmod, fmod  # first suitable program found
 
             if not program:  # If still no program was found continue iterating engines
                 continue
@@ -361,13 +367,14 @@ class PastisBroker(BrokerAgent):
             return
 
         # Update internal client info and send him the message
-        logging.info(f"send start client {client.id}: {program.name} [{engine.NAME}, {covmode.name}, {exmode.name}]")
+        logging.info(f"send start client {client.id}: {program.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
         client.set_running(engine, covmode, exmode, self.ck_mode)
         client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
                         program,
                         self.argv,
                         exmode,
+                        fuzzmod,
                         self.ck_mode,
                         covmode,
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
