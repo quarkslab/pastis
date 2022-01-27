@@ -15,7 +15,7 @@ from tritondse            import TRITON_VERSION, Config, Program, CoverageStrate
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
 from libpastis.agent      import ClientAgent
-from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData
+from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -156,7 +156,7 @@ class PastisDSE(object):
                                   last_cov_update=int(self._last_cov_update))
 
 
-    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, chkmode: CheckMode,
+    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
         """
         This function is called when the broker says to start the fuzzing session. Here, we receive all information about
@@ -166,6 +166,7 @@ class PastisDSE(object):
         :param binary: The content of the binary to explore
         :param engine: The kind of fuzzing engine (should be Triton for this script)
         :param exmode: The mode of the exploration
+        :param fuzzmode: The fuzzing mode (instrumented or binary only)
         :param chkmode: The mode of vulnerability check
         :param covmode: The mode of coverage
         :param seed_inj: The location where to inject input
