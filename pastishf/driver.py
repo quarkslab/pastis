@@ -10,7 +10,7 @@ from typing import List, Union
 # Third party imports
 from libpastis import ClientAgent
 from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
-                            LogLevel, AlertData
+                            LogLevel, AlertData, FuzzMode
 
 try:  # Make the klocwork support optional
     from klocwork import KlocworkReport
@@ -229,7 +229,7 @@ class HonggfuzzDriver:
             except:
                 logging.error(f'Error retrieving stats!')
 
-    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, chkmode: CheckMode,
+    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
@@ -256,6 +256,8 @@ class HonggfuzzDriver:
                 self.dual_log(LogLevel.ERROR, "Klocwork report provided while Klocwork not supported by host")
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
+
+        # FIXME: (chris) Do something with fuzz mode ?
 
         self.start(fname, binary, argv, exmode, seed_inj, engine_args)
 
