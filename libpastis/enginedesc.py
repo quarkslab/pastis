@@ -9,9 +9,25 @@ from libpastis.types import CoverageMode, ExecMode, FuzzMode
 
 
 class EngineConfiguration(object):
+    """
+    Basic interface to represent an engine configuration file
+    on broker side. All what addons have to provide are
+    """
     # TODO: Making basic from_file, to_str (pour transmission
     # TODO: Plus tard description des champs en pydantic ou autre directement en dash
-    pass
+
+    def from_file(self, filepath: Path) -> 'EngineConfiguration':
+        raise NotImplementedError
+
+    def from_str(self, s: str) -> 'EngineConfiguration':
+        raise NotImplementedError
+
+    def to_str(self) -> str:
+        raise NotImplementedError
+
+    def get_coverage_mode(self) -> CoverageMode:
+        """ Current coverage mode selected in the file """
+        raise NotImplementedError
 
 
 
@@ -30,5 +46,5 @@ class FuzzingEngineDescriptor(object):
         raise NotImplementedError()
 
     @staticmethod
-    def configuration() -> EngineConfiguration:
+    def get_configuration_cls() -> EngineConfiguration:
         raise NotImplementedError()
