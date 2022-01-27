@@ -36,7 +36,7 @@ seed.
                              FuzzingEngine.HONGGFUZZ,
                              ExecMode.PERSISTENT,
                              CheckMode.CHECK_ALL,
-                             CoverageMode.EDGE,
+                             CoverageMode.AUTO,
                              SeedInjectLoc.STDIN,
                              "-n 16",  # arguments forward to honggfuzz command line
                              "a b c",  # program argv
