@@ -16,6 +16,7 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 
 # Local imports
 from pastisdse import PastisDSE, __version__
+from tritondse import CoverageStrategy
 
 pastis = None
 
@@ -61,11 +62,11 @@ def online(host: str, port: int):
 @click.option('-c', "--count", type=int, default=0, help="Number of execution")
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Triton configuration file")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
-@click.option('-x', '--exmode', type=click.Choice([x.name for x in ExecMode]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
-@click.option('-fmod', '--fuzzmode', type=click.Choice([x.name for x in FuzzMode]), help="Fuzz mode", default=FuzzMode.BINARY_ONLY.name)
-@click.option('-chk', '--chkmode', type=click.Choice([x.name for x in CheckMode]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
-@click.option('-cov', '--covmode', type=click.Choice([x.name for x in CoverageMode]), help="Coverage strategy", default=CoverageMode.EDGE.name)
-@click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
+@click.option('-x', '--exmode', type=click.Choice([x.name for x in list(ExecMode)]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
+@click.option('-fmod', '--fuzzmode', type=click.Choice([x.name for x in list(FuzzMode)]), help="Fuzz mode", default=FuzzMode.BINARY_ONLY.name)
+@click.option('-chk', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
+@click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.name)
+@click.option('-i', '--seedinj', type=click.Choice([x.name for x in list(SeedInjectLoc)]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.option('--dump-trace/--no-dump-trace', default=False, help="Dump complete execution trace to stdout")
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
@@ -76,7 +77,7 @@ def offline(program: str,
             exmode: ExecMode,
             fuzzmode: FuzzMode,
             chkmode: CheckMode,
-            covmode: CoverageMode,
+            covmode: CoverageStrategy,
             seedinj: SeedInjectLoc,
             pargvs: Tuple[str],
             dump_trace: bool):
@@ -92,10 +93,12 @@ def offline(program: str,
     :param config: The path the to TritonDSE configuration file (json)
     :param seed: The initial seed to inject
     :param exmode: The mode of the exploration
+    :param fuzzmode: Fuzzing mode to apply
     :param chkmode: The mode of vulnerability check
     :param covmode: The mode of coverage
     :param seedinj: The location where to inject input
     :param pargvs: The program arguments
+    :param dump_trace: Dump the execution trace in a file
     """
     global pastis
 
@@ -104,7 +107,7 @@ def offline(program: str,
     exmode = ExecMode[exmode]
     fuzzmode = FuzzMode[fuzzmode]
     chkmode = CheckMode[chkmode]
-    covmode = CoverageMode[covmode]
+    covmode = CoverageMode(covmode)
     seedinj = SeedInjectLoc[seedinj]
     pargvs = list(pargvs)
 

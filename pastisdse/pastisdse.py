@@ -138,21 +138,21 @@ class PastisDSE(object):
         :param dse: SymbolicExplorator
         :return: None
         """
+        new_count = dse.coverage.unique_covitem_covered
 
-        count = {CoverageStrategy.BLOCK: dse.coverage.unique_instruction_covered,
-                 CoverageStrategy.EDGE: dse.coverage.unique_edge_covered,
-                 CoverageStrategy.PATH: dse.coverage.unique_path_covered}
-
-        if count != self._cur_cov_count:         # Coverage has been updated
-            self._cur_cov_count = count          # update count
+        if new_count != self._cur_cov_count:         # Coverage has been updated
+            self._cur_cov_count = new_count          # update count
             self._last_cov_update = time.time()  # update last coverage update to be now
+
+        if dse.coverage.strategy == CoverageStrategy.PREFIXED_EDGE:
+            new_count = len(set(x[1] for x in dse.coverage.covered_items.keys()))  # For prefixed-edge only count edge
 
         self.agent.send_telemetry(exec_per_sec=int(dse.execution_count / (time.time()-dse.ts)),
                                   total_exec=dse.execution_count,
                                   timeout=self.nb_to,
                                   coverage_block=dse.coverage.unique_instruction_covered,
-                                  coverage_edge=dse.coverage.unique_edge_covered,
-                                  coverage_path=dse.coverage.unique_path_covered,
+                                  coverage_edge=new_count if dse.coverage in [CoverageStrategy.EDGE, CoverageStrategy.PREFIXED_EDGE] else 0,
+                                  coverage_path=new_count if dse.coverage.strategy == CoverageStrategy.PATH else 0,
                                   last_cov_update=int(self._last_cov_update))
 
 
