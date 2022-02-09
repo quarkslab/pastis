@@ -7,6 +7,8 @@
 import logging
 from pathlib import Path
 from typing import List, Tuple, Optional
+from importlib import import_module
+from inspect import getmembers, isclass
 
 # Third-party imports
 import click
@@ -16,7 +18,7 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 
 # Local imports
 from pastisdse import PastisDSE, __version__
-from tritondse import CoverageStrategy
+from tritondse import CoverageStrategy, ProbeInterface
 
 pastis = None
 
@@ -56,6 +58,20 @@ def online(host: str, port: int):
     pastis.run(wait_idle=True)
 
 
+def load_probe_module(module) -> Optional[ProbeInterface]:
+    # base = module_id.split(":")z
+    try:
+        module = import_module(module)
+    except ImportError:
+        logging.error(f"Can't load module: {module}")
+        return
+    classes = getmembers(module, lambda m: isclass(m) and issubclass(m, ProbeInterface) and m != ProbeInterface)
+    if classes:
+        return classes[0][1]()
+    else:
+        logging.error(f"Can't find a ProbeInterface in module: {module}")
+
+
 @cli.command(context_settings=dict(show_default=True))
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
@@ -65,9 +81,9 @@ def online(host: str, port: int):
 @click.option('-x', '--exmode', type=click.Choice([x.name for x in list(ExecMode)]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
 @click.option('-fmod', '--fuzzmode', type=click.Choice([x.name for x in list(FuzzMode)]), help="Fuzz mode", default=FuzzMode.BINARY_ONLY.name)
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
-@click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.name)
+@click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.value)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in list(SeedInjectLoc)]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
-@click.option('--dump-trace/--no-dump-trace', default=False, help="Dump complete execution trace to stdout")
+@click.option('-p', '--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
             kl_report: Optional[str],
@@ -80,7 +96,7 @@ def offline(program: str,
             covmode: CoverageStrategy,
             seedinj: SeedInjectLoc,
             pargvs: Tuple[str],
-            dump_trace: bool):
+            probe: Tuple[str]):
     """
     This is the offline mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will be able to work without a remote broker. In
@@ -98,7 +114,7 @@ def offline(program: str,
     :param covmode: The mode of coverage
     :param seedinj: The location where to inject input
     :param pargvs: The program arguments
-    :param dump_trace: Dump the execution trace in a file
+    :param probe: Python module containing a ProbeInterface to attach to the execution
     """
     global pastis
 
@@ -123,8 +139,11 @@ def offline(program: str,
     else:
         config = ""
 
-    if dump_trace:
-        pastis.enable_dump = True
+    for p in list(probe):
+        probe = load_probe_module(p)
+        if probe:
+            print("probe !")
+            pastis.add_probe(probe)
 
     # Load the report if anyone provided
     report = Path(kl_report).read_text() if kl_report else ""
