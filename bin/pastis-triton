@@ -142,7 +142,6 @@ def offline(program: str,
     for p in list(probe):
         probe = load_probe_module(p)
         if probe:
-            print("probe !")
             pastis.add_probe(probe)
 
     # Load the report if anyone provided

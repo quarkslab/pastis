@@ -241,7 +241,6 @@ class PastisDSE(object):
         self.dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
 
         for probe in self._probes:
-            print("REGISTER PROBE")
             self.dse.callback_manager.register_probe(probe)
 
         if chkmode == CheckMode.CHECK_ALL:
