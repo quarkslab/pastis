@@ -11,7 +11,7 @@ import threading
 # Pastis & triton imports
 import pastisdse
 from triton               import MemoryAccess, CPUSIZE
-from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus
+from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
 from libpastis.agent      import ClientAgent
@@ -34,12 +34,15 @@ class PastisDSE(object):
         self._last_kid  = None
         self._seed_wait = False
         self._seed_received = set()
-        self.enable_dump = False
+        self._probes = []
 
         # local attributes for telemetry
         self.nb_to, self.nb_crash = 0, 0
         self._cur_cov_count = 0
         self._last_cov_update = time.time()
+
+    def add_probe(self, probe: ProbeInterface):
+        self._probes.append(probe)
 
     def _init_callbacks(self):
         self.agent.register_seed_callback(self.seed_received)
@@ -236,8 +239,10 @@ class PastisDSE(object):
         # self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         self.dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
         self.dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
-        if self.enable_dump:
-            self.dse.callback_manager.register_post_instuction_callback(self.trace_debug)
+
+        for probe in self._probes:
+            print("REGISTER PROBE")
+            self.dse.callback_manager.register_probe(probe)
 
         if chkmode == CheckMode.CHECK_ALL:
            self.dse.callback_manager.register_probe(UAFSanitizer())
@@ -248,18 +253,6 @@ class PastisDSE(object):
 
         elif chkmode == CheckMode.ALERT_ONLY:
            self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
-
-
-    def trace_debug(self, se: SymbolicExecutor, state: ProcessState, instruction: 'Instruction'):
-        """
-        This function is mainly used for debug.
-
-        :param se: The current symbolic executor
-        :param state: The current processus state of the execution
-        :param instruction: The current instruction executed
-        :return: None
-        """
-        print("[tid:%d] %#x: %s" % (instruction.getThreadId(), instruction.getAddress(), instruction.getDisassembly()))
 
 
     def seed_received(self, typ: SeedType, seed: bytes):
