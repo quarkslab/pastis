@@ -16,7 +16,7 @@ import pastisdse
 from triton               import MemoryAccess, CPUSIZE
 from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
-from tritondse.types      import Addr, Input
+from tritondse.types      import Addr, Input, Edge, SymExType
 from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis.agent      import ClientAgent
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
@@ -40,6 +40,7 @@ class PastisDSE(object):
         self._seed_received = set()
         self._probes = []
         self._chkmode = None
+        self._program_slice = None
 
         # local attributes for telemetry
         self.nb_to, self.nb_crash = 0, 0
@@ -162,6 +163,25 @@ class PastisDSE(object):
                                   coverage_edge=new_count if dse.coverage in [CoverageStrategy.EDGE, CoverageStrategy.PREFIXED_EDGE] else 0,
                                   coverage_path=new_count if dse.coverage.strategy == CoverageStrategy.PATH else 0,
                                   last_cov_update=int(self._last_cov_update))
+
+    def cb_on_solving(self, dse: SymbolicExplorator, pstate: ProcessState, edge: Edge, typ: SymExType) -> bool:
+        # Only consider conditional and dynamic jumps.
+        if typ in [SymExType.SYMBOLIC_READ, SymExType.SYMBOLIC_WRITE]:
+            return True
+
+        # Unpack edge.
+        src, dst = edge
+
+        # Find the function which holds the basic block of the destination.
+        dst_fn = self.program.find_function_from_addr(dst)
+        assert dst_fn != None
+
+        # Check whether the destination function is within the slice.
+        within_slice = dst_fn.start in self._program_slice if self._program_slice else True
+
+        logging.info(f"Edge dst within slice? {within_slice} ({src:#x} -> {dst:#x} ({typ.name}) ({dst_fn.name}))")
+
+        return within_slice
 
     def get_files(self, name: str, binary: bytes) -> List[Path]:
         """
@@ -312,8 +332,34 @@ class PastisDSE(object):
 
             logging.info(f"launching exploration in targeted mode on: 0x{target_addr:08x}")
 
-            # TODO: Initializing the slice and anything needed !
+            # NOTE Target address must be the starting address of a basic block.
+            slice_from = self.program.find_function_addr('main')
+            slice_to = target_addr
 
+            if slice_from and slice_to:
+                # Find the functions that correspond to the from and to addresses.
+                slice_from_fn = self.program.find_function_from_addr(slice_from)
+                slice_to_fn = self.program.find_function_from_addr(slice_to)
+
+                if slice_from_fn and slice_to_fn:
+                    # NOTE Generate call graph with backedges so when we do the
+                    #      slice it also includes functions that are called in
+                    #      the path from the source to the destination of the
+                    #      slice.
+                    call_graph = self.program.get_call_graph(backedge_on_ret=True)
+
+                    logging.info(f'Slicing program from {slice_from:#x} ({slice_from_fn.name}) to {slice_to:#x} ({slice_to_fn.name})')
+
+                    self._program_slice = QBinExportProgram.get_slice(call_graph, slice_from_fn.start, slice_to_fn.start)
+
+                    logging.info(f'Call graph (full): #nodes: {len(call_graph.nodes)}, #edges: {len(call_graph.edges)}')
+                    logging.info(f'Call graph (sliced): #nodes: {len(self._program_slice.nodes)}, #edges: {len(self._program_slice.edges)}')
+
+                    dse.callback_manager.register_on_solving_callback(self.cb_on_solving)
+                else:
+                    logging.warning(f'Invalid source or target function, skipping slicing!')
+            else:
+                logging.warning(f'Invalid source or target addresses, skipping slicing!')
 
         # will trigger the dse to start has another thread is waiting for self.dse to be not None
         self.dse = dse
