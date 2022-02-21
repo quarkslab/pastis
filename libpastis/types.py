@@ -42,7 +42,7 @@ class FuzzMode(Enum):
 class CheckMode(Enum):
     CHECK_ALL = 0
     ALERT_ONLY = 1
-
+    ALERT_ONE = 2
 
 class CoverageMode(str, Enum):
     AUTO = "auto"

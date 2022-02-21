@@ -51,6 +51,7 @@ message StartMsg {
     enum CheckMode {
         CHECK_ALL  = 0;
         ALERT_ONLY = 1;
+        ALERT_ONE  = 2;
     }
     enum SeedInjectLoc {
         STDIN = 0;
