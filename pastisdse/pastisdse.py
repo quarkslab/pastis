@@ -1,5 +1,5 @@
 # built-in imports
-from typing  import List
+from typing  import List, Tuple
 from hashlib import md5
 import time
 import logging
@@ -7,6 +7,9 @@ import tempfile
 from pathlib import Path
 import threading
 
+# third-party imports
+import magic
+import shutil
 
 # Pastis & triton imports
 import pastisdse
@@ -14,6 +17,7 @@ from triton               import MemoryAccess, CPUSIZE
 from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input
+from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis.agent      import ClientAgent
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
@@ -35,6 +39,7 @@ class PastisDSE(object):
         self._seed_wait = False
         self._seed_received = set()
         self._probes = []
+        self._chkmode = None
 
         # local attributes for telemetry
         self.nb_to, self.nb_crash = 0, 0
@@ -158,6 +163,33 @@ class PastisDSE(object):
                                   coverage_path=new_count if dse.coverage.strategy == CoverageStrategy.PATH else 0,
                                   last_cov_update=int(self._last_cov_update))
 
+    def get_files(self, name: str, binary: bytes) -> List[Path]:
+        """
+        Analyse the binary blob received. If its an archive, extract it and return
+        the list of files. Files are extracted in /tmp. If directly an executable
+        save it to a file and return its path.
+
+        :param name: name of executable, or executable name in archive
+        :param binary: content
+        :return: list of file paths
+        """
+        mime = magic.from_buffer(binary, mime=True)
+
+        tmp_dir = Path(tempfile.mkdtemp())
+
+        if mime in ['application/x-tar', 'application/zip']:
+            map = {'application/x-tar': '.tar.gz', 'application/zip': '.zip'}
+            tmp_file = Path(tempfile.mktemp(suffix=map[mime]))
+            tmp_file.write_bytes(binary)          # write the archive in a file
+            shutil.unpack_archive(tmp_file.as_posix(), tmp_dir)  # unpack it in dst directory
+            return list(tmp_dir.iterdir())
+        elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable']:
+            program_path = tmp_dir / name
+            program_path.write_bytes(binary)
+            return [program_path]
+        else:
+            logging.error(f"mimetype not recognized {mime}")
+            return []
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
@@ -195,13 +227,22 @@ class PastisDSE(object):
             logging.info(f"Configure workspace to be: {ws}")
             self.config.workspace = ws
 
-        # Write the binary in a temporary file
-        tmp_dir = tempfile.mkdtemp()
-        program_path = Path(tmp_dir) / fname
-        with open(program_path, 'wb') as f:
-            f.write(binary)
+        # Retrieve one or multiple files out of the binary data
+        files = self.get_files(fname, binary)
+        if not files:
+            logging.error(f"unrecognized file type for {fname}")
+            return
 
-        self.program = Program(str(program_path))
+        f_path = [x for x in files if x.name == fname][0]
+
+        qbexp_path = f_path.with_suffix(".QBinExport")
+        if qbexp_path in files:
+            logging.info(f"load QBinExportProgram: {qbexp_path.name}")
+            self.program = QBinExportProgram(qbexp_path, f_path)
+        else:
+            logging.info(f"load Program: {f_path.name}")
+            self.program = Program(f_path)
+
         if self.program is None:
             self.dual_log(LogLevel.CRITICAL, f"LIEF was not able to parse the binary file {fname}")
             self.agent.stop()
@@ -230,29 +271,52 @@ class PastisDSE(object):
             logging.info(f"Klocwork report loaded: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)})")
 
         if argv: # Override config
-            self.config.program_argv = [str(program_path)]  # Set current binary
+            self.config.program_argv = [str(self.program.path)]  # Set current binary
             self.config.program_argv.extend(argv)
 
-        self.dse = SymbolicExplorator(self.config, self.program)
+        dse = SymbolicExplorator(self.config, self.program)
+
+        # Copy all files extracted in workspace
+        for file in [x for x in files if x != self.program.path]:  # Copy all files but the binary (which has already been moved)
+            dse.workspace.save_file(file.name, file.read_bytes())
 
         # Register common callbacks
-        # self.dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
-        self.dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
-        self.dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
+        # dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
+        dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
+        dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
 
         for probe in self._probes:
-            self.dse.callback_manager.register_probe(probe)
+            dse.callback_manager.register_probe(probe)
+
+        # Save check mode
+        self._chkmode = chkmode
 
         if chkmode == CheckMode.CHECK_ALL:
-           self.dse.callback_manager.register_probe(UAFSanitizer())
-           self.dse.callback_manager.register_probe(NullDerefSanitizer())
-           self.dse.callback_manager.register_probe(FormatStringSanitizer())
-           #self.dse.callback_manager.register_probe(IntegerOverflowSanitizer())
+           dse.callback_manager.register_probe(UAFSanitizer())
+           dse.callback_manager.register_probe(NullDerefSanitizer())
+           dse.callback_manager.register_probe(FormatStringSanitizer())
+           #dse.callback_manager.register_probe(IntegerOverflowSanitizer())
            # TODO Buffer overflow
 
         elif chkmode == CheckMode.ALERT_ONLY:
-           self.dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
+           dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
+        elif chkmode == CheckMode.ALERT_ONE:  # targeted approach
+            if not isinstance(self.program, QBinExportProgram):
+                logging.error(f"Targeted mode [{chkmode.name}] requires a QBinExport program")
+                self.agent.stop()
+                return
+
+            target_addr = self.config.custom['target']  # retrieve the target address to reach
+            dse.callback_manager.register_post_addr_callback(target_addr, self.intrinsic_callback)
+
+            logging.info(f"launching exploration in targeted mode on: 0x{target_addr:08x}")
+
+            # TODO: Initializing the slice and anything needed !
+
+
+        # will trigger the dse to start has another thread is waiting for self.dse to be not None
+        self.dse = dse
 
     def seed_received(self, typ: SeedType, seed: bytes):
         """
@@ -362,7 +426,7 @@ class PastisDSE(object):
                 d, v = self.klreport.get_stats()
                 logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
-            if self.klreport.all_alerts_validated():
+            if self.klreport.all_alerts_validated() or (self._chkmode == CheckMode.ALERT_ONE and alert.validated):
                 self._all_alerts_validated()
 
         else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
