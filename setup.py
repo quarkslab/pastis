@@ -12,7 +12,7 @@ setup(
     description="A library and utility using tritondse to perform PASTIS-related DSE",
     packages=find_packages(),
     setup_requires=[],
-    install_requires=["click", "coloredlogs"],
+    install_requires=["click", "coloredlogs", "python-magic"],
     tests_require=[],
     license="qb",
     author="Quarkslab",

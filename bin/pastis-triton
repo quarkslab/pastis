@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 from importlib import import_module
 from inspect import getmembers, isclass
+import sys
 
 # Third-party imports
 import click
@@ -18,7 +19,7 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 
 # Local imports
 from pastisdse import PastisDSE, __version__
-from tritondse import CoverageStrategy, ProbeInterface
+from tritondse import CoverageStrategy, ProbeInterface, Config
 
 pastis = None
 
@@ -83,6 +84,8 @@ def load_probe_module(module) -> Optional[ProbeInterface]:
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
 @click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.value)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in list(SeedInjectLoc)]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
+@click.option('-n', '--name', type=str, default='', help="Name of the executable if program is an archive containing multiple files")
+@click.option('-t', '--target', type=str, help="Target alert address in case of ALERT_ONE checkmode")
 @click.option('-p', '--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
@@ -95,6 +98,8 @@ def offline(program: str,
             chkmode: CheckMode,
             covmode: CoverageStrategy,
             seedinj: SeedInjectLoc,
+            name: str,
+            target: str,
             pargvs: Tuple[str],
             probe: Tuple[str]):
     """
@@ -113,6 +118,8 @@ def offline(program: str,
     :param chkmode: The mode of vulnerability check
     :param covmode: The mode of coverage
     :param seedinj: The location where to inject input
+    :param name: name of the binary of program is an archive
+    :param target: target alert address to cover and validate
     :param pargvs: The program arguments
     :param probe: Python module containing a ProbeInterface to attach to the execution
     """
@@ -147,8 +154,29 @@ def offline(program: str,
     # Load the report if anyone provided
     report = Path(kl_report).read_text() if kl_report else ""
 
+    if chkmode == CheckMode.ALERT_ONE:
+        if target:
+            value = int(target, 16) if target.startswith("0x") else int(target)
+            # Small hack to embed the target address in the config file
+            c = Config.from_json(config)
+            c.custom['target'] = value
+            config = c.to_json()
+        else:
+            logging.error(f"CheckMode {chkmode.name} requires a target (use -t)")
+            sys.exit(1)
+
     # Mimick a callback to start_received
-    pastis.start_received(program.name, program.read_bytes(), FuzzingEngineInfo("TRITON", __version__, ""), exmode, fuzzmode, chkmode, covmode, seedinj, config, pargvs, report)
+    pastis.start_received(name if name else program.name,
+                          program.read_bytes(),
+                          FuzzingEngineInfo("TRITON", __version__, ""),
+                          exmode,
+                          fuzzmode,
+                          chkmode,
+                          covmode,
+                          seedinj,
+                          config,
+                          pargvs,
+                          report)
 
     # Set the number of execution limit
     pastis.config.exploration_limit = count
