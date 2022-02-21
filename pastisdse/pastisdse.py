@@ -183,7 +183,7 @@ class PastisDSE(object):
             tmp_file.write_bytes(binary)          # write the archive in a file
             shutil.unpack_archive(tmp_file.as_posix(), tmp_dir)  # unpack it in dst directory
             return list(tmp_dir.iterdir())
-        elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable']:
+        elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable', 'application/x-sharedlib']:
             program_path = tmp_dir / name
             program_path.write_bytes(binary)
             return [program_path]
