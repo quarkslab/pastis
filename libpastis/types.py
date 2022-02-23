@@ -81,24 +81,26 @@ class LogLevel(Enum):
 
 
 class AlertData(object):
-    def __init__(self, id: int, covered: bool, validated: bool, seed: bytes):
+    def __init__(self, id: int, covered: bool, validated: bool, seed: bytes, address: int = 0):
         self.id = id
         self.covered = covered
         self.validated = validated
         self.seed = seed
+        self.address = address
 
 
     @staticmethod
     def from_json(data: str) -> 'AlertData':
         data = json.loads(data)
 
-        return AlertData(data['id'], data['covered'], data['validated'], base64.b64decode(data['seed']))
+        return AlertData(data['id'], data['covered'], data['validated'], base64.b64decode(data['seed']), data['address'])
 
     def to_json(self) -> str:
         return json.dumps({'id': self.id,
                            'covered': self.covered,
                            'validated': self.validated,
-                           'seed': base64.b64encode(self.seed).decode()})
+                           'seed': base64.b64encode(self.seed).decode(),
+                           'address': self.address})
 
 
 class FuzzingEngineInfo(object):
