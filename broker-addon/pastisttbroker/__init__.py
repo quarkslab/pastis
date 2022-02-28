@@ -26,7 +26,7 @@ class TritonConfigurationInterface(EngineConfiguration):
 
     @staticmethod
     def from_str(s: str) -> 'TritonConfigurationInterface':
-        return TritonConfigurationInterface(json.laods(s))
+        return TritonConfigurationInterface(json.loads(s))
 
     def to_str(self) -> str:
         json.dumps(self.data)
@@ -35,6 +35,10 @@ class TritonConfigurationInterface(EngineConfiguration):
         """ Current coverage mode selected in the file """
         v = self.data['coverage_strategy']
         return CoverageMode(v)
+
+    def set_target(self, target: int) -> None:
+        self.data['custom'] = {}
+        self.data['custom']['target'] = target
 
 
 class TritonEngineDescriptor(FuzzingEngineDescriptor):
