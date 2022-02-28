@@ -20,6 +20,10 @@ class TritonConfigurationInterface(EngineConfiguration):
         self.data = data
 
     @staticmethod
+    def new() -> 'TritonConfigurationInterface':
+        return TritonConfigurationInterface({})
+
+    @staticmethod
     def from_file(filepath: Path) -> 'TritonConfigurationInterface':
         with open(filepath, "r") as f:
             return TritonConfigurationInterface(json.load(f))
@@ -56,6 +60,8 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
         "HF_ITER"       # honggfuzz functions
     ]
 
+    config_class = TritonConfigurationInterface
+
     def __init__(self):
         pass
 
@@ -63,7 +69,7 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
     def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode], Optional[FuzzMode]]:
         p = lief.parse(str(binary_file))
         if not p:
-            return False, None
+            return False, None, None
 
         # Presumably good unless do find some instrumentation functions or imports
         for f in p.functions:
@@ -80,7 +86,3 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
         return [CoverageMode(st) for st in TRITON_DSE_COVS]
-
-    @staticmethod
-    def get_configuration_cls() -> EngineConfiguration:
-        return TritonConfigurationInterface
