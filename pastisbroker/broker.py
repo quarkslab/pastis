@@ -1,6 +1,6 @@
 # built-in imports
 import logging
-from typing import Tuple, Generator, List, Optional, Union
+from typing import Tuple, Generator, List, Optional, Union, Dict
 from pathlib import Path
 import time
 from hashlib import md5
@@ -16,12 +16,14 @@ from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, 
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
 from klocwork import KlocworkReport
 import lief
+from tritondse.qbinexportprogram import QBinExportProgram
 
 # Local imports
 from pastisbroker.client import PastisClient
 from pastisbroker.stat_manager import StatManager
 from pastisbroker.workspace import Workspace
-from pastisbroker.utils import read_binary_infos, load_engine_descriptor
+from pastisbroker.utils import load_engine_descriptor
+from pastisbroker.package import BinaryPackage
 
 lief.logging.disable()
 
@@ -65,6 +67,9 @@ class PastisBroker(BrokerAgent):
         self.argv = p_argv
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
+
+        # for slicing mode (otherwise not used)
+        self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
 
         # Initialize availables binaries
         self.programs = {}  # Tuple[(Arch, Fuzzer, ExecMode)] -> Path
@@ -200,7 +205,7 @@ class PastisBroker(BrokerAgent):
 
         # Load engines if they are not (lazy loading)
         for eng in engines:
-            if eng not in self.engines:
+            if eng.name not in self.engines:
                 self.load_engine_addon(eng.pymodule)
 
         if self.running: # A client is coming in the middle of a session
@@ -246,9 +251,10 @@ class PastisBroker(BrokerAgent):
         if not client:
             return
         logging.info(f"[{client.strid}] [STOP_COVERAGE]")
-        for c in self.iter_other_clients(client):
-            c.set_stopped()
-            self.send_stop(c.netid)
+
+        # Restart the client in another configuration
+        self.start_client_and_send_corpus(client)
+
 
     def data_received(self,  cli_id: bytes, data: str):
         client = self.get_client(cli_id)
@@ -278,6 +284,14 @@ class PastisBroker(BrokerAgent):
             self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
             first_val = True
 
+            if self.ck_mode == CheckMode.ALERT_ONE:
+                # remove the address from the
+                clis = self._slicing_ongoing[client.package_name].pop([alert_data.address])
+                for cli in clis:
+                    if cli != client:  # Stop any other client that would be targeting the same address
+                        logging.info(f"Send stop to client {cli.strid} (as its targeting an address that has just been validated")
+                        self.send_stop(cli.netid)
+
         # Update clients of and stats
         client.add_covered_alert(alert.id, alert.covered, first_cov, alert.validated, first_val)
 
@@ -289,7 +303,7 @@ class PastisBroker(BrokerAgent):
             logging.info(f"Klocwork results updated: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
         # If all alerts are validated send a stop to everyone
-        if self.kl_report.all_alerts_validated():
+        if self.kl_report.all_alerts_validated_or_uncoverable():
             self.stop_broker()
 
     def stop_broker(self):
@@ -317,7 +331,6 @@ class PastisBroker(BrokerAgent):
             self._transmit_pool(client, self._init_seed_pool)
 
     def start_client(self, client: PastisClient):
-        program = None  # The program yet to be selected
         engine = None
         exmode = ExecMode.SINGLE_EXEC
         fuzzmode = FuzzMode.INSTRUMENTED
@@ -331,25 +344,25 @@ class PastisBroker(BrokerAgent):
                 continue
 
             # Try finding a suitable binary for the current engine and the client arch
-            programs = self.programs.get((client.platform, client.arch))
-            program = None
+            programs: List[BinaryPackage] = self.programs.get((client.platform, client.arch))
+            package = None
             exmode = None
             fuzzmod = FuzzMode.AUTO
             for p in programs:
-                res, xmod, fmod = eng_desc.accept_file(p)  # Iterate all files on that engine descriptor to check it accept it
+                res, xmod, fmod = eng_desc.accept_file(p.executable_path)  # Iterate all files on that engine descriptor to check it accept it
                 if res:
                     if exmode:
                         if exmode == ExecMode.SINGLE_EXEC and xmod == ExecMode.PERSISTENT:  # persistent supersede single_exec
-                            program, exmode, fuzzmod = p, xmod, fmod
+                            package, exmode, fuzzmod = p, xmod, fmod
                         else:
                             if fuzzmod == FuzzMode.BINARY_ONLY and fmod == FuzzMode.INSTRUMENTED:  # instrumented supersede binary only
-                                program, exmode, fuzzmod = p, xmod, fmod
+                                package, exmode, fuzzmod = p, xmod, fmod
                             else:
                                 pass  # Program is suitable but we already had found a PERSISTENT one
                     else:
-                        program, exmode, fuzzmod = p, xmod, fmod  # first suitable program found
+                        package, exmode, fuzzmod = p, xmod, fmod  # first suitable program found
 
-            if not program:  # If still no program was found continue iterating engines
+            if not package:  # If still no program was found continue iterating engines
                 continue
 
             # Valid engine and suitable program found
@@ -362,16 +375,35 @@ class PastisBroker(BrokerAgent):
             # If got here a suitable program has been found just break loop
             break
 
-        if engine is None or program is None:
+        if engine is None or package is None:
             logging.critical(f"No suitable engine or program was found for client {client.strid} {client.engines}")
             return
 
+        if self.ck_mode == CheckMode.ALERT_ONE:
+            if package.is_qbinexport():
+                targets = self._slicing_ongoing[package.name]
+                sorted_targets = sorted(targets, key=lambda k: len(targets[k]), reverse=False)  # sort alert addresses by number of client instances working on it
+                if sorted_targets:
+                    addr = sorted_targets[0]
+                    targets[addr].append(client)
+                    # Now twist the config to transmit it to the client
+                    engine_args = engine.config_class.new() if engine_args is None else engine_args
+                    engine_args.set_target(addr)
+                    logging.info(f"will start client {client.id} to target 0x{addr:x}")
+                else:
+                    logging.error(f"No alert target for binary package {package.name}")
+            else:
+                logging.error(f"In mode {self.ck_mode} but the binary package is not a QBinExport")
+                return
+
+
         # Update internal client info and send him the message
-        logging.info(f"send start client {client.id}: {program.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
-        client.set_running(engine, covmode, exmode, self.ck_mode)
+        logging.info(f"send start client {client.id}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
+        client.set_running(package.name, engine, covmode, exmode, self.ck_mode)
         client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
-                        program,
+                        package.name,
+                        package.make_package() if package.is_qbinexport() else package.executable_path,
                         self.argv,
                         exmode,
                         fuzzmod,
@@ -385,7 +417,7 @@ class PastisBroker(BrokerAgent):
 
     def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:
         """
-        Find a coverage mode for the engine. It will iterate all configuration
+        Find a configuration for the engine. It will iterate all configuration
         available or automatically balance de configuration if there is multiple of
         them
         :param engine:
@@ -431,7 +463,6 @@ class PastisBroker(BrokerAgent):
         else:
             return supported_mods[0]
 
-
     def start(self, running: bool=True):
         super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.time()
@@ -469,24 +500,35 @@ class PastisBroker(BrokerAgent):
         d = Path(binaries_dir)
         for file in d.iterdir():
             if file.is_file():
-                data = read_binary_infos(file)
-                if data is None:
+                try:
+                    pkg = BinaryPackage.auto(d, file.name)  # try creating a package
+                except ValueError:  # if not an executable
                     continue
 
-                platform, arch = data
-                logging.info(f"new binary detected [{platform.name}, {arch.name}]: {file}")
+                # Check that we can find a QBinExport file associated otherwise reject it
+                if self.ck_mode == CheckMode.ALERT_ONE:
+                    if pkg.is_qbinexport():
+                        try:
+                            f = pkg.qbinexport.get_function("__klocwork_alert_placeholder")
+                            self._slicing_ongoing[file.name] = {x: [] for x in pkg.qbinexport.get_caller_instructions(f)}
+                        except ValueError:
+                            logging.warning(f"can't find placeholder file in {file.name}, thus ignores it.")
+                            continue
+                    else:
+                        logging.warning(f"{file.name} executable found but no QBinExport file associated (ignores it)")
+                        continue
 
-                # Copy binary in workspace
-                dst_file = self.workspace.add_binary(file)
+                logging.info(f"new binary detected [{pkg.platform.name}, {pkg.arch.name}]: {file}")
 
                 # Add it in the internal structure
-                data2 = (Platform.ANY, arch)
+                data = (pkg.platform, pkg.arch)
+                data2 = (Platform.ANY, pkg.arch)
                 if data not in self.programs:
                     self.programs[data] = []
                 if data2 not in self.programs:
                     self.programs[data2] = []
-                self.programs[data].append(dst_file)
-                self.programs[data2].append(dst_file)  # Also add an entry for any platform
+                self.programs[data].append(pkg)
+                self.programs[data2].append(pkg)  # Also add an entry for any platform
 
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
@@ -501,8 +543,7 @@ class PastisBroker(BrokerAgent):
     def add_engine_configuration(self, name: str, config_file: PathLike):
         if name in self.engines_args:
             engine = self.engines[name]
-            conf_cls = engine.get_configuration_cls()
-            conf = conf_cls.from_file(config_file)
+            conf = engine.config_class.from_file(config_file)
             self.engines_args[name].append(conf)
         else:
             logging.error(f"can't find engine {name} (shall preload it to add a configuration)")
