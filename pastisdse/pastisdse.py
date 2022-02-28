@@ -203,7 +203,11 @@ class PastisDSE(object):
             tmp_file = Path(tempfile.mktemp(suffix=map[mime]))
             tmp_file.write_bytes(binary)          # write the archive in a file
             shutil.unpack_archive(tmp_file.as_posix(), tmp_dir)  # unpack it in dst directory
-            return list(tmp_dir.iterdir())
+            files = list(tmp_dir.iterdir())
+            if len(files) == 1 and files[0].is_dir():
+                return list(files[0].iterdir())  # iter files in the
+            else:
+                return files
         elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable', 'application/x-sharedlib']:
             program_path = tmp_dir / name
             program_path.write_bytes(binary)
@@ -254,7 +258,12 @@ class PastisDSE(object):
             logging.error(f"unrecognized file type for {fname}")
             return
 
-        f_path = [x for x in files if x.name == fname][0]
+        f_path = [x for x in files if x.name == fname]
+        if not f_path:
+            logging.error(f"can't find {fname} in archive")
+            return
+        else:
+            f_path = f_path[0]
 
         qbexp_path = f_path.with_suffix(".QBinExport")
         if qbexp_path in files:
@@ -331,8 +340,6 @@ class PastisDSE(object):
             target_addr = self.config.custom['target']  # retrieve the target address to reach
             dse.callback_manager.register_post_addr_callback(target_addr, self.intrinsic_callback)
 
-            logging.info(f"launching exploration in targeted mode on: 0x{target_addr:08x}")
-
             # NOTE Target address must be the starting address of a basic block.
             slice_from = self.program.find_function_addr('main')
             slice_to = target_addr
@@ -341,6 +348,7 @@ class PastisDSE(object):
                 # Find the functions that correspond to the from and to addresses.
                 slice_from_fn = self.program.find_function_from_addr(slice_from)
                 slice_to_fn = self.program.find_function_from_addr(slice_to)
+                logging.info(f"launching exploration in targeted mode on: 0x{target_addr:08x} in {slice_to_fn.name}")
 
                 if slice_from_fn and slice_to_fn:
                     # NOTE Generate call graph with backedges so when we do the
