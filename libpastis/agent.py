@@ -193,13 +193,13 @@ class BrokerAgent(NetworkAgent):
         msg.seed = seed
         self.send_to(id, msg, msg_type=MessageType.INPUT_SEED)
 
-    def send_start(self, id: bytes, program: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, ckmode: CheckMode,
+    def send_start(self, id: bytes, name: str, program: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, ckmode: CheckMode,
                    covmode: CoverageMode, engine: FuzzingEngineInfo, engine_args: str,
                    seed_loc: SeedInjectLoc, kl_report: str=None):
         msg = StartMsg()
         if isinstance(program, str):
             program = Path(program)
-        msg.binary_filename = program.name
+        msg.binary_filename = name
         msg.binary = program.read_bytes()
         msg.engine.name = engine.name
         msg.engine.version = engine.version
