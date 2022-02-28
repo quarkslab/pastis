@@ -44,6 +44,8 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
 
     HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
 
+    config_class = HonggfuzzConfiguration
+
     def __init__(self):
         pass
 
@@ -77,7 +79,3 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
         return [CoverageMode.AUTO]
-
-    @staticmethod
-    def get_configuration_cls() -> Type[EngineConfiguration]:
-        return HonggfuzzConfiguration
