@@ -41,6 +41,8 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
     SHORT_NAME = "AFLPP"
     VERSION = "0.3"  # Should be in sync with alfpp.__version__
 
+    config_class = AFLConfiguration
+
     def __init__(self):
         pass
 
@@ -69,7 +71,3 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
         return [CoverageMode.AUTO]
-
-    @staticmethod
-    def get_configuration_cls() -> Type[EngineConfiguration]:
-        return AFLConfiguration
