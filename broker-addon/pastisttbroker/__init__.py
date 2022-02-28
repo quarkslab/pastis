@@ -33,7 +33,7 @@ class TritonConfigurationInterface(EngineConfiguration):
         return TritonConfigurationInterface(json.loads(s))
 
     def to_str(self) -> str:
-        json.dumps(self.data)
+        return json.dumps(self.data)
 
     def get_coverage_mode(self) -> CoverageMode:
         """ Current coverage mode selected in the file """
