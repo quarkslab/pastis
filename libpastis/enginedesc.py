@@ -2,8 +2,6 @@
 from pathlib import Path
 from typing import List, Union, Tuple, Optional
 
-
-
 # Local imports
 from libpastis.types import CoverageMode, ExecMode, FuzzMode
 
@@ -31,6 +29,8 @@ class EngineConfiguration(object):
         """ Current coverage mode selected in the file """
         raise NotImplementedError
 
+    def set_target(self, target: int) -> None:
+        pass
 
 
 class FuzzingEngineDescriptor(object):
