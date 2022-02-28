@@ -36,6 +36,7 @@ class PastisDSE(object):
         self._stop      = False
         self.klreport   = None
         self._last_kid  = None
+        self._last_kid_pc = None
         self._seed_wait = False
         self._seed_received = set()
         self._probes = []
@@ -133,7 +134,7 @@ class PastisDSE(object):
                 logging.info(f'A crash occured with an ABV_GENERAL encountered just before.')
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
                 alert.validated = True
-                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content))
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content, self._last_kid_pc))
 
         # Print stats
         if self.klreport:
@@ -440,6 +441,7 @@ class PastisDSE(object):
         """
         alert_id = state.get_argument_value(0)
         self._last_kid = alert_id
+        self._last_kid_pc = se.previous_pc
         covered, validated = False, False
         if self.klreport:
             # Retrieve the KlocworkAlert object from the report
@@ -468,7 +470,7 @@ class PastisDSE(object):
 
             if covered or validated:  # If either coverage or validation were improved print stats
                 # Send updates to the broker
-                self.agent.send_alert_data(AlertData(alert.id, alert.covered, validated, se.seed.content))
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, validated, se.seed.content, se.previous_pc))
                 d, v = self.klreport.get_stats()
                 logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
