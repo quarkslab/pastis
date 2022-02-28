@@ -69,7 +69,6 @@ class PastisBroker(BrokerAgent):
         self.engines = {}  # name->FuzzingEngineDescriptor
 
         # for slicing mode (otherwise not used)
-        self._programs_object = {}  # will contain mapping Path -> QBinExportProgram
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
 
         # Initialize availables binaries
@@ -206,7 +205,7 @@ class PastisBroker(BrokerAgent):
 
         # Load engines if they are not (lazy loading)
         for eng in engines:
-            if eng not in self.engines:
+            if eng.name not in self.engines:
                 self.load_engine_addon(eng.pymodule)
 
         if self.running: # A client is coming in the middle of a session
@@ -388,7 +387,7 @@ class PastisBroker(BrokerAgent):
                     addr = sorted_targets[0]
                     targets[addr].append(client)
                     # Now twist the config to transmit it to the client
-                    engine_args = engine.get_configuration_cls()() if engine_args is None else engine_args
+                    engine_args = engine.config_class.new() if engine_args is None else engine_args
                     engine_args.set_target(addr)
                     logging.info(f"will start client {client.id} to target 0x{addr:x}")
                 else:
@@ -502,7 +501,7 @@ class PastisBroker(BrokerAgent):
         for file in d.iterdir():
             if file.is_file():
                 try:
-                    pkg = BinaryPackage(file)  # try creating a package
+                    pkg = BinaryPackage.auto(d, file.name)  # try creating a package
                 except ValueError:  # if not an executable
                     continue
 
@@ -511,7 +510,6 @@ class PastisBroker(BrokerAgent):
                     if pkg.is_qbinexport():
                         try:
                             f = pkg.qbinexport.get_function("__klocwork_alert_placeholder")
-                            self._programs_object[file.name] = pkg
                             self._slicing_ongoing[file.name] = {x: [] for x in pkg.qbinexport.get_caller_instructions(f)}
                         except ValueError:
                             logging.warning(f"can't find placeholder file in {file.name}, thus ignores it.")
@@ -545,8 +543,7 @@ class PastisBroker(BrokerAgent):
     def add_engine_configuration(self, name: str, config_file: PathLike):
         if name in self.engines_args:
             engine = self.engines[name]
-            conf_cls = engine.get_configuration_cls()
-            conf = conf_cls.from_file(config_file)
+            conf = engine.config_class.from_file(config_file)
             self.engines_args[name].append(conf)
         else:
             logging.error(f"can't find engine {name} (shall preload it to add a configuration)")

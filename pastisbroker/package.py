@@ -7,6 +7,7 @@ from typing import Tuple, Optional
 
 # third-party imports
 import lief
+from tritondse.qbinexportprogram import QBinExportProgram
 
 # local imports
 from libpastis.types import Arch, Platform
@@ -58,7 +59,7 @@ class BinaryPackage(object):
         p._platform, p._arch = data
         qfile = bin_f.with_suffix(".QBinExport")
         if qfile.exists():
-            p._qbinexport = qfile
+            p._qbinexport = QBinExportProgram(qfile, bin_f)
         cfile = bin_f.with_suffix(".gt")
         if cfile.exists():
             p._callgraph = cfile
@@ -88,7 +89,7 @@ class BinaryPackage(object):
         zip = zipfile.ZipFile(fname, "w")
         zip.write(self._main_bin)
         if self._qbinexport:
-            zip.write(self._qbinexport)
+            zip.write(self._qbinexport.export_file)
         if self._callgraph:
             zip.write(self._callgraph)
         for file in self.other_files:
