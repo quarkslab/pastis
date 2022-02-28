@@ -1,47 +1,13 @@
 #built-in imports
 import logging
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 import importlib
 import inspect
 
-# third-party imports
-import lief
-
-# local imports
-from libpastis.types import Arch, ExecMode, Platform
 from libpastis.enginedesc import FuzzingEngineDescriptor
 
 
 HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
-
-
-def read_binary_infos(file: Path) -> Optional[Tuple[Platform, Arch]]:
-    p = lief.parse(str(file))
-    if not p:
-        return None
-    if not isinstance(p, lief.ELF.Binary):
-        logging.warning(f"binary {file} not supported (only ELF at the moment)")
-        return None
-
-    # Determine the architecture of the binary
-    mapping = {lief.ELF.ARCH.x86_64: Arch.X86_64,
-               lief.ELF.ARCH.i386: Arch.X86,
-               lief.ELF.ARCH.ARM: Arch.ARMV7,
-               lief.ELF.ARCH.AARCH64: Arch.AARCH64}
-    arch = mapping.get(p.header.machine_type)
-
-    # Determine the platform from its format
-    mapping_elf = {lief.EXE_FORMATS.ELF: Platform.LINUX,
-                   lief.EXE_FORMATS.PE: Platform.WINDOWS,
-                   lief.EXE_FORMATS.MACHO: Platform.MACOS}
-    # FIXME: differentiating between ELF (Linux, Android ..) and MACHO (MacOS, iOS..)
-    fmt = mapping_elf.get(p.format)
-
-    if arch and fmt:
-        return fmt, arch
-    else:
-        return None
 
 
 def load_engine_descriptor(py_module: str) -> Optional[FuzzingEngineDescriptor]:
