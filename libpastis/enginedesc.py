@@ -15,6 +15,10 @@ class EngineConfiguration(object):
     # TODO: Plus tard description des champs en pydantic ou autre directement en dash
 
     @staticmethod
+    def new() -> 'EngineConfiguration':
+        raise NotImplementedError
+
+    @staticmethod
     def from_file(filepath: Path) -> 'EngineConfiguration':
         raise NotImplementedError
 
@@ -39,14 +43,12 @@ class FuzzingEngineDescriptor(object):
     SHORT_NAME = "AE"
     VERSION = "1.0"
 
+    config_class = EngineConfiguration
+
     @staticmethod
     def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode], Optional[FuzzMode]]:
         raise NotImplementedError()
 
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:
-        raise NotImplementedError()
-
-    @staticmethod
-    def get_configuration_cls() -> EngineConfiguration:
         raise NotImplementedError()
