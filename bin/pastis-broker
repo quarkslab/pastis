@@ -44,18 +44,22 @@ def iterate_file(file):
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Klocwork report to use")
 @click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
 @click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking")
+@click.option('-c', '--chkmode', type=click.Choice([x.name for x in CheckMode]), default=CheckMode.CHECK_ALL, help="Check mode (all or alert driven)")
 @click.option('-e', '--engine', type=str, help="Fuzzing engine module to load (python module)", multiple=True)
 @click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Triton configuration file")
 @click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Honggfuzz configuration file")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
 @click.argument('pargvs', nargs=-1)
-def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, engine: Tuple[str], tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], pargvs: Tuple[str]):
+def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, chkmode: str, engine: Tuple[str], tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], pargvs: Tuple[str]):
     global broker
     # Instanciate the broker
 
-    ckmode = CheckMode.ALERT_ONLY if kl_report else CheckMode.CHECK_ALL
+    chkmode = CheckMode[chkmode]
+    if chkmode in [CheckMode.ALERT_ONLY, CheckMode.ALERT_ONE] and not kl_report:
+        logging.error(f"Check mode {chkmode.name} requires a Klocwork report (use -k) to provide it")
+        sys.exit(1)
 
-    broker = PastisBroker(workspace, bins, BrokingMode[mode], ckmode, kl_report, list(pargvs))
+    broker = PastisBroker(workspace, bins, BrokingMode[mode], chkmode, kl_report, list(pargvs))
 
     # Preload all Fuzzing engine if needed
     for eng in engine:

@@ -29,6 +29,7 @@ class PastisClient(object):
         self.logger = None
 
         # Runtime properties
+        self._program = None
         self._running = False
         self._engine = None  # FuzzingEngineDescriptor
         self._coverage_mode = None
@@ -106,6 +107,10 @@ class PastisClient(object):
             getattr(self.logger, level.name.lower())(message)
 
     @property
+    def package_name(self) -> str:
+        return self._program
+
+    @property
     def engine(self):
         return self._engine
 
@@ -129,7 +134,8 @@ class PastisClient(object):
         self._exec_mode = None
         self._check_mode = None
 
-    def set_running(self, engine: FuzzingEngineDescriptor, covmode: CoverageMode, exmode: ExecMode, ckmode: CheckMode):
+    def set_running(self, program: str, engine: FuzzingEngineDescriptor, covmode: CoverageMode, exmode: ExecMode, ckmode: CheckMode):
+        self._program = program
         self._running = True
         self._engine = engine
         self._coverage_mode = covmode
