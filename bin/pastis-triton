@@ -56,7 +56,7 @@ def online(host: str, port: int):
     pastis = PastisDSE(agent)
 
     pastis.init_agent(host, port)
-    pastis.run(wait_idle=True)
+    pastis.run(online=True)
 
 
 def load_probe_module(module) -> Optional[ProbeInterface]:
@@ -191,7 +191,7 @@ def offline(program: str,
                 pastis.seed_received(SeedType.INPUT, sub_s.read_bytes())
 
     # Call run to start exploration
-    pastis.run(wait_idle=False)
+    pastis.run(online=False)
 
 
 if __name__ == "__main__":

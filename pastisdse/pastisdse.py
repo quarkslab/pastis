@@ -67,34 +67,67 @@ class PastisDSE(object):
         self._th = threading.Thread(target=self.run, daemon=True)
         self._th.start()
 
+    def reset(self):
+        """ Reset the current DSE to be able to restart from fresh settings """
+        self.dse = None  # remove DSE object
+        self.config = Config(debug=False)
+        self.config.workspace = ""  # Reset workspace so that it will computed in start_received
+        self._last_kid_pc = None
+        self._last_kid = None
+        self.klreport = None
+        self._program_slice = None
+        self._seed_received = set()
+        self._seed_wait = False
+        self.program = None
+        self._stop = False
+        self._chkmode = None
+        self.nb_to, self.nb_crash = 0, 0
+        self._cur_cov_count = 0
+        self._last_cov_update = time.time()
+        logging.info("DSE Ready")
 
-    def run(self, wait_idle=True):
-        """
-        This function does the exploration while a stop is received
-        from the broker.
-        """
-        # Just wait until the broker says let's go
-        while self.dse is None:
-            time.sleep(0.10)
+    def run(self, online: bool):
 
         # Run while we are not instructed to stop
         while not self._stop:
-            st = self.dse.explore()
-            if st == ExplorationStatus.STOPPED:  # if the exploration stopped just return
-                break
-            elif st == ExplorationStatus.IDLE:
-                if wait_idle:  # if we want to wait for seeds just wait to receive one
-                    logging.info("exploration idle (worklist empty)")
-                    self.agent.send_log(LogLevel.INFO, "exploration idle (worklist empty)")
-                    self._wait_seed_event()
-                else:
-                    break  # Just break and exit
-            else:
-                logging.error(f"explorator not meant to be in state: {st}")
+
+            self.reset()
+
+            # Just wait until the broker says let's go
+            while self.dse is None:
+                time.sleep(0.10)
+
+            if not self.run_one(online):
                 break
 
-        # Exited loop because received stop (from broker)
         self.agent.stop()
+
+    def run_one(self, online: bool):
+        # Run while we are not instructed to stop
+        while not self._stop:
+
+            st = self.dse.explore()
+
+            if not online:
+                return False  # in offline whatever the status we stop
+
+            else: # ONLINE
+                if st == ExplorationStatus.STOPPED:  # if the exploration stopped just return
+                    return False
+                elif st == ExplorationStatus.TERMINATED:
+                    self.agent.send_stop_coverage_criteria()
+                    return True  # Reset and wait for further instruction from the broker
+                elif st == ExplorationStatus.IDLE:  # no seed
+                    if self._chkmode == CheckMode.ALERT_ONE:
+                        self.agent.send_stop_coverage_criteria()  # Warn: the broker we explored the whole search space and did not validated the target
+                        return True                               # Make ourself ready to receive a new one
+                    else: # wait for seed of peers
+                        logging.info("exploration idle (worklist empty)")
+                        self.agent.send_log(LogLevel.INFO, "exploration idle (worklist empty)")
+                        self._wait_seed_event()
+                else:
+                    logging.error(f"explorator not meant to be in state: {st}")
+                    return False
 
 
     def _wait_seed_event(self):
@@ -175,14 +208,16 @@ class PastisDSE(object):
 
         # Find the function which holds the basic block of the destination.
         dst_fn = self.program.find_function_from_addr(dst)
-        assert dst_fn != None
-
-        # Check whether the destination function is within the slice.
-        within_slice = dst_fn.start in self._program_slice if self._program_slice else True
-
-        logging.info(f"Edge dst within slice? {within_slice} ({src:#x} -> {dst:#x} ({typ.name}) ({dst_fn.name}))")
-
-        return within_slice
+        if dst_fn is None:
+            logging.warning("Solving edge ({src:#x} -> {dst:#x}) not in a function")
+            return True
+        else:
+            if dst_fn.start in self._program_slice:
+                return True
+            else:
+                logging.info(
+                    f"Slicer: reject edge ({src:#x} -> {dst:#x} ({dst_fn.name}) not in slice!")
+                return False
 
     def get_files(self, name: str, binary: bytes) -> List[Path]:
         """
@@ -236,6 +271,9 @@ class PastisDSE(object):
         :return: None
         """
         logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
+
+        if self.dse is not None:
+            logging.warning("DSE already instanciated (override it)")
 
         if engine.version != pastisdse.__version__:
             logging.error(f"Pastis-DSE mismatch with one from the server {engine.version} (local: {pastisdse.__version__})")
@@ -403,10 +441,7 @@ class PastisDSE(object):
         This function is called when the broker says stop. (Called from the agent thread)
         """
         logging.info(f"[BROKER] [STOP]")
-        self.stop()
 
-
-    def stop(self):
         if self.dse:
             self.dse.stop_exploration()
         self._stop = True
@@ -450,40 +485,42 @@ class PastisDSE(object):
         alert_id = state.get_argument_value(0)
         self._last_kid = alert_id
         self._last_kid_pc = se.previous_pc
-        covered, validated = False, False
+
+        def status_changed(a, cov, vld):
+            return a.covered != cov or a.validated != vld
+
         if self.klreport:
             # Retrieve the KlocworkAlert object from the report
             try:
                 alert = self.klreport.get_alert(binding_id=alert_id)
+                cov, vld = alert.covered, alert.validated
             except IndexError:
                 logging.warning(f"Intrinsic id {alert_id} not binded in report (ignored)")
                 return
 
             if not alert.covered:
                 self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} covered ! ({alert.kind.name})")
-                alert.covered = True
-                covered = True
+                alert.covered = True  # that might also set validated to true!
 
             if alert.kind == PastisVulnKind.VULNERABILITY and not alert.validated:  # If of type VULNERABILITY and not yet validated
                 res = self.check_alert_dispatcher(alert.code, se, state, addr)
                 if res:
                     alert.validated = True
                     self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
-                    validated = True
                     if se.seed.is_status_set():
                         logging.warning(f"Status already set ({se.seed.status}) for seed {se.seed.hash} (override with CRASH)")
                     se.seed.status = SeedStatus.CRASH  # Mark the seed as crash, as it validates an alert
                 else:
                     logging.info(f"Alert [{alert.id}] in {alert.file}:{alert.line}: validation [FAIL]")
 
-            if covered or validated:  # If either coverage or validation were improved print stats
+            if status_changed(alert, cov, vld):  # If either coverage or validation were improved print stats
                 # Send updates to the broker
-                self.agent.send_alert_data(AlertData(alert.id, alert.covered, validated, se.seed.content, se.previous_pc))
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content, se.previous_pc))
                 d, v = self.klreport.get_stats()
                 logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
-            if self.klreport.all_alerts_validated() or (self._chkmode == CheckMode.ALERT_ONE and alert.validated):
-                self._all_alerts_validated()
+                if self.klreport.all_alerts_validated() or (self._chkmode == CheckMode.ALERT_ONE and alert.validated):
+                    self._do_stop_all_alerts_validated()
 
         else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
             # Retrieve alert type from parameters
@@ -637,18 +674,17 @@ class PastisDSE(object):
             logging.error(f"Unsupported alert kind {type}")
 
 
-    def _all_alerts_validated(self) -> None:
+    def _do_stop_all_alerts_validated(self) -> None:
         """
         Function called if all alerts have been covered and validated. All data are meant to
         have been transmitted to the broker, but writes down locally the CSV anyway
         :return: None
         """
         logging.info("All defaults and vulnerability have been covered !")
-        self.agent.send_stop_coverage_criteria()  # FIXME: Not sure anymore it makes sense ?
 
         # Write the final CSV in the workspace directory
         out_file = self.dse.workspace.get_metadata_file_path("klocwork_coverage_results.csv")
         self.klreport.write_csv(out_file)
 
         # Stop the dse exploration
-        self.dse.stop_exploration()
+        self.dse.terminate_exploration()
