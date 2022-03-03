@@ -250,11 +250,16 @@ class PastisBroker(BrokerAgent):
         client = self.get_client(cli_id)
         if not client:
             return
-        logging.info(f"[{client.strid}] [STOP_COVERAGE]")
 
-        # Restart the client in another configuration
-        self.start_client_and_send_corpus(client)
-
+        if self.ck_mode == CheckMode.ALERT_ONE:  # Start it on another target
+            addr = client.target
+            s = "validated " if client.target_validated else "is stuck for "
+            logging.info(f"[{client.strid}] [STOP_COVERAGE] client {s} 0x{addr:x} address (launch another target)")
+            clis = self._slicing_ongoing[client.package_name].pop(addr)  # pop the address definitely
+            self.relaunch_clients(clis)  # relaunch all clients on a new target
+        else:
+            logging.info(f"[{client.strid}] [STOP_COVERAGE]: restart client")
+            self.relaunch_clients([client])  # restart the client
 
     def data_received(self,  cli_id: bytes, data: str):
         client = self.get_client(cli_id)
@@ -272,12 +277,6 @@ class PastisBroker(BrokerAgent):
         else:
             alert = self.kl_report.get_alert(kid=alert_data.id)
 
-        if not alert.covered and alert_data.covered:
-            logging.info(f"[{client.strid}] First to cover {alert}")
-            alert.covered = alert_data.covered
-            self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
-            first_cov = True
-
         if not alert.validated and alert_data.validated:
             logging.info(f"[{client.strid}] First to validate {alert}")
             alert.validated = alert_data.validated
@@ -285,12 +284,15 @@ class PastisBroker(BrokerAgent):
             first_val = True
 
             if self.ck_mode == CheckMode.ALERT_ONE:
-                # remove the address from the
-                clis = self._slicing_ongoing[client.package_name].pop([alert_data.address])
-                for cli in clis:
-                    if cli != client:  # Stop any other client that would be targeting the same address
-                        logging.info(f"Send stop to client {cli.strid} (as its targeting an address that has just been validated")
-                        self.send_stop(cli.netid)
+                client.target_validated = True
+                # Note: Do not relaunch the client now, wait for him to send stop_coverage
+
+        # Need to be after validated because alert.covered = True (will also set validated)
+        if not alert.covered and alert_data.covered:
+            logging.info(f"[{client.strid}] First to cover {alert}")
+            alert.covered = alert_data.covered
+            self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
+            first_cov = True
 
         # Update clients of and stats
         client.add_covered_alert(alert.id, alert.covered, first_cov, alert.validated, first_val)
@@ -305,6 +307,12 @@ class PastisBroker(BrokerAgent):
         # If all alerts are validated send a stop to everyone
         if self.kl_report.all_alerts_validated_or_uncoverable():
             self.stop_broker()
+
+    def relaunch_clients(self, clients):
+        for cli in clients:
+            logging.info(
+                f"Launch client {cli.strid} as its targeting an address that has just been validated")
+            self.start_client_and_send_corpus(cli)
 
     def stop_broker(self):
         for client in self.clients.values():
@@ -386,10 +394,12 @@ class PastisBroker(BrokerAgent):
                 if sorted_targets:
                     addr = sorted_targets[0]
                     targets[addr].append(client)
+                    client.target = addr   # keep the target on which the client is working on
+                    client.target_validated = False
                     # Now twist the config to transmit it to the client
                     engine_args = engine.config_class.new() if engine_args is None else engine_args
                     engine_args.set_target(addr)
-                    logging.info(f"will start client {client.id} to target 0x{addr:x}")
+                    logging.info(f"will start client {client.strid} to target 0x{addr:x}")
                 else:
                     logging.error(f"No alert target for binary package {package.name}")
             else:

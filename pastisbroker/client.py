@@ -17,6 +17,7 @@ class PastisClient(object):
     """
 
     def __init__(self, id: int, netid: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
+        # All this attributes are assigned once and for all
         self.id = id
         self.netid = netid
         self.engines = engines
@@ -28,7 +29,7 @@ class PastisClient(object):
 
         self.logger = None
 
-        # Runtime properties
+        # Runtime properties (reset at avery send_start)
         self._program = None
         self._running = False
         self._engine = None  # FuzzingEngineDescriptor
@@ -37,6 +38,8 @@ class PastisClient(object):
         self._check_mode = None
         self._seeds_received = set()  # Seed sent to the client
         self._seeds_submitted = set()  # Seed submitted by the client
+        self.target = None  # target in case of slicing
+        self.target_validated = False
 
         # Runtime telemetry stats
         self.exec_per_sec = None
@@ -65,13 +68,14 @@ class PastisClient(object):
         # self._timeline_coverage = []
 
     def configure_logger(self, log_dir, colorid: int):
-        self.logger = logging.getLogger(f"\033[7m\033[{colorid}m[{self.strid}]\033[0m")
+        if self.logger is None:
+            self.logger = logging.getLogger(f"\033[7m\033[{colorid}m[{self.strid}]\033[0m")
 
-        # Add a file handler
-        hldr = logging.FileHandler(log_dir/f"{self.strid}.log")
-        hldr.setLevel(logging.DEBUG)
-        hldr.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s"))
-        self.logger.addHandler(hldr)
+            # Add a file handler
+            hldr = logging.FileHandler(log_dir/f"{self.strid}.log")
+            hldr.setLevel(logging.DEBUG)
+            hldr.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s"))
+            self.logger.addHandler(hldr)
 
     @property
     def strid(self):
@@ -141,6 +145,8 @@ class PastisClient(object):
         self._coverage_mode = covmode
         self._exec_mode = exmode
         self._check_mode = ckmode
+        self._seeds_received = set()  # Seed sent to the client
+        self._seeds_submitted = set()  # Seed submitted by the client
 
     def is_supported_engine(self, engine: FuzzingEngineDescriptor) -> bool:
         for e in self.engines:
