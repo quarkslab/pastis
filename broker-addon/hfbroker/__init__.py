@@ -1,6 +1,7 @@
 # built-in imports
 from pathlib import Path
 from typing import Union, Tuple, List, Optional
+import json
 
 # third-party import
 import lief
@@ -10,30 +11,34 @@ from libpastis import FuzzingEngineDescriptor, EngineConfiguration
 from libpastis.types import ExecMode, CoverageMode, FuzzMode
 
 
-class HonggfuzzConfiguration(EngineConfiguration):
-    """
-    Small wrapping function for AFL++ additional parameters
-    """
-    def __init__(self, data: str):
-        """
-        :param data: command line to provide AFL++ as-is
-        """
+class HonggfuzzConfigurationInterface(EngineConfiguration):
+    def __init__(self, data):
         self.data = data
 
     @staticmethod
-    def from_file(filepath: Path) -> 'HonggfuzzConfiguration':
-        return HonggfuzzConfiguration(Path(filepath).read_text())
+    def new() -> 'HonggfuzzConfigurationInterface':
+        return HonggfuzzConfigurationInterface({})
 
     @staticmethod
-    def from_str(s: str) -> 'HonggfuzzConfiguration':
-        return HonggfuzzConfiguration(s)
+    def from_file(filepath: Path) -> 'HonggfuzzConfigurationInterface':
+        with open(filepath, "r") as f:
+            return HonggfuzzConfigurationInterface(json.load(f))
+
+    @staticmethod
+    def from_str(s: str) -> 'HonggfuzzConfigurationInterface':
+        return HonggfuzzConfigurationInterface(json.loads(s))
 
     def to_str(self) -> str:
-        return self.data
+        return json.dumps(self.data)
 
     def get_coverage_mode(self) -> CoverageMode:
         """ Current coverage mode selected in the file """
-        raise CoverageMode.AUTO
+        v = self.data['coverage_strategy']
+        return CoverageMode(v)
+
+    def set_target(self, target: int) -> None:
+        self.data['custom'] = {}
+        self.data['custom']['target'] = target
 
 
 class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
@@ -44,7 +49,7 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
 
     HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
 
-    config_class = HonggfuzzConfiguration
+    config_class = HonggfuzzConfigurationInterface
 
     def __init__(self):
         pass
