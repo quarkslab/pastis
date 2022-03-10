@@ -1,6 +1,8 @@
 # built-in imports
 from typing  import List, Tuple
 from hashlib import md5
+import os
+import stat
 import time
 import logging
 import tempfile
@@ -21,6 +23,7 @@ from tritondse.types      import Addr, Input, Edge, SymExType
 from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
+from tritondse.trace      import QBDITrace
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -107,6 +110,16 @@ class PastisDSE(object):
     def run_one(self, online: bool):
         # Run while we are not instructed to stop
         while not self._stop:
+
+            # FIXME Find a better way to deal with this.
+            # IMPORTANT Here we added a delay to avoid a race condition between
+            # this function and seed_recevied(). In case that there are no seeds
+            # available (such as in the first call to seed_received) and
+            # seed_received() takes more time to execute than what it takes to run
+            # dse.explore() (the line below), this function will exit (and the
+            # whole exploration will stop) since the dse instance will return
+            # STOPPED as there are no seeds available.
+            time.sleep(1)
 
             st = self.dse.explore()
 
@@ -392,9 +405,44 @@ class PastisDSE(object):
 
         # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
-            self.dse.add_input_seed(seed)
+            add_input = False
+            if typ == SeedType.INPUT:
+                with tempfile.NamedTemporaryFile(delete=True) as f:
+                    Path(f.name).write_bytes(seed)
+
+                    try:
+                        # Set executable bit.
+                        os.chmod(self.program.path, os.stat(self.program.path).st_mode | stat.S_IEXEC)
+
+                        # Run the seed and determine whether it improves our current coverage.
+                        trace = QBDITrace.run(self.config.coverage_strategy,
+                                              str(self.program.path),
+                                              self.config.program_argv,
+                                              stdin_file=f.name,
+                                              cwd=Path(self.program.path).parent)
+
+                        # Check whether the seed improves the current coverage.
+                        add_input = self.dse.coverage.can_improve_coverage(trace.get_coverage())
+
+                        # Merge the coverage in case it improves it.
+                        if add_input:
+                            logging.info(f"merging coverage from seed {md5(seed).hexdigest()} [{typ.name}]")
+                            self.dse.coverage.merge(trace.get_coverage())
+                    except:
+                        # In case there's an exception, add the new seed.
+                        add_input = True
+            else:
+                # Add CRASH and HANGS by default.
+                add_input = True
+
+            if add_input:
+                self.dse.add_input_seed(seed)
+                logging.info(f"seed added {md5(seed).hexdigest()} [{typ.name}]")
+            else:
+                self.archive_seed(seed)
+                logging.info(f"seed archived {md5(seed).hexdigest()} [{typ.name}]")
         else:
-            logging.warning("receiving seeds while the DSE is not instanciated")
+            logging.warning("receiving seeds while the DSE is not instantiated")
         self._seed_wait = False  # Unlock the run() thread if it was waiting for a seed
 
 
