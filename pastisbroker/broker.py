@@ -420,7 +420,7 @@ class PastisBroker(BrokerAgent):
                         self.ck_mode,
                         covmode,
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
-                        engine_args.to_str(),
+                        engine_args.to_str() if engine_args else "",
                         self.inject,
                         self.kl_report.to_json() if self.kl_report else "")
 
