@@ -24,7 +24,7 @@ from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Pla
 from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
-#from tritondse.trace      import QBDITrace
+from tritondse.trace      import QBDITrace
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
