@@ -8,6 +8,7 @@ import logging
 import tempfile
 from pathlib import Path
 import threading
+import platform
 
 # third-party imports
 import magic
@@ -19,11 +20,11 @@ import pastisdse
 from triton               import MemoryAccess, CPUSIZE
 from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
-from tritondse.types      import Addr, Input, Edge, SymExType
+from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Platform
 from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
-from tritondse.trace      import QBDITrace
+#from tritondse.trace      import QBDITrace
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -47,6 +48,7 @@ class PastisDSE(object):
         self._probes = []
         self._chkmode = None
         self._program_slice = None
+        self._tracing_enabled = False
 
         # local attributes for telemetry
         self.nb_to, self.nb_crash = 0, 0
@@ -89,6 +91,7 @@ class PastisDSE(object):
         self.nb_to, self.nb_crash = 0, 0
         self._cur_cov_count = 0
         self._last_cov_update = time.time()
+        self._tracing_enabled = False
         logging.info("DSE Ready")
 
     def run(self, online: bool):
@@ -111,14 +114,7 @@ class PastisDSE(object):
         # Run while we are not instructed to stop
         while not self._stop:
 
-            # FIXME Find a better way to deal with this.
-            # IMPORTANT Here we added a delay to avoid a race condition between
-            # this function and seed_recevied(). In case that there are no seeds
-            # available (such as in the first call to seed_received) and
-            # seed_received() takes more time to execute than what it takes to run
-            # dse.explore() (the line below), this function will exit (and the
-            # whole exploration will stop) since the dse instance will return
-            # STOPPED as there are no seeds available.
+            # small delay giving the broker the opportunity to provide some seeds
             time.sleep(1)
 
             st = self.dse.explore()
@@ -295,6 +291,9 @@ class PastisDSE(object):
             self.agent.stop()
             return
 
+        # Enable local tracing if the binary is compatible with local architecture
+        self._tracing_enabled = self.is_compatible_with_local(self.program)
+
         # Update the coverage strategy in the current config (it overrides the config file one)
         try:
             self.config.coverage_strategy = CoverageStrategy(covmode.value)  # names are meant to match
@@ -403,47 +402,38 @@ class PastisDSE(object):
 
         self._seed_received.add(seed)  # Remember seed received not to send them back
 
-        # TODO: Handle INPUT, CRASH ou HANGS
         if self.dse:
-            add_input = False
-            if typ == SeedType.INPUT:
-                with tempfile.NamedTemporaryFile(delete=True) as f:
-                    Path(f.name).write_bytes(seed)
 
-                    try:
-                        # Set executable bit.
-                        os.chmod(self.program.path, os.stat(self.program.path).st_mode | stat.S_IEXEC)
-
-                        # Run the seed and determine whether it improves our current coverage.
-                        trace = QBDITrace.run(self.config.coverage_strategy,
-                                              str(self.program.path),
-                                              self.config.program_argv,
-                                              stdin_file=f.name,
-                                              cwd=Path(self.program.path).parent)
-
-                        # Check whether the seed improves the current coverage.
-                        add_input = self.dse.coverage.can_improve_coverage(trace.get_coverage())
-
-                        # Merge the coverage in case it improves it.
-                        if add_input:
-                            logging.info(f"merging coverage from seed {md5(seed).hexdigest()} [{typ.name}]")
-                            self.dse.coverage.merge(trace.get_coverage())
-                    except:
-                        # In case there's an exception, add the new seed.
-                        add_input = True
-            else:
-                # Add CRASH and HANGS by default.
-                add_input = True
-
-            if add_input:
+            if not self._tracing_enabled:
+                # Accept all seeds
                 self.dse.add_input_seed(seed)
-                logging.info(f"seed added {md5(seed).hexdigest()} [{typ.name}]")
-            else:
-                self.archive_seed(seed)
-                logging.info(f"seed archived {md5(seed).hexdigest()} [{typ.name}]")
+                self._seed_wait = False  # unlock main thread if waiting for a seed
+
+            else:  # Try running the seed to know whether or not to keep it
+                # NOTE: re-run the seed regardless of its status
+                with tempfile.NamedTemporaryFile(delete=True) as f:
+                    Path(f).write_bytes(seed)
+
+                    # Run the seed and determine whether it improves our current coverage.
+                    trace = QBDITrace.run(self.config.coverage_strategy,
+                                          str(self.program.path),
+                                          self.config.program_argv,
+                                          stdin_file=f.name,
+                                          cwd=Path(self.program.path).parent)
+
+                    # Check whether the seed improves the current coverage.
+                    if self.dse.coverage.can_improve_coverage(trace.get_coverage()):
+                        logging.info(f"merging coverage from seed {md5(seed).hexdigest()} [{typ.name}]")
+                        self.dse.coverage.merge(trace.get_coverage())
+
+                        self.dse.add_input_seed(seed)
+                        logging.info(f"seed added {md5(seed).hexdigest()} [{typ.name}]")
+                        self._seed_wait = False
+                    else:
+                        self.dse.seeds_manager.archive_seed(seed)
+                        logging.info(f"seed archived {md5(seed).hexdigest()} [{typ.name}]")
         else:
             logging.warning("receiving seeds while the DSE is not instantiated")
-        self._seed_wait = False  # Unlock the run() thread if it was waiting for a seed
 
 
     def stop_received(self):
@@ -698,3 +688,17 @@ class PastisDSE(object):
 
         # Stop the dse exploration
         self.dse.terminate_exploration()
+
+
+    def is_compatible_with_local(self, program: Program) -> bool:
+        """
+        Checks whether the given program is compatible with the current architecture
+        and platform.
+
+        :param program: Program
+        :return: True if the program can be run locally
+        """
+        arch_m = {"i386": Architecture.X86, "x86_64": Architecture.X86_64, "armv7l": Architecture.ARM32, "aarch64": Architecture.AARCH64}
+        plfm_m = {"Linux": Platform.LINUX, "Windows": Platform.WINDOWS, "MacOS": Platform.MACOS, "iOS": Platform.IOS}
+        local_arch, local_plfm = arch_m[platform.machine()], plfm_m[platform.system()]
+        return program.architecture == local_arch and program.platform == local_plfm
