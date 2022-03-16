@@ -87,11 +87,11 @@ class BinaryPackage(object):
         # Recreate a package
         fname = tempfile.mktemp(suffix=".zip")
         zip = zipfile.ZipFile(fname, "w")
-        zip.write(self._main_bin)
+        zip.write(self._main_bin, self._main_bin.name)
         if self._qbinexport:
-            zip.write(self._qbinexport.export_file)
+            zip.write(self.qbinexport.export_file, self.qbinexport.export_file.name)
         if self._callgraph:
-            zip.write(self._callgraph)
+            zip.write(self._callgraph, self._callgraph.name)
         for file in self.other_files:
             zip.write(file)
         zip.close()
