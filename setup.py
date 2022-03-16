@@ -11,7 +11,7 @@ setup(
     description="Python API to enable communication between PASTIS components",
     packages=find_packages(),
     setup_requires=[],
-    install_requires=["protobuf", "pyzmq", "psutil", "aenum"],
+    install_requires=["protobuf", "pyzmq", "psutil", "aenum", "lief"],
     tests_require=[],
     license="qb",
     author="Quarkslab",
