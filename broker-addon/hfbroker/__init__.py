@@ -12,29 +12,31 @@ from libpastis.types import ExecMode, CoverageMode, FuzzMode
 
 
 class HonggfuzzConfigurationInterface(EngineConfiguration):
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, args: List[str] = None):
+        self._argvs = [] if args is None else args # Argument to send on the command line
 
     @staticmethod
     def new() -> 'HonggfuzzConfigurationInterface':
-        return HonggfuzzConfigurationInterface({})
+        return HonggfuzzConfigurationInterface()
 
     @staticmethod
     def from_file(filepath: Path) -> 'HonggfuzzConfigurationInterface':
         with open(filepath, "r") as f:
-            return HonggfuzzConfigurationInterface(json.load(f))
+            return HonggfuzzConfigurationInterface(f.read().split())
 
     @staticmethod
     def from_str(s: str) -> 'HonggfuzzConfigurationInterface':
-        return HonggfuzzConfigurationInterface(json.loads(s))
+        return HonggfuzzConfigurationInterface(s.split())
 
     def to_str(self) -> str:
-        return json.dumps(self.data)
+        return " ".join(self._argvs)
 
     def get_coverage_mode(self) -> CoverageMode:
-        """ Current coverage mode selected in the file """
-        v = self.data['coverage_strategy']
-        return CoverageMode(v)
+        """
+        Current coverage mode selected in the file.
+        Always EDGE for Honggfuzz
+        """
+        return CoverageMode.AUTO
 
     def set_target(self, target: int) -> None:
         # Note: Giving a target to Honggfuzz does not

@@ -8,12 +8,9 @@ import tempfile
 import hashlib
 from typing import List, Union
 
-# third-party imports
-import magic
-import shutil
 
 # Pastis & triton imports
-from libpastis import ClientAgent
+from libpastis import ClientAgent, BinaryPackage
 from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
                             LogLevel, AlertData, FuzzMode
 
@@ -51,7 +48,7 @@ class HonggfuzzDriver:
         self.__report = None      # Klocwork report if supported
 
         # Target data
-        self.__target_path = None
+        self.__package = None
         self.__target_args = None  # Kept for replay
 
         self.__setup_agent()
@@ -78,17 +75,15 @@ class HonggfuzzDriver:
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
 
-    def start(self, bin_name: Union[Path, str], binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
+    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
-        self.__target_path = self.workspace.target_dir / bin_name
-        self.__target_path.write_bytes(binary)
-        self.__target_path.chmod(stat.S_IRWXU)  # Change target mode to execute.
+        self.__package = package
         self.__target_args = argv
 
         self.workspace.start()  # Start looking at directories
 
         logging.info("Start process")
-        self.honggfuzz.start(self.__target_path.absolute(),
+        self.honggfuzz.start(self.__package.executable_path.absolute(),
                              " ".join(argv),
                              self.workspace,
                              exmode == ExecMode.PERSISTENT,
@@ -162,7 +157,7 @@ class HonggfuzzDriver:
         if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
 
             # Rerun the program with the seed
-            run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
+            run = Replay.run(self.__package.executable_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
 
             if run.is_hf_iter_crash():
                 self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
@@ -234,38 +229,6 @@ class HonggfuzzDriver:
             except:
                 logging.error(f'Error retrieving stats!')
 
-    def get_files(self, name: str, binary: bytes) -> List[Path]:
-        """
-        Analyse the binary blob received. If its an archive, extract it and return
-        the list of files. Files are extracted in /tmp. If directly an executable
-        save it to a file and return its path.
-
-        :param name: name of executable, or executable name in archive
-        :param binary: content
-        :return: list of file paths
-        """
-        mime = magic.from_buffer(binary, mime=True)
-
-        tmp_dir = Path(tempfile.mkdtemp())
-
-        if mime in ['application/x-tar', 'application/zip']:
-            map = {'application/x-tar': '.tar.gz', 'application/zip': '.zip'}
-            tmp_file = Path(tempfile.mktemp(suffix=map[mime]))
-            tmp_file.write_bytes(binary)          # write the archive in a file
-            shutil.unpack_archive(tmp_file.as_posix(), tmp_dir)  # unpack it in dst directory
-            files = list(tmp_dir.iterdir())
-            if len(files) == 1 and files[0].is_dir():
-                return list(files[0].iterdir())  # iter files in the
-            else:
-                return files
-        elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable', 'application/x-sharedlib']:
-            program_path = tmp_dir / name
-            program_path.write_bytes(binary)
-            return [program_path]
-        else:
-            logging.error(f"mimetype not recognized {mime}")
-            return []
-
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
@@ -282,22 +245,12 @@ class HonggfuzzDriver:
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine version {engine.version} do nothing")
             return
 
-        # TODO: Move this code into libpastis as many different component use it.
-        # Retrieve one or multiple files out of the binary data
-        files = self.get_files(fname, binary)
-        if not files:
-            logging.error(f"unrecognized file type for {fname}")
+        # Retrieve package out of the binary received
+        try:
+            package = BinaryPackage.from_binary(fname, binary, self.workspace.target_dir)
+        except FileNotFoundError:
+            logging.error("Invalid package received")
             return
-
-        f_path = [x for x in files if x.name == fname]
-        if not f_path:
-            logging.error(f"can't find {fname} in archive")
-            return
-        else:
-            f_path = f_path[0]
-
-        fname = f_path
-        binary = Path(f_path).read_bytes()
 
         if kl_report:
             if KLOCWORK_SUPPORTED:
@@ -313,7 +266,7 @@ class HonggfuzzDriver:
 
         # FIXME: (chris) Do something with fuzz mode ?
 
-        self.start(fname, binary, argv, exmode, seed_inj, engine_args)
+        self.start(package, argv, exmode, seed_inj, engine_args)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
         h = self.hash_seed(seed)
