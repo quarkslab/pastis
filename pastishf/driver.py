@@ -78,7 +78,7 @@ class HonggfuzzDriver:
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
 
-    def start(self, bin_name: str, binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
+    def start(self, bin_name: Union[Path, str], binary: bytes, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
         self.__target_path = self.workspace.target_dir / bin_name
         self.__target_path.write_bytes(binary)
@@ -298,10 +298,6 @@ class HonggfuzzDriver:
 
         fname = f_path
         binary = Path(f_path).read_bytes()
-
-        # FIXME Investigate how to prevent the broker from sending "invalid"
-        # engine_args
-        engine_args = ""    # NOTE Temporary fix.
 
         if kl_report:
             if KLOCWORK_SUPPORTED:
