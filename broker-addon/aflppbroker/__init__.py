@@ -35,7 +35,7 @@ class AFLConfigurationInterface(EngineConfiguration):
 
     def get_coverage_mode(self) -> CoverageMode:
         """ Current coverage mode selected in the file """
-        raise CoverageMode.AUTO
+        return CoverageMode.AUTO
 
     def set_target(self, target: int) -> None:
         # Note: Giving a target to Honggfuzz does not
