@@ -11,7 +11,7 @@ import random
 import json
 
 # Third-party imports
-from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration
+from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage
 from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
 from klocwork import KlocworkReport
@@ -23,7 +23,7 @@ from pastisbroker.client import PastisClient
 from pastisbroker.stat_manager import StatManager
 from pastisbroker.workspace import Workspace
 from pastisbroker.utils import load_engine_descriptor
-from pastisbroker.package import BinaryPackage
+
 
 lief.logging.disable()
 
@@ -519,8 +519,10 @@ class PastisBroker(BrokerAgent):
                 if self.ck_mode == CheckMode.ALERT_ONE:
                     if pkg.is_qbinexport():
                         try:
-                            f = pkg.qbinexport.get_function("__klocwork_alert_placeholder")
-                            self._slicing_ongoing[file.name] = {x: [] for x in pkg.qbinexport.get_caller_instructions(f)}
+                            # Instanciate the QBinExportProgram and monkey patch object
+                            pkg.qbinexport_obj = QBinExportProgram(pkg.qbinexport, pkg.executable_path)
+                            f = pkg.qbinexport_obj.get_function("__klocwork_alert_placeholder")
+                            self._slicing_ongoing[file.name] = {x: [] for x in pkg.qbinexport_obj.get_caller_instructions(f)}
                         except ValueError:
                             logging.warning(f"can't find placeholder file in {file.name}, thus ignores it.")
                             continue
