@@ -403,38 +403,46 @@ class PastisDSE(object):
         self._seed_received.add(seed)  # Remember seed received not to send them back
 
         if self.dse:
-
             if not self._tracing_enabled:
                 # Accept all seeds
                 self.dse.add_input_seed(seed)
                 self._seed_wait = False  # unlock main thread if waiting for a seed
 
-            else:  # Try running the seed to know whether or not to keep it
+            else:  # Try running the seed to know whether to keep it
                 # NOTE: re-run the seed regardless of its status
                 with tempfile.NamedTemporaryFile(delete=True) as f:
-                    Path(f).write_bytes(seed)
+                    Path(f.name).write_bytes(seed)
 
                     # Run the seed and determine whether it improves our current coverage.
-                    trace = QBDITrace.run(self.config.coverage_strategy,
-                                          str(self.program.path),
-                                          self.config.program_argv,
-                                          stdin_file=f.name,
-                                          cwd=Path(self.program.path).parent)
+                    try:
+                        trace = QBDITrace.run(self.config.coverage_strategy,
+                                              str(self.program.path),
+                                              self.config.program_argv,
+                                              stdin_file=f.name,
+                                              cwd=Path(self.program.path).parent)
+                        coverage = trace.get_coverage()
+                    except:
+                        coverage = None
+                        logging.warning('There was an error while trying to re-run the seed')
 
-                    # Check whether the seed improves the current coverage.
-                    if self.dse.coverage.can_improve_coverage(trace.get_coverage()):
-                        logging.info(f"merging coverage from seed {md5(seed).hexdigest()} [{typ.name}]")
-                        self.dse.coverage.merge(trace.get_coverage())
-
+                    if not coverage:
+                        # Add the seed anyway, if it was not possible to re-run the seed.
                         self.dse.add_input_seed(seed)
-                        logging.info(f"seed added {md5(seed).hexdigest()} [{typ.name}]")
-                        self._seed_wait = False
+                        self._seed_wait = False  # unlock main thread if waiting for a seed
                     else:
-                        self.dse.seeds_manager.archive_seed(seed)
-                        logging.info(f"seed archived {md5(seed).hexdigest()} [{typ.name}]")
+                        # Check whether the seed improves the current coverage.
+                        if self.dse.coverage.can_improve_coverage(coverage):
+                            logging.info(f"merging coverage from seed {md5(seed).hexdigest()} [{typ.name}]")
+                            self.dse.coverage.merge(coverage)
+
+                            self.dse.add_input_seed(seed)
+                            logging.info(f"seed added {md5(seed).hexdigest()} [{typ.name}]")
+                            self._seed_wait = False
+                        else:
+                            self.dse.seeds_manager.archive_seed(seed)
+                            logging.info(f"seed archived {md5(seed).hexdigest()} [{typ.name}]")
         else:
             logging.warning("receiving seeds while the DSE is not instantiated")
-
 
     def stop_received(self):
         """
