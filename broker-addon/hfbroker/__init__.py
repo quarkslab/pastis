@@ -36,7 +36,7 @@ class HonggfuzzConfigurationInterface(EngineConfiguration):
         Current coverage mode selected in the file.
         Always EDGE for Honggfuzz
         """
-        return CoverageMode.EDGE
+        return CoverageMode.AUTO
 
     def set_target(self, target: int) -> None:
         # Note: Giving a target to Honggfuzz does not
