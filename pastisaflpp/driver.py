@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Union
 
 # Third party imports
-from libpastis import ClientAgent
+from libpastis import ClientAgent, BinaryPackage
 from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
                             LogLevel, AlertData, FuzzMode
 
@@ -47,7 +47,7 @@ class AFLPPDriver:
         self.__report = None      # Klocwork report if supported
 
         # Target data
-        self.__target_path = None
+        self.__package = None
         self.__target_args = None  # Kept for replay
 
         self.__setup_agent()
@@ -74,17 +74,15 @@ class AFLPPDriver:
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
 
-    def start(self, bin_name: str, binary: bytes, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, seed_inj: SeedInjectLoc, engine_args: str):
+    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
-        self.__target_path = self.workspace.target_dir / bin_name
-        self.__target_path.write_bytes(binary)
-        self.__target_path.chmod(stat.S_IRWXU)  # Change target mode to execute.
+        self.__package = package
         self.__target_args = argv
 
         self.workspace.start()  # Start looking at directories
 
         logging.info("Start process")
-        self.aflpp.start(self.__target_path.absolute(),
+        self.aflpp.start(str(self.__package.executable_path.absolute()),
                              " ".join(argv),
                              self.workspace,
                              exmode,
@@ -161,7 +159,7 @@ class AFLPPDriver:
         if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
 
             # Rerun the program with the seed
-            run = Replay.run(self.__target_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
+            run = Replay.run(self.__package.executable_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
 
             if run.is_hf_iter_crash():
                 self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
@@ -249,6 +247,13 @@ class AFLPPDriver:
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine version {engine.version} do nothing")
             return
 
+        # Retrieve package out of the binary received
+        try:
+            package = BinaryPackage.from_binary(fname, binary, self.workspace.target_dir)
+        except FileNotFoundError:
+            logging.error("Invalid package received")
+            return
+
         if kl_report:
             if KLOCWORK_SUPPORTED:
                 logging.info("Loading klocwork report")
@@ -261,7 +266,7 @@ class AFLPPDriver:
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
-        self.start(fname, binary, argv, exmode, fuzzmode, seed_inj, engine_args)
+        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
         h = self.hash_seed(seed)
