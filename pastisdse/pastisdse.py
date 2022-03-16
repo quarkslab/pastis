@@ -416,7 +416,7 @@ class PastisDSE(object):
                     # Run the seed and determine whether it improves our current coverage.
                     try:
                         trace = QBDITrace.run(self.config.coverage_strategy,
-                                              str(self.program.path),
+                                              str(self.program.path.resolve()),
                                               self.config.program_argv,
                                               stdin_file=f.name,
                                               cwd=Path(self.program.path).parent)
