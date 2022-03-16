@@ -14,12 +14,12 @@ class AFLConfigurationInterface(EngineConfiguration):
     Small wrapping function for AFL++ additional parameters
     """
 
-    @staticmethod
-    def new() -> 'EngineConfiguration':
-        pass
-
     def __init__(self, args: List[str] = None):
         self._argvs = [] if args is None else args # Argument to send on the command line
+
+    @staticmethod
+    def new() -> 'AFLConfigurationInterface':
+        return AFLConfigurationInterface()
 
     @staticmethod
     def from_file(filepath: Path) -> 'AFLConfigurationInterface':
