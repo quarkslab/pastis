@@ -37,8 +37,9 @@ class HonggfuzzConfigurationInterface(EngineConfiguration):
         return CoverageMode(v)
 
     def set_target(self, target: int) -> None:
-        self.data['custom'] = {}
-        self.data['custom']['target'] = target
+        # Note: Giving a target to Honggfuzz does not
+        # do anything as Honggfuzz is not directed.
+        pass
 
 
 class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
