@@ -13,14 +13,16 @@ import shutil
 
 # Pastis & triton imports
 import pastisdse
+
 from triton               import MemoryAccess, CPUSIZE
-from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface
+from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input, Edge, SymExType
 from tritondse.qbinexportprogram import QBinExportProgram
-from libpastis.agent      import ClientAgent
+from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
+
 
 
 class PastisDSE(object):
@@ -219,38 +221,6 @@ class PastisDSE(object):
                     f"Slicer: reject edge ({src:#x} -> {dst:#x} ({dst_fn.name}) not in slice!")
                 return False
 
-    def get_files(self, name: str, binary: bytes) -> List[Path]:
-        """
-        Analyse the binary blob received. If its an archive, extract it and return
-        the list of files. Files are extracted in /tmp. If directly an executable
-        save it to a file and return its path.
-
-        :param name: name of executable, or executable name in archive
-        :param binary: content
-        :return: list of file paths
-        """
-        mime = magic.from_buffer(binary, mime=True)
-
-        tmp_dir = Path(tempfile.mkdtemp())
-
-        if mime in ['application/x-tar', 'application/zip']:
-            map = {'application/x-tar': '.tar.gz', 'application/zip': '.zip'}
-            tmp_file = Path(tempfile.mktemp(suffix=map[mime]))
-            tmp_file.write_bytes(binary)          # write the archive in a file
-            shutil.unpack_archive(tmp_file.as_posix(), tmp_dir)  # unpack it in dst directory
-            files = list(tmp_dir.iterdir())
-            if len(files) == 1 and files[0].is_dir():
-                return list(files[0].iterdir())  # iter files in the
-            else:
-                return files
-        elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable', 'application/x-sharedlib']:
-            program_path = tmp_dir / name
-            program_path.write_bytes(binary)
-            return [program_path]
-        else:
-            logging.error(f"mimetype not recognized {mime}")
-            return []
-
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
         """
@@ -290,26 +260,22 @@ class PastisDSE(object):
             logging.info(f"Configure workspace to be: {ws}")
             self.config.workspace = ws
 
-        # Retrieve one or multiple files out of the binary data
-        files = self.get_files(fname, binary)
-        if not files:
-            logging.error(f"unrecognized file type for {fname}")
+        # Create the workspace object in advance (to directly save the binary inside
+        workspace = Workspace(self.config.workspace)
+        workspace.initialize(flush=False)
+
+        try:
+            pkg = BinaryPackage.from_binary(fname, binary, workspace.get_binary_directory())
+        except FileNotFoundError:
+            logging.error("Invalid package data")
             return
 
-        f_path = [x for x in files if x.name == fname]
-        if not f_path:
-            logging.error(f"can't find {fname} in archive")
-            return
+        if pkg.is_qbinexport():
+            logging.info(f"load QBinExportProgram: {pkg.qbinexport.name}")
+            self.program = QBinExportProgram(pkg.qbinexport, pkg.executable_path)
         else:
-            f_path = f_path[0]
-
-        qbexp_path = f_path.with_suffix(".QBinExport")
-        if qbexp_path in files:
-            logging.info(f"load QBinExportProgram: {qbexp_path.name}")
-            self.program = QBinExportProgram(qbexp_path, f_path)
-        else:
-            logging.info(f"load Program: {f_path.name}")
-            self.program = Program(f_path)
+            logging.info(f"load Program: {pkg.executable_path}")
+            self.program = Program(pkg.executable_path)
 
         if self.program is None:
             self.dual_log(LogLevel.CRITICAL, f"LIEF was not able to parse the binary file {fname}")
@@ -342,11 +308,7 @@ class PastisDSE(object):
             self.config.program_argv = [str(self.program.path)]  # Set current binary
             self.config.program_argv.extend(argv)
 
-        dse = SymbolicExplorator(self.config, self.program)
-
-        # Copy all files extracted in workspace
-        for file in [x for x in files if x != self.program.path]:  # Copy all files but the binary (which has already been moved)
-            dse.workspace.save_file(file.name, file.read_bytes())
+        dse = SymbolicExplorator(self.config, self.program, workspace=workspace)
 
         # Register common callbacks
         # dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
