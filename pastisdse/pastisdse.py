@@ -24,7 +24,7 @@ from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Pla
 from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
-from tritondse.trace      import QBDITrace
+from tritondse.trace      import QBDITrace, TraceException
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -421,7 +421,7 @@ class PastisDSE(object):
                                               stdin_file=f.name,
                                               cwd=Path(self.program.path).parent)
                         coverage = trace.get_coverage()
-                    except:
+                    except TraceException:
                         coverage = None
                         logging.warning('There was an error while trying to re-run the seed')
 
