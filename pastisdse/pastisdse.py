@@ -18,13 +18,14 @@ import shutil
 import pastisdse
 
 from triton               import MemoryAccess, CPUSIZE
-from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace
+from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace, Seed
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Platform
 from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
 from tritondse.trace      import QBDITrace, TraceException
+from tritondse.worklist import FreshSeedPrioritizerWorklist, WorklistAddressToSet
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
@@ -162,7 +163,7 @@ class PastisDSE(object):
         if seed.status == SeedStatus.NEW:
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
         else:
-            if seed.content not in self._seed_received:  # Do not send back a seed that already came from broker
+            if seed not in self._seed_received:  # Do not send back a seed that already came from broker
                 self.agent.send_seed(mapper[seed.status], seed.content)
 
         # Update some stats
@@ -320,7 +321,13 @@ class PastisDSE(object):
             self.config.program_argv = [str(self.program.path)]  # Set current binary
             self.config.program_argv.extend(argv)
 
-        dse = SymbolicExplorator(self.config, self.program, workspace=workspace)
+        # Set seed scheduler based on whether tracing is enabled.
+        if self._tracing_enabled:
+            seed_scheduler_class = WorklistAddressToSet
+        else:
+            seed_scheduler_class = FreshSeedPrioritizerWorklist
+
+        dse = SymbolicExplorator(self.config, self.program, workspace=workspace, seed_scheduler_class=seed_scheduler_class)
 
         # Register common callbacks
         # dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
@@ -394,15 +401,13 @@ class PastisDSE(object):
         :param origin: The origin of the mutation (Triton or HF)
         :return: None
         """
+        seed = Seed(seed)
+
         if seed in self._seed_received:
-            logging.warning(f"receiving seed already known: {md5(seed).hexdigest()} (dropped)")
+            logging.warning(f"receiving seed already known: {seed.hash} (dropped)")
             return
 
-        logging.info(f"seed received {md5(seed).hexdigest()} [{typ.name}]")
-
-        self._seed_received.add(seed)  # Remember seed received not to send them back
-
-        if self.dse:
+        try:
             if not self._tracing_enabled:
                 # Accept all seeds
                 self.dse.add_input_seed(seed)
@@ -410,8 +415,9 @@ class PastisDSE(object):
 
             else:  # Try running the seed to know whether to keep it
                 # NOTE: re-run the seed regardless of its status
+                coverage = None
                 with tempfile.NamedTemporaryFile(delete=True) as f:
-                    Path(f.name).write_bytes(seed)
+                    Path(f.name).write_bytes(seed.content)
 
                     # Run the seed and determine whether it improves our current coverage.
                     try:
@@ -422,26 +428,35 @@ class PastisDSE(object):
                                               cwd=Path(self.program.path).parent)
                         coverage = trace.get_coverage()
                     except TraceException:
-                        coverage = None
                         logging.warning('There was an error while trying to re-run the seed')
 
-                    if not coverage:
-                        # Add the seed anyway, if it was not possible to re-run the seed.
-                        self.dse.add_input_seed(seed)
-                        self._seed_wait = False  # unlock main thread if waiting for a seed
-                    else:
-                        # Check whether the seed improves the current coverage.
-                        if self.dse.coverage.can_improve_coverage(coverage):
-                            logging.info(f"merging coverage from seed {md5(seed).hexdigest()} [{typ.name}]")
-                            self.dse.coverage.merge(coverage)
+                if not coverage:
+                    # Add the seed anyway, if it was not possible to re-run the seed.
+                    # TODO Set seed.coverage_objectives as "empty" (use ellipsis
+                    # object). Modify WorklistAddressToSet to support it.
+                    self.dse.add_input_seed(seed)
+                    self._seed_wait = False  # unlock main thread if waiting for a seed
+                else:
+                    # Check whether the seed improves the current coverage.
+                    if self.dse.coverage.can_improve_coverage(coverage):
+                        logging.info(f"merging coverage from seed {seed.hash} [{typ.name}]")
+                        self.dse.coverage.merge(coverage)
+                        self.dse.seeds_manager.worklist.update_worklist(coverage)
 
-                            self.dse.add_input_seed(seed)
-                            logging.info(f"seed added {md5(seed).hexdigest()} [{typ.name}]")
-                            self._seed_wait = False
-                        else:
-                            self.dse.seeds_manager.archive_seed(seed)
-                            logging.info(f"seed archived {md5(seed).hexdigest()} [{typ.name}]")
-        else:
+                        seed.coverage_objectives = self.dse.coverage.new_items_to_cover(coverage)
+                        self.dse.add_input_seed(seed)
+                        logging.info(f"seed added {seed.hash} [{typ.name}]")
+
+                        self._seed_wait = False
+                    else:
+                        self.dse.seeds_manager.archive_seed(seed)
+                        logging.info(f"seed archived {seed.hash} [{typ.name}]")
+
+            self._seed_received.add(seed)  # Remember seed received not to send them back
+            logging.info(f"seed received {seed.hash} [{typ.name}]")
+        except AttributeError:
+            # NOTE If reset() is call during the execution of this function,
+            #      self.dse will be set to None and an AttributeError will occur.
             logging.warning("receiving seeds while the DSE is not instantiated")
 
     def stop_received(self):
