@@ -102,7 +102,8 @@ class PastisDSE(object):
         # Run while we are not instructed to stop
         while not self._stop:
 
-            self.reset()
+            if online:  # in offline start_received, seed_received will already have been called
+                self.reset()
 
             # Just wait until the broker says let's go
             while self.dse is None:
