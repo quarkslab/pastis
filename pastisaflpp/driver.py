@@ -161,9 +161,10 @@ class AFLPPDriver:
             # Rerun the program with the seed
             run = Replay.run(self.__package.executable_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
 
-            if run.is_hf_iter_crash():
-                self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
-                return False
+            # FIXME: Do same checks for AFL++ LOOP stuff for persistency mode
+            # if run.is_hf_iter_crash():
+            #     self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
+            #     return False
 
             # Iterate all covered alerts
             for id in run.alert_covered:

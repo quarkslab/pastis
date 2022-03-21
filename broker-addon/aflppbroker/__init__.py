@@ -62,8 +62,9 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
 
         # Search for HF instrumentation
         instrumented = False
+
         for f in p.functions:
-            if "__sanitizer" in f.name:
+            if "__afl_" in f.name:
                 instrumented = True
                 break
         if not instrumented:

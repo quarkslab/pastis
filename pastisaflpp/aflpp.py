@@ -1,12 +1,16 @@
+# builtin imports
 import logging
 import os
 import re
 import signal
 import subprocess
 import time
-
-from libpastis.types import ExecMode, FuzzMode
+from typing import Optional, Union
 from pathlib import Path
+
+# third-party imports
+import shutil
+from libpastis.types import ExecMode, FuzzMode
 
 # Local imports
 from .workspace import Workspace
@@ -25,14 +29,21 @@ class AFLPPProcess:
     VERSION = "master"
 
     def __init__(self, path: str = None):
-        if path is None:
-            path = os.environ.get(self.AFLPP_ENV_VAR)
-        self.__path = Path(path) / self.BINARY
+
+        self.__path = self.find_alfpp_binary(path)
+        if self.__path is None:
+            raise FileNotFoundError("Can't find AFL++ path (afl-fuzz)")
+
         self.__process = None
         self.__logfile = None
 
-        if not self.__path.exists():
-            raise Exception('Invalid AFL++ path!')
+    @staticmethod
+    def find_alfpp_binary(root_dir: Union[Path, str]) -> Optional[Path]:
+        if root_dir:
+            bin_path = Path(root_dir) / AFLPPProcess.BINARY
+            return bin_path if bin_path.exists() else None
+        else:
+            return os.environ.get(AFLPPProcess.AFLPP_ENV_VAR, shutil.which(AFLPPProcess.BINARY))
 
     def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str):
         # Build target command line.
@@ -50,16 +61,16 @@ class AFLPPProcess:
         ])
 
         # Export environmental variables.
-        os.environ.putenv("AFL_NO_UI", "1")
-        os.environ.putenv("AFL_QUIET", "1")
-        os.environ.putenv("AFL_IMPORT_FIRST", "1")
-        os.environ.putenv("AFL_AUTORESUME", "1")
+        os.environ["AFL_NO_UI"] = "1"
+        os.environ["AFL_QUIET"] = "1"
+        os.environ["AFL_IMPORT_FIRST"] = "1"
+        os.environ["AFL_AUTORESUME"] = "1"
 
         # NOTE This prevents having to configure the system before running
         #      AFL++.
         # TODO Should we skip these steps?
-        os.environ.putenv("AFL_SKIP_CPUFREQ", "1")
-        os.environ.putenv("AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES", "1")
+        os.environ["AFL_SKIP_CPUFREQ"] = "1"
+        os.environ["AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES"] = "1"
 
         # Build fuzzer command line.
         aflpp_cmdline = f'{self.__path} {aflpp_arguments} -- {target_cmdline}'
@@ -96,6 +107,7 @@ class AFLPPProcess:
         while not self.instanciated:
             time.sleep(0.1)
         self.__process.wait()
+        logging.info(f"Fuzzer terminated with code : {self.__process.returncode}")
 
     @staticmethod
     def aflpp_environ_check() -> bool:
