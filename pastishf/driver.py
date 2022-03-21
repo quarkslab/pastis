@@ -272,6 +272,12 @@ class HonggfuzzDriver:
         h = self.hash_seed(seed)
         logging.info(f"[SEED] received  {h} ({typ.name})")
         self._seed_recvs.add(h)
+
+        # HACK: Maybe doing it more nicely ?
+        if len(seed) > 1024*8: # HF_INPUT_DEFAULT_SIZE
+            logging.debug(f"crop seed {h} received to fit 8Kb")
+            seed = seed[:1024*8]
+
         self.add_seed(seed)
 
     def __stop_received(self):

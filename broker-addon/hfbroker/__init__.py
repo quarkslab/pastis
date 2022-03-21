@@ -66,7 +66,7 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
         # Search for HF instrumentation
         good = False
         for f in p.functions:
-            if "__sanitizer" in f.name:
+            if "hfuzz_" in f.name:
                 good = True
                 break
         if not good:

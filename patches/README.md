@@ -6,11 +6,12 @@ to support Pastis.
 ## Instructions
 
 To apply the pathc run the following command (in this case, for Honggfuzz
-version 2.4):
+version 2.5):
 
 ```bash
-tar xvfz honggfuzz-2.4.tar.gz
-patch -s -p0 < <path/to/honggfuzz-2.4-pastis.patch>
-cd honggfuzz-2.4
+wget https://github.com/google/honggfuzz/archive/refs/tags/2.5.zip
+unzip 2.5.zip
+patch -s -p0 < honggfuzz-2.5-pastis.patch
+cd honggfuzz-2.5
 make all
 ```
