@@ -53,7 +53,8 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
 
     FUNCTION_BLACKLIST_PREFIX = [
         "__sanitizer",  # all fuzzer related sanitizers
-        "__gcov_"       # gcov functions
+        "__gcov_",      # gcov functions
+        "__asan_"
     ]
 
     IMPORT_BLACKLIST = [
