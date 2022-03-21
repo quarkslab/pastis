@@ -43,7 +43,8 @@ class AFLPPProcess:
             bin_path = Path(root_dir) / AFLPPProcess.BINARY
             return bin_path if bin_path.exists() else None
         else:
-            return os.environ.get(AFLPPProcess.AFLPP_ENV_VAR, shutil.which(AFLPPProcess.BINARY))
+            aflpp_path = os.environ.get(AFLPPProcess.AFLPP_ENV_VAR)
+            return Path(aflpp_path) / 'afl-fuzz' if aflpp_path else shutil.which(AFLPPProcess.BINARY)
 
     def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str):
         # Build target command line.
