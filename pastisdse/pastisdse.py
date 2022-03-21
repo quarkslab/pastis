@@ -55,6 +55,7 @@ class PastisDSE(object):
         self.nb_to, self.nb_crash = 0, 0
         self._cur_cov_count = 0
         self._last_cov_update = time.time()
+        self._sending_count = 0
 
     def add_probe(self, probe: ProbeInterface):
         self._probes.append(probe)
@@ -93,6 +94,7 @@ class PastisDSE(object):
         self._cur_cov_count = 0
         self._last_cov_update = time.time()
         self._tracing_enabled = False
+        self._sending_count = 0
         logging.info("DSE Ready")
 
     def run(self, online: bool):
@@ -162,9 +164,11 @@ class PastisDSE(object):
         seed = se.seed
         if seed.status == SeedStatus.NEW:
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
-        else:
+        elif seed.status in [SeedStatus.CRASH, SeedStatus.HANG]:  # The stats is new send it back again
             if seed not in self._seed_received:  # Do not send back a seed that already came from broker
                 self.agent.send_seed(mapper[seed.status], seed.content)
+        else:  # INPUT
+            pass  # Do not send it back again
 
         # Update some stats
         if se.seed.status == SeedStatus.CRASH:
@@ -330,7 +334,7 @@ class PastisDSE(object):
         dse = SymbolicExplorator(self.config, self.program, workspace=workspace, seed_scheduler_class=seed_scheduler_class)
 
         # Register common callbacks
-        # dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
+        dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
         dse.callback_manager.register_post_execution_callback(self.cb_post_execution)
         dse.callback_manager.register_exploration_step_callback(self.cb_telemetry)
 
@@ -489,11 +493,11 @@ class PastisDSE(object):
         log_f(message)
         self.agent.send_log(level, message)
 
-
-    # def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Input):
-    #     self.agent.send_seed(SeedType.INPUT, bytes(seed), FuzzingEngine.TRITON)
-    #     return
-
+    def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: bytes):
+        if seed not in self._seed_received:  # Do not send back a seed that already came from broker
+            self._sending_count += 1
+            logging.info(f"Sending new: {md5(seed).hexdigest()} [{self._sending_count}]")
+            self.agent.send_seed(SeedType.INPUT, seed)  # We consider them as input
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
         """
