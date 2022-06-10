@@ -51,11 +51,11 @@ seed.
         honggfuzz.stop()
 
 
-``pastishf.Honggfuzz``
-----------------------
+``pastishf.HonggfuzzDriver``
+----------------------------
 
 
-.. autoclass:: pastishf.Honggfuzz
+.. autoclass:: pastishf.HonggfuzzDriver
     :members:
     :show-inheritance:
     :inherited-members:
