@@ -494,11 +494,11 @@ class PastisDSE(object):
         log_f(message)
         self.agent.send_log(level, message)
 
-    def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: bytes):
+    def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Seed):
         if seed not in self._seed_received:  # Do not send back a seed that already came from broker
             self._sending_count += 1
-            logging.info(f"Sending new: {md5(seed).hexdigest()} [{self._sending_count}]")
-            self.agent.send_seed(SeedType.INPUT, seed)  # We consider them as input
+            logging.info(f"Sending new: {seed.hash} [{self._sending_count}]")
+            self.agent.send_seed(SeedType.INPUT, seed.bytes())  # We consider them as input
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
         """
