@@ -11,11 +11,16 @@ from dataclasses import dataclass
 from tritondse import CoverageStrategy
 from tritondse.trace import QBDITrace
 
+# If True, trace instructions and basic blocks
+# If False, only trace edges
+# This incures a slowdown (~ *2.5)
+TRACE_INST = True
+
 #import logging; logging.basicConfig(level=logging.DEBUG)
 
 # Change this:
-#TARGET = "libjpeg"
-#HARNESS = "libjpeg_turbo_fuzzer_tt"
+TARGET = "libjpeg"
+HARNESS = "libjpeg_turbo_fuzzer_tt"
 #TARGET = "freetype"
 #HARNESS = "ftfuzzer_tt"
 #TARGET = "harfbuzz"
@@ -26,8 +31,8 @@ from tritondse.trace import QBDITrace
 #HARNESS = "jsoncpp_fuzzer_tt"
 #TARGET = "zlib"
 #HARNESS = "zlib_uncompress_fuzzer_tt"
-TARGET = "openthread"
-HARNESS = "ip6-send-fuzzer_tt"
+#TARGET = "openthread"
+#HARNESS = "ip6-send-fuzzer_tt"
 #TARGET = "vorbis"
 #HARNESS = "decode_fuzzer_tt"
 
@@ -47,12 +52,6 @@ AFL_TT = f"/home/rac/bench/{TARGET}/results/afl_tt_bitwuzla/corpus"
 RES_AFL_TT = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_tt"
 AFL_TT_CMPLOG = f"/home/rac/bench/{TARGET}/results/afl_tt_cmplog_bitwuzla/corpus"
 RES_AFL_TT_CMPLOG = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_tt_cmplog"
-
-PASTIS_CORPUS_AFL = f"/home/rac/bench/{TARGET}/results_2/pastis_afl/corpus"
-PASTIS_CORPUS_AFL = f"/home/rac/bench/libpng/results/test"
-RES_AFL = f"/home/rac/bench/{TARGET}/results_2/res_{TARGET}_afl"
-PASTIS_CORPUS_COMBO = f"/home/rac/bench/{TARGET}/results_2/pastis_combo/corpus"
-RES_COMBO = f"/home/rac/bench/{TARGET}/results_2/res_{TARGET}_combo"
 
 
 # NOTE For this script to work, we assume that the inputs are in chronological order in 
@@ -77,7 +76,7 @@ class CampaignResults():
     # Updates self._global_cov by adding the newly discovered edges
     def trace_file(self, filepath):
         coverage = None
-        trace = QBDITrace.run(CoverageStrategy.EDGE,
+        trace = QBDITrace.run(CoverageStrategy.BLOCK,
                               BINARY,
                               [filepath],
                               stdin_file=filepath,
@@ -85,6 +84,7 @@ class CampaignResults():
         coverage = trace.get_coverage()
 
         unique_cov = coverage.covered_items.keys() - self._global_cov
+        for x in coverage.covered_items: print(x)
 
         for item in coverage.covered_items:
             self._global_cov.add(item)
@@ -265,7 +265,6 @@ if __name__ == "__main__":
     print(hex(longjmp_plt))
     os.environ["TT_LONGJMP_ADDR"] = str(longjmp_plt)
 
-    # TEST 
     afl = None
     afl_cmplog = None
     afl_tt = None
@@ -311,63 +310,3 @@ if __name__ == "__main__":
     ax2.set_xscale("log")
 
     plt.show()
-    exit()
-    # endTEST
-
-
-    campaign_afl = None
-    campaign_combo = None 
-
-#    try:
-#        campaign_afl = CampaignResults.from_file(RES_AFL)
-#        campaign_combo = CampaignResults.from_file(RES_COMBO)
-#    except: 
-#        pass
-
-    # Replay the inputs found by AFL
-    if not campaign_afl:
-        move_seeds(PASTIS_CORPUS_AFL)
-        campaign_afl = CampaignResults(TARGET,
-                        BINARY,
-                        PASTIS_CORPUS_AFL,
-                        RES_AFL)
-        campaign_afl.process()
-
-    # Replay the inputs found by AFL + Triton
-    if not campaign_combo:
-        move_seeds(PASTIS_CORPUS_COMBO)
-        campaign_combo = CampaignResults(TARGET,
-                        BINARY,
-                        PASTIS_CORPUS_COMBO,
-                        RES_COMBO)
-        campaign_combo.process()
-
-
-    # Plots using matplotlib
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-
-    campaign_combo.add_to_plot(ax1, "afl_tt", True)
-    ax1.set_title(f"{TARGET}")
-    campaign_afl.add_to_plot(ax1, "afl", False)
-    ax1.set(xlabel='seconds', ylabel='coverage (edge)')
-    ax1.legend()
-
-
-    campaign_combo.add_to_plot(ax2, "afl_tt", True)
-    campaign_afl.add_to_plot(ax2, "afl", False)
-    ax2.set_title(f"{TARGET} (logscale)")
-    ax2.set(xlabel='seconds', ylabel='coverage (edge)')
-    ax2.legend()
-    ax2.set_xscale("log")
-
-    plt.show()
-
-
-    # Plots using plotly
-
-#    X = [x.time_elapsed for x in  campaign_combo.stat_items]
-#    Y = [x.total_coverage for x in  campaign_combo.stat_items]
-#    F = [x.fuzzer for x in  campaign_combo.stat_items]
-#    df = pd.DataFrame({'x_data':X, 'y_data':Y})
-#    fig = px.line(df, x='x_data', y='y_data', title="Testing")
-#    fig.show()
