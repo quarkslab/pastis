@@ -33,11 +33,12 @@ for logger in (logging.getLogger(x) for x in ["watchdog.observers.inotify_buffer
 
 class AFLPPDriver:
 
-    def __init__(self, agent: ClientAgent, telemetry_frequency: int = 30):
+    def __init__(self, agent: ClientAgent, telemetry_frequency: int = 30, cmplog=None):
 
         # Internal objects
         self._agent = agent
         self.workspace = Workspace()
+        self.cmplog = cmplog
         self.aflpp = AFLPPProcess()
 
         # Parameters received through start_received
@@ -75,6 +76,7 @@ class AFLPPDriver:
         return hashlib.md5(seed).hexdigest()
 
     def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, seed_inj: SeedInjectLoc, engine_args: str):
+        print(f"InjectLock = {seed_inj}")
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
@@ -88,7 +90,8 @@ class AFLPPDriver:
                              exmode,
                              fuzzmode,
                              seed_inj == SeedInjectLoc.STDIN,
-                             engine_args)
+                             engine_args,
+                             self.cmplog)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)

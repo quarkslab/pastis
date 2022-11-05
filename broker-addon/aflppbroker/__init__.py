@@ -63,10 +63,16 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
         # Search for HF instrumentation
         instrumented = False
 
+        for s in p.symbols:
+            if "__afl_" in s.name:
+                instrumented = True
+                break
+
         for f in p.functions:
             if "__afl_" in f.name:
                 instrumented = True
                 break
+
         if not instrumented:
             # NOTE This can be improve. We usually use PERSISTENT mode when
             # fuzzing a binary-only target because of performance reasons but

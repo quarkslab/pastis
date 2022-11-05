@@ -46,7 +46,8 @@ class AFLPPProcess:
             aflpp_path = os.environ.get(AFLPPProcess.AFLPP_ENV_VAR)
             return Path(aflpp_path) / 'afl-fuzz' if aflpp_path else shutil.which(AFLPPProcess.BINARY)
 
-    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str):
+    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str]=None):
+        print(cmplog)
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
 
@@ -59,7 +60,11 @@ class AFLPPProcess:
             f"-i {workspace.input_dir}",
             f"-F {workspace.dynamic_input_dir}",
             f"-o {workspace.output_dir}",
+            f"-s 12345678", # NOTE fix the seeds for experiments
+
+            f"-c {cmplog}" if cmplog is not None else ""
         ])
+        print(aflpp_arguments)
 
         # Export environmental variables.
         os.environ["AFL_NO_UI"] = "1"
@@ -86,6 +91,7 @@ class AFLPPProcess:
         self.__logfile = open(workspace.root_dir / 'logfile.log', 'w')
 
         # Create a new fuzzer process and set it apart into a new process group.
+        print(command)
         self.__process = subprocess.Popen(command, cwd=str(workspace.root_dir), preexec_fn=os.setsid, stdout=self.__logfile)
 
         logging.debug(f'Process pid: {self.__process.pid}')
