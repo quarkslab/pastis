@@ -19,8 +19,8 @@ TRACE_INST = True
 #import logging; logging.basicConfig(level=logging.DEBUG)
 
 # Change this:
-TARGET = "libjpeg"
-HARNESS = "libjpeg_turbo_fuzzer_tt"
+#TARGET = "libjpeg"
+#HARNESS = "libjpeg_turbo_fuzzer_tt"
 #TARGET = "freetype"
 #HARNESS = "ftfuzzer_tt"
 #TARGET = "harfbuzz"
@@ -33,8 +33,8 @@ HARNESS = "libjpeg_turbo_fuzzer_tt"
 #HARNESS = "zlib_uncompress_fuzzer_tt"
 #TARGET = "openthread"
 #HARNESS = "ip6-send-fuzzer_tt"
-#TARGET = "vorbis"
-#HARNESS = "decode_fuzzer_tt"
+TARGET = "vorbis"
+HARNESS = "decode_fuzzer_tt"
 
 #BINARY = f"/home/rac/bench/z3_bitwuzla/{TARGET}/bins/{HARNESS}"
 #PASTIS_CORPUS_AFL = f"/home/rac/bench/z3_bitwuzla/{TARGET}/results/pastis_z3/corpus"
@@ -53,6 +53,17 @@ RES_AFL_TT = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_tt"
 AFL_TT_CMPLOG = f"/home/rac/bench/{TARGET}/results/afl_tt_cmplog_bitwuzla/corpus"
 RES_AFL_TT_CMPLOG = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_tt_cmplog"
 
+Z3 = f"/home/rac/bench/{TARGET}/results/tt_z3/corpus"
+RES_Z3 = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_z3"
+BITW = f"/home/rac/bench/{TARGET}/results/tt_bitwuzla/corpus"
+RES_BITW = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_bitw"
+
+PASTIS_CORPUS_AFL = f"/home/rac/bench/{TARGET}/results_2/pastis_afl/corpus"
+PASTIS_CORPUS_AFL = f"/home/rac/bench/libpng/results/test"
+RES_AFL = f"/home/rac/bench/{TARGET}/results_2/res_{TARGET}_afl"
+PASTIS_CORPUS_COMBO = f"/home/rac/bench/{TARGET}/results_2/pastis_combo/corpus"
+RES_COMBO = f"/home/rac/bench/{TARGET}/results_2/res_{TARGET}_combo"
+
 
 # NOTE For this script to work, we assume that the inputs are in chronological order in 
 # the corpus_path. This is the case with pastis's output directory.
@@ -70,26 +81,49 @@ class CampaignResults():
         # scheme.
         self._seeds = None
 
-        self._global_cov = set()
+        # Global branch coverage
+        self._global_cov_edge = set()
+        # Global inst coverage
+        self._global_cov_inst = set()
 
     # Use QBDI to trace a single file and collect edge coverage
     # Updates self._global_cov by adding the newly discovered edges
     def trace_file(self, filepath):
-        coverage = None
-        trace = QBDITrace.run(CoverageStrategy.BLOCK,
+        coverage_edge = None
+        coverage_inst = None
+        trace = QBDITrace.run(CoverageStrategy.EDGE,
                               BINARY,
                               [filepath],
                               stdin_file=filepath,
                               cwd=Path(BINARY).parent)
-        coverage = trace.get_coverage()
+        coverage_edge = trace.get_coverage()
 
-        unique_cov = coverage.covered_items.keys() - self._global_cov
-        for x in coverage.covered_items: print(x)
+        unique_cov = coverage_edge.covered_items.keys() - self._global_cov_edge
 
-        for item in coverage.covered_items:
-            self._global_cov.add(item)
+        for item in coverage_edge.covered_items:
+            self._global_cov_edge.add(item)
 
-        return len(coverage.covered_items), len(self._global_cov), unique_cov
+
+        covered_insts, unique_insts = (0, set())
+
+        if TRACE_INST:
+            coverage_inst = None
+            trace = QBDITrace.run(CoverageStrategy.BLOCK,
+                                  BINARY,
+                                  [filepath],
+                                  stdin_file=filepath,
+                                  cwd=Path(BINARY).parent)
+            coverage_inst = trace.get_coverage()
+
+            unique_cov_inst = coverage_inst.covered_instructions.keys() - self._global_cov_inst
+
+            for inst in coverage_inst.covered_instructions:
+                self._global_cov_inst.add(inst)
+            print((len(coverage_inst.covered_instructions), len(self._global_cov_inst), len(unique_cov_inst)))
+            covered_insts, unique_insts = (len(coverage_inst.covered_instructions), unique_cov_inst)
+
+
+        return len(coverage_edge.covered_items), unique_cov, covered_insts, unique_insts
 
     def replay_inputs(self):
         os.chdir(self.corpus_path)
@@ -101,8 +135,20 @@ class CampaignResults():
         for i, f in enumerate(files):
             print(f"{i+1}/{n_files}  --  {f}")
             elapsed, fuzzer = parse_filename(f)
-            cov, global_cov, unique_cov  = self.trace_file(os.path.join(self.corpus_path, f))
-            statitem = StatItem(elapsed, f, cov, global_cov, len(unique_cov), fuzzer, unique_cov)
+            edges, unique_edges, insts, unique_insts = self.trace_file(os.path.join(self.corpus_path, f))
+            statitem = StatItem(elapsed, f, 
+
+                    edges, 
+                    len(self._global_cov_edge), 
+                    len(unique_edges), 
+
+                    insts, 
+                    len(self._global_cov_inst),
+                    len(unique_insts), 
+
+                    fuzzer, 
+                    unique_edges,
+                    unique_insts)
             print(statitem)
             self.stat_items.append(statitem)
 
@@ -137,7 +183,8 @@ class CampaignResults():
 
     def add_to_plot(self, ax, label, annotate_tt=False):
         X = [x.time_elapsed for x in  self.stat_items]
-        Y = [x.total_coverage for x in  self.stat_items]
+        Y = [x.total_coverage_insts for x in  self.stat_items]
+        #Y = [x.total_coverage for x in  self.stat_items]
         F = [x.fuzzer for x in  self.stat_items]
 
         ax.plot(X, Y, label=label)
@@ -159,10 +206,17 @@ class StatItem():
     total_coverage: int
     # len of coverage found by this seed that was not previsouly hit (not in global_coverage)
     unique_coverage_len: int
+
+
+    coverage_insts: int
+    total_coverage_insts: int
+    unique_coverage_len_insts: int
+
     # The fuzzer that found that input
     fuzzer: str
     # Coverage found by this seed that was not previsouly hit (not in global_coverage)
     unique_coverage: set
+    unique_coverage_insts: set
 
     def to_dict(self):
         data = {
@@ -171,8 +225,14 @@ class StatItem():
                 "coverage": self.coverage, 
                 "total_coverage": self.total_coverage,
                 "unique_coverage_len": self.unique_coverage_len,
+
+                "coverage_insts": self.coverage_insts, 
+                "total_coverage_insts": self.total_coverage_insts,
+                "unique_coverage_len_insts": self.unique_coverage_len_insts,
+
                 "fuzzer": self.fuzzer,
-                "unique_coverage": list(self.unique_coverage)
+                "unique_coverage": list(self.unique_coverage),
+                "unique_coverage_insts": list(self.unique_coverage),
                 }
         return data
 
@@ -186,6 +246,11 @@ class StatItem():
                 "coverage": self.coverage, 
                 "total_coverage": self.total_coverage,
                 "unique_coverage_len": self.unique_coverage_len,
+
+                "coverage_insts": self.coverage_insts, 
+                "total_coverage_insts": self.total_coverage_insts,
+                "unique_coverage_len_insts": self.unique_coverage_len_insts,
+
                 "fuzzer": self.fuzzer,
                 }
         return json.dumps(data, indent=2)
@@ -196,8 +261,14 @@ class StatItem():
                 data["coverage"], 
                 data["total_coverage"], 
                 data["unique_coverage_len"], 
+
+                data["coverage_insts"], 
+                data["total_coverage_insts"], 
+                data["unique_coverage_len_insts"], 
+
                 data["fuzzer"],
                 data["unique_coverage"], 
+                data["unique_coverage_insts"], 
                 )
 
 
@@ -233,8 +304,7 @@ def move_seeds(dirpath):
         filepath = f"{dirpath}/{file}"
         new_path = f"{dirpath}/00_SEED_{c}"
         c += 1
-        print(filepath)
-        print(new_path)
+        print(f"moving {filepath} to {new_path}")
         os.system(f"mv {filepath} {new_path}")
 
 def find_longjmp_plt(binary_path):
@@ -265,6 +335,54 @@ if __name__ == "__main__":
     print(hex(longjmp_plt))
     os.environ["TT_LONGJMP_ADDR"] = str(longjmp_plt)
 
+
+    # TEST
+#    z3 = None
+#    bitw = None 
+#
+#    z3 = CampaignResults.from_file(RES_Z3)
+#    bitw = CampaignResults.from_file(RES_BITW)
+#
+#    try:
+#        z3 = CampaignResults.from_file(RES_Z3)
+#        bitw = CampaignResults.from_file(RES_BITW)
+#    except: 
+#        pass
+#
+#    # Replay the inputs found by Z3
+#    if not z3:
+#        move_seeds(Z3)
+#        z3 = CampaignResults(TARGET, BINARY, Z3, RES_Z3)
+#        z3.process()
+#
+#    # Replay the inputs found by Z3 + Triton
+#    if not bitw:
+#        move_seeds(BITW)
+#        bitw = CampaignResults(TARGET, BINARY, BITW, RES_BITW)
+#        bitw.process()
+#
+#    # Plots using matplotlib
+#    fig, (ax1, ax2) = plt.subplots(1, 2)
+#
+#    bitw.add_to_plot(ax1, "afl_tt", True)
+#    ax1.set_title(f"{TARGET}")
+#    z3.add_to_plot(ax1, "afl", False)
+#    ax1.set(xlabel='seconds', ylabel='coverage (edge)')
+#    ax1.legend()
+#
+#
+#    bitw.add_to_plot(ax2, "afl_tt", True)
+#    z3.add_to_plot(ax2, "afl", False)
+#    ax2.set_title(f"{TARGET} (logscale)")
+#    ax2.set(xlabel='seconds', ylabel='coverage (edge)')
+#    ax2.legend()
+#    ax2.set_xscale("log")
+#
+#    plt.show()
+#    exit()
+#    # endTEST
+
+    # TEST 
     afl = None
     afl_cmplog = None
     afl_tt = None
@@ -310,3 +428,63 @@ if __name__ == "__main__":
     ax2.set_xscale("log")
 
     plt.show()
+    exit()
+    # endTEST
+
+
+    campaign_afl = None
+    campaign_combo = None 
+
+    try:
+        campaign_afl = CampaignResults.from_file(RES_AFL)
+        campaign_combo = CampaignResults.from_file(RES_COMBO)
+    except: 
+        pass
+
+    # Replay the inputs found by AFL
+    if not campaign_afl:
+        move_seeds(PASTIS_CORPUS_AFL)
+        campaign_afl = CampaignResults(TARGET,
+                        BINARY,
+                        PASTIS_CORPUS_AFL,
+                        RES_AFL)
+        campaign_afl.process()
+
+    # Replay the inputs found by AFL + Triton
+    if not campaign_combo:
+        move_seeds(PASTIS_CORPUS_COMBO)
+        campaign_combo = CampaignResults(TARGET,
+                        BINARY,
+                        PASTIS_CORPUS_COMBO,
+                        RES_COMBO)
+        campaign_combo.process()
+
+
+    # Plots using matplotlib
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+
+    campaign_combo.add_to_plot(ax1, "afl_tt", True)
+    ax1.set_title(f"{TARGET}")
+    campaign_afl.add_to_plot(ax1, "afl", False)
+    ax1.set(xlabel='seconds', ylabel='coverage (edge)')
+    ax1.legend()
+
+
+    campaign_combo.add_to_plot(ax2, "afl_tt", True)
+    campaign_afl.add_to_plot(ax2, "afl", False)
+    ax2.set_title(f"{TARGET} (logscale)")
+    ax2.set(xlabel='seconds', ylabel='coverage (edge)')
+    ax2.legend()
+    ax2.set_xscale("log")
+
+    plt.show()
+
+
+    # Plots using plotly
+
+#    X = [x.time_elapsed for x in  campaign_combo.stat_items]
+#    Y = [x.total_coverage for x in  campaign_combo.stat_items]
+#    F = [x.fuzzer for x in  campaign_combo.stat_items]
+#    df = pd.DataFrame({'x_data':X, 'y_data':Y})
+#    fig = px.line(df, x='x_data', y='y_data', title="Testing")
+#    fig.show()

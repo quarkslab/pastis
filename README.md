@@ -8,6 +8,6 @@ For each target, this repository expects a directory with the following structur
 There is an example for `libpng`.
 
 Then set the globals in `bench.py` and configure the desired options with `run_instance`. 
-`python3 bench.py` will launc the experiment.
+`python3 bench.py` will launch the experiment.
 
 
