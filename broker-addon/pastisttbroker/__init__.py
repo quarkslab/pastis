@@ -54,7 +54,15 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
     FUNCTION_BLACKLIST_PREFIX = [
         "__sanitizer",  # all fuzzer related sanitizers
         "__gcov_",      # gcov functions
-        "__asan_"
+        "__asan_",
+        "__afl_"
+    ]
+
+    SYMBOL_BLACKLIST_PREFIX = [
+        "__sanitizer",  # all fuzzer related sanitizers
+        "__gcov_",      # gcov functions
+        "__asan_",
+        "__afl_"
     ]
 
     IMPORT_BLACKLIST = [
@@ -81,6 +89,11 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
         for f in p.imported_functions:
             if f.name in TritonEngineDescriptor.IMPORT_BLACKLIST:
                 return False, None, None
+
+        for s in p.symbols:
+            for item in TritonEngineDescriptor.SYMBOL_BLACKLIST_PREFIX:
+                if s.name.startswith(item):
+                    return False, None, None
 
         return True, ExecMode.SINGLE_EXEC, FuzzMode.BINARY_ONLY  # Only support single_exec, binary only (not instrumented)
 

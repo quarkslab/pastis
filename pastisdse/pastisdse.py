@@ -17,8 +17,8 @@ import shutil
 # Pastis & triton imports
 import pastisdse
 
-from triton               import MemoryAccess, CPUSIZE
-from tritondse            import TRITON_VERSION, Config, Program, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace, Seed
+from triton               import MemoryAccess, CPUSIZE, Instruction
+from tritondse            import TRITON_VERSION, Config, Program, CleLoader, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace, Seed, CompositeData, SeedFormat, BranchSolvingStrategy, SmtSolver
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Platform
 from tritondse.qbinexportprogram import QBinExportProgram
@@ -28,16 +28,30 @@ from tritondse.trace      import QBDITrace, TraceException
 from tritondse.worklist import FreshSeedPrioritizerWorklist, WorklistAddressToSet
 from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
-
+seeds_merged = 0
+seeds_rejected = 0
+seeds_received = 0
 
 class PastisDSE(object):
 
-    def __init__(self, agent: ClientAgent):
+    def __init__(self, agent: ClientAgent, solver: str, workspace: str):
         self.agent = agent
+        self.solver = SmtSolver.Z3 if solver == "z3" else SmtSolver.BITWUZLA
+        self.workspace = workspace
         self._init_callbacks()  # register callbacks on the given agent
 
-        self.config     = Config(debug=False)
-        self.config.workspace = ""  # Reset workspace so that it will computed in start_received
+        #self.config     = Config(debug=False)
+        self.config = Config(seed_format=SeedFormat.COMPOSITE, 
+                skip_unsupported_import=True, 
+                coverage_strategy = CoverageStrategy.EDGE , 
+                #exploration_limit=5, 
+                branch_solving_strategy=BranchSolvingStrategy.FIRST_LAST_NOT_COVERED | BranchSolvingStrategy.COVER_SYM_DYNJUMP | BranchSolvingStrategy.COVER_SYM_READ | BranchSolvingStrategy.COVER_SYM_WRITE, 
+                pipe_stderr=True, pipe_stdout=True, 
+                smt_solver=self.solver, 
+                program_argv=["./bench", "input_file"])
+                #program_argv=["./bench"])
+
+        self.config.workspace = self.workspace  # Reset workspace so that it will computed in start_received
         self.dse        = None
         self.program    = None
         self._stop      = False
@@ -79,8 +93,17 @@ class PastisDSE(object):
     def reset(self):
         """ Reset the current DSE to be able to restart from fresh settings """
         self.dse = None  # remove DSE object
-        self.config = Config(debug=False)
-        self.config.workspace = ""  # Reset workspace so that it will computed in start_received
+        #self.config = Config(debug=False)
+        self.config = Config(seed_format=SeedFormat.COMPOSITE, 
+                skip_unsupported_import=True, 
+                coverage_strategy = CoverageStrategy.EDGE , 
+                #exploration_limit=5, 
+                branch_solving_strategy=BranchSolvingStrategy.FIRST_LAST_NOT_COVERED | BranchSolvingStrategy.COVER_SYM_DYNJUMP | BranchSolvingStrategy.COVER_SYM_READ | BranchSolvingStrategy.COVER_SYM_WRITE, 
+                pipe_stderr=True, pipe_stdout=True, 
+                smt_solver=self.solver, 
+                program_argv=["./bench", "input_file"])
+                #program_argv=["./bench"])
+        self.config.workspace = self.workspace  # Reset workspace so that it will computed in start_received
         self._last_kid_pc = None
         self._last_kid = None
         self.klreport = None
@@ -167,7 +190,9 @@ class PastisDSE(object):
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
         elif seed.status in [SeedStatus.CRASH, SeedStatus.HANG]:  # The stats is new send it back again
             if seed not in self._seed_received:  # Do not send back a seed that already came from broker
-                self.agent.send_seed(mapper[seed.status], seed.content)
+                #self.agent.send_seed(mapper[seed.status], seed.content)
+                self.agent.send_seed(mapper[seed.status], seed.content.files["input_file"])
+                #self.agent.send_seed(mapper[seed.status], seed.content.files["stdin"])
         else:  # INPUT
             pass  # Do not send it back again
 
@@ -290,7 +315,8 @@ class PastisDSE(object):
             self.program = QBinExportProgram(pkg.qbinexport, pkg.executable_path)
         else:
             logging.info(f"load Program: {pkg.executable_path}")
-            self.program = Program(pkg.executable_path)
+            #self.program = Program(pkg.executable_path)
+            self.program = CleLoader(pkg.executable_path)
 
         if self.program is None:
             self.dual_log(LogLevel.CRITICAL, f"LIEF was not able to parse the binary file {fname}")
@@ -305,13 +331,6 @@ class PastisDSE(object):
             self.config.coverage_strategy = CoverageStrategy(covmode.value)  # names are meant to match
         except Exception as e:
             logging.info(f"Invalid covmode. Not supported by the tritondse library {e}")
-            self.agent.stop()
-            return
-
-        if seed_inj == SeedInjectLoc.STDIN:
-            self.config.symbolize_stdin = True
-        else:
-            logging.info(f"Invalid seed_inj. Not supported by the tritondse library")
             self.agent.stop()
             return
 
@@ -333,6 +352,12 @@ class PastisDSE(object):
             seed_scheduler_class = FreshSeedPrioritizerWorklist
 
         dse = SymbolicExplorator(self.config, self.program, workspace=workspace, seed_scheduler_class=seed_scheduler_class)
+
+        # Trace
+        def trace_inst(exec: SymbolicExecutor, pstate: ProcessState, inst: Instruction):
+            print(f"[tid:{inst.getThreadId()}] 0x{inst.getAddress():x}: {inst.getDisassembly()}")
+
+        #dse.callback_manager.register_post_instruction_callback(trace_inst)
 
         # Register common callbacks
         dse.callback_manager.register_new_input_callback(self.send_seed_to_broker) # must be the second cb
@@ -398,6 +423,10 @@ class PastisDSE(object):
         self.dse = dse
 
     def seed_received(self, typ: SeedType, seed: bytes):
+        global seeds_merged
+        global seeds_rejected
+        global seeds_received
+        seeds_received += 1
         """
         This function is called when we receive a seed from the broker.
 
@@ -406,7 +435,9 @@ class PastisDSE(object):
         :param origin: The origin of the mutation (Triton or HF)
         :return: None
         """
-        seed = Seed(seed)
+        # Convert seed to CompositeData
+        seed = Seed(CompositeData(files={"input_file":seed}))
+        #seed = Seed(CompositeData(files={"stdin":seed}))
 
         if seed in self._seed_received:
             logging.warning(f"receiving seed already known: {seed.hash} (dropped)")
@@ -422,13 +453,15 @@ class PastisDSE(object):
                 # NOTE: re-run the seed regardless of its status
                 coverage = None
                 with tempfile.NamedTemporaryFile(delete=True) as f:
-                    Path(f.name).write_bytes(seed.content)
+                    Path(f.name).write_bytes(seed.content.files["input_file"])
+                    #Path(f.name).write_bytes(seed.content.files["stdin"])
 
                     # Run the seed and determine whether it improves our current coverage.
+                    os.environ["TT_LONGJMP_ADDR"] = str(self.program.longjmp_addr)
                     try:
                         trace = QBDITrace.run(self.config.coverage_strategy,
                                               str(self.program.path.resolve()),
-                                              self.config.program_argv,
+                                              [f.name],
                                               stdin_file=f.name,
                                               cwd=Path(self.program.path).parent)
                         coverage = trace.get_coverage()
@@ -439,12 +472,14 @@ class PastisDSE(object):
                     # Add the seed anyway, if it was not possible to re-run the seed.
                     # TODO Set seed.coverage_objectives as "empty" (use ellipsis
                     # object). Modify WorklistAddressToSet to support it.
+                    seeds_merged += 1
                     self.dse.add_input_seed(seed)
                     self._seed_wait = False  # unlock main thread if waiting for a seed
                 else:
                     # Check whether the seed improves the current coverage.
-                    if self.dse.coverage.can_improve_coverage(coverage):
+                    if self.dse.coverage.improves_coverage(coverage):
                         logging.info(f"merging coverage from seed {seed.hash} [{typ.name}]")
+                        seeds_merged += 1
                         self.dse.coverage.merge(coverage)
                         self.dse.seeds_manager.worklist.update_worklist(coverage)
 
@@ -454,7 +489,9 @@ class PastisDSE(object):
 
                         self._seed_wait = False
                     else:
-                        self.dse.seeds_manager.archive_seed(seed)
+                        logging.info(f"NOT merging coverage from seed {seed.hash} [{typ.name}]")
+                        seeds_rejected += 1
+                        #self.dse.seeds_manager.archive_seed(seed)
                         logging.info(f"seed archived {seed.hash} [{typ.name}]")
 
             self._seed_received.add(seed)  # Remember seed received not to send them back
@@ -463,6 +500,8 @@ class PastisDSE(object):
             # NOTE If reset() is call during the execution of this function,
             #      self.dse will be set to None and an AttributeError will occur.
             logging.warning("receiving seeds while the DSE is not instantiated")
+
+        logging.info(f"seeds_received: {seeds_received} - merged {seeds_merged} ({(seeds_merged/seeds_received) * 100:.2f}%) rejected {seeds_rejected} ({(seeds_rejected/seeds_received) * 100:.2f}%) ")
 
     def stop_received(self):
         """
@@ -497,8 +536,10 @@ class PastisDSE(object):
     def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: bytes):
         if seed not in self._seed_received:  # Do not send back a seed that already came from broker
             self._sending_count += 1
-            logging.info(f"Sending new: {md5(seed).hexdigest()} [{self._sending_count}]")
-            self.agent.send_seed(SeedType.INPUT, seed)  # We consider them as input
+            logging.info(f"Sending new: {seed.hash} [{self._sending_count}]")
+            #self.agent.send_seed(SeedType.INPUT, bytes(seed))  # We consider them as input
+            self.agent.send_seed(SeedType.INPUT, seed.content.files["input_file"])
+            #self.agent.send_seed(SeedType.INPUT, seed.content.files["stdin"])
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
         """
