@@ -40,7 +40,9 @@ def cli():
 @cli.command()
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
-def online(host: str, port: int):
+@click.option('-s', '--solver', type=click.Choice(["bitwuzla", "z3"]), default="bitwuzla", help='Solver to use "bitwuzla" or "z3" (default bitwuzla)')
+@click.option('-w', '--workspace', type=str, default="", help='Path to TritonDSE workspace')
+def online(host: str, port: int, solver: str, workspace: str):
     """
     This is the online mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will try to connect to the broker. Then, the broker
@@ -53,7 +55,7 @@ def online(host: str, port: int):
     agent = ClientAgent()
 
     # Instanciate the pastis that will register the appropriate callbacks
-    pastis = PastisDSE(agent)
+    pastis = PastisDSE(agent, solver, workspace)
 
     pastis.init_agent(host, port)
     pastis.run(online=True)
