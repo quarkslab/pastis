@@ -13,8 +13,8 @@ from tritondse.trace import QBDITrace
 
 # If True, trace instructions and basic blocks
 # If False, only trace edges
-# This incures a slowdown (~ *2.5)
-TRACE_INST = True
+# This incures a significant slowdown
+TRACE_INST = False
 
 #import logging; logging.basicConfig(level=logging.DEBUG)
 
@@ -29,41 +29,15 @@ TRACE_INST = True
 #HARNESS = "libpng_read_fuzzer_tt"
 #TARGET = "jsoncpp"
 #HARNESS = "jsoncpp_fuzzer_tt"
-#TARGET = "zlib"
-#HARNESS = "zlib_uncompress_fuzzer_tt"
+TARGET = "zlib"
+HARNESS = "zlib_uncompress_fuzzer_tt"
 #TARGET = "openthread"
 #HARNESS = "ip6-send-fuzzer_tt"
-TARGET = "vorbis"
-HARNESS = "decode_fuzzer_tt"
-
-#BINARY = f"/home/rac/bench/z3_bitwuzla/{TARGET}/bins/{HARNESS}"
-#PASTIS_CORPUS_AFL = f"/home/rac/bench/z3_bitwuzla/{TARGET}/results/pastis_z3/corpus"
-#RES_AFL = f"/home/rac/bench/z3_bitwuzla/{TARGET}/results/res_{TARGET}_afl"
-#PASTIS_CORPUS_COMBO = f"/home/rac/bench/z3_bitwuzla/{TARGET}/results/pastis_bit/corpus"
-#RES_COMBO = f"/home/rac/bench/z3_bitwuzla/{TARGET}/results/res_{TARGET}_combo"
+#TARGET = "vorbis"
+#HARNESS = "decode_fuzzer_tt"
 
 BINARY = f"/home/rac/bench/{TARGET}/bins/{HARNESS}"
-
-AFL = f"/home/rac/bench/{TARGET}/results/afl_bitwuzla/corpus"
-RES_AFL = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl"
-AFL_CMPLOG = f"/home/rac/bench/{TARGET}/results/afl_cmplog_bitwuzla/corpus"
-RES_AFL_CMPLOG = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_cmplog"
-AFL_TT = f"/home/rac/bench/{TARGET}/results/afl_tt_bitwuzla/corpus"
-RES_AFL_TT = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_tt"
-AFL_TT_CMPLOG = f"/home/rac/bench/{TARGET}/results/afl_tt_cmplog_bitwuzla/corpus"
-RES_AFL_TT_CMPLOG = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_afl_tt_cmplog"
-
-Z3 = f"/home/rac/bench/{TARGET}/results/tt_z3/corpus"
-RES_Z3 = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_z3"
-BITW = f"/home/rac/bench/{TARGET}/results/tt_bitwuzla/corpus"
-RES_BITW = f"/home/rac/bench/{TARGET}/results/res_{TARGET}_bitw"
-
-PASTIS_CORPUS_AFL = f"/home/rac/bench/{TARGET}/results_2/pastis_afl/corpus"
-PASTIS_CORPUS_AFL = f"/home/rac/bench/libpng/results/test"
-RES_AFL = f"/home/rac/bench/{TARGET}/results_2/res_{TARGET}_afl"
-PASTIS_CORPUS_COMBO = f"/home/rac/bench/{TARGET}/results_2/pastis_combo/corpus"
-RES_COMBO = f"/home/rac/bench/{TARGET}/results_2/res_{TARGET}_combo"
-
+RESULTS = f"/home/rac/bench/{TARGET}/results/"
 
 # NOTE For this script to work, we assume that the inputs are in chronological order in 
 # the corpus_path. This is the case with pastis's output directory.
@@ -89,41 +63,32 @@ class CampaignResults():
     # Use QBDI to trace a single file and collect edge coverage
     # Updates self._global_cov by adding the newly discovered edges
     def trace_file(self, filepath):
-        coverage_edge = None
-        coverage_inst = None
-        trace = QBDITrace.run(CoverageStrategy.EDGE,
-                              BINARY,
-                              [filepath],
-                              stdin_file=filepath,
-                              cwd=Path(BINARY).parent)
-        coverage_edge = trace.get_coverage()
+        trace = None
+        if TRACE_INST:
+            strat = CoverageStrategy.BLOCK
+        else:
+            strat = CoverageStrategy.EDGE
 
-        unique_cov = coverage_edge.covered_items.keys() - self._global_cov_edge
+        trace = QBDITrace.run(strat, BINARY, [filepath],
+                              stdin_file=filepath, cwd=Path(BINARY).parent)
 
-        for item in coverage_edge.covered_items:
-            self._global_cov_edge.add(item)
+        #covered_branches = trace._branches
+        edges = set([(b[0], b[1]) for b in trace._branches]) 
+        unique_edges = edges - self._global_cov_edge
 
+        for e in edges:
+            self._global_cov_edge.add(e)
 
         covered_insts, unique_insts = (0, set())
-
+        
         if TRACE_INST:
-            coverage_inst = None
-            trace = QBDITrace.run(CoverageStrategy.BLOCK,
-                                  BINARY,
-                                  [filepath],
-                                  stdin_file=filepath,
-                                  cwd=Path(BINARY).parent)
-            coverage_inst = trace.get_coverage()
+            unique_insts = trace._instructions.keys() - self._global_cov_inst
+            for i in trace._instructions:
+                self._global_cov_inst.add(i)
 
-            unique_cov_inst = coverage_inst.covered_instructions.keys() - self._global_cov_inst
+            covered_insts, unique_insts = (len(trace._instructions), unique_insts)
 
-            for inst in coverage_inst.covered_instructions:
-                self._global_cov_inst.add(inst)
-            print((len(coverage_inst.covered_instructions), len(self._global_cov_inst), len(unique_cov_inst)))
-            covered_insts, unique_insts = (len(coverage_inst.covered_instructions), unique_cov_inst)
-
-
-        return len(coverage_edge.covered_items), unique_cov, covered_insts, unique_insts
+        return len(edges), unique_edges, covered_insts, unique_insts
 
     def replay_inputs(self):
         os.chdir(self.corpus_path)
@@ -318,13 +283,17 @@ def find_longjmp_plt(binary_path):
     except:
         return 0
 
-
-
 def replay(target, binary, corpus, res_file):
     move_seeds(corpus)
     campaign = CampaignResults(target, binary, corpus, res_file)
     campaign.process()
     return campaign
+
+def read_from_file_or_generate(target, binary, corpus_dir, res_file):
+    try:
+        return CampaignResults.from_file(res_file)
+    except:
+        return replay(target, binary, corpus_dir, res_file)
 
 if __name__ == "__main__":
     # TODO This is very hacky. 
@@ -336,155 +305,29 @@ if __name__ == "__main__":
     os.environ["TT_LONGJMP_ADDR"] = str(longjmp_plt)
 
 
-    # TEST
-#    z3 = None
-#    bitw = None 
-#
-#    z3 = CampaignResults.from_file(RES_Z3)
-#    bitw = CampaignResults.from_file(RES_BITW)
-#
-#    try:
-#        z3 = CampaignResults.from_file(RES_Z3)
-#        bitw = CampaignResults.from_file(RES_BITW)
-#    except: 
-#        pass
-#
-#    # Replay the inputs found by Z3
-#    if not z3:
-#        move_seeds(Z3)
-#        z3 = CampaignResults(TARGET, BINARY, Z3, RES_Z3)
-#        z3.process()
-#
-#    # Replay the inputs found by Z3 + Triton
-#    if not bitw:
-#        move_seeds(BITW)
-#        bitw = CampaignResults(TARGET, BINARY, BITW, RES_BITW)
-#        bitw.process()
-#
-#    # Plots using matplotlib
-#    fig, (ax1, ax2) = plt.subplots(1, 2)
-#
-#    bitw.add_to_plot(ax1, "afl_tt", True)
-#    ax1.set_title(f"{TARGET}")
-#    z3.add_to_plot(ax1, "afl", False)
-#    ax1.set(xlabel='seconds', ylabel='coverage (edge)')
-#    ax1.legend()
-#
-#
-#    bitw.add_to_plot(ax2, "afl_tt", True)
-#    z3.add_to_plot(ax2, "afl", False)
-#    ax2.set_title(f"{TARGET} (logscale)")
-#    ax2.set(xlabel='seconds', ylabel='coverage (edge)')
-#    ax2.legend()
-#    ax2.set_xscale("log")
-#
-#    plt.show()
-#    exit()
-#    # endTEST
+    campaigns = dict()
+    for d in os.listdir(RESULTS):
+        corpus = os.path.join(RESULTS, f"{d}/corpus")
+        if os.path.isdir(corpus):
+            output = os.path.join(RESULTS, f"res_{d}")
+            campaigns[d] = read_from_file_or_generate(TARGET, BINARY, corpus, output)
 
-    # TEST 
-    afl = None
-    afl_cmplog = None
-    afl_tt = None
-    afl_tt_cmplog = None
-
-    try:
-        afl = CampaignResults.from_file(RES_AFL)
-        afl_cmplog = CampaignResults.from_file(RES_AFL_CMPLOG)
-        afl_tt = CampaignResults.from_file(RES_AFL_TT)
-        afl_tt_cmplog = CampaignResults.from_file(RES_AFL_TT_CMPLOG)
-    except: 
-        pass
-
-    # Replay the inputs found by AFL
-    if not afl:
-        afl = replay(TARGET, BINARY, AFL, RES_AFL)
-    if not afl_cmplog:
-        afl_cmplog = replay(TARGET, BINARY, AFL_CMPLOG, RES_AFL_CMPLOG)
-    if not afl_tt:
-        afl_tt = replay(TARGET, BINARY, AFL_TT, RES_AFL_TT)
-    if not afl_tt_cmplog:
-        afl_tt_cmplog = replay(TARGET, BINARY, AFL_TT_CMPLOG, RES_AFL_TT_CMPLOG)
-
-    # Plots using matplotlib
     fig, (ax1, ax2) = plt.subplots(1, 2)
 
-    afl.add_to_plot(ax1, "afl", False)
-    afl_cmplog.add_to_plot(ax1, "afl_cmplog", False)
-    afl_tt.add_to_plot(ax1, "afl_tt", True)
-    afl_tt_cmplog.add_to_plot(ax1, "afl_tt_cmplog", True)
+    for d in campaigns:
+        find_tt = False
+        if "_tt" in d:
+            find_tt = True
+        campaigns[d].add_to_plot(ax1, d, find_tt)
+        campaigns[d].add_to_plot(ax2, d, find_tt)
+
     ax1.set_title(f"{TARGET}")
     ax1.set(xlabel='seconds', ylabel='coverage (edge)')
     ax1.legend()
 
-
-    afl.add_to_plot(ax2, "afl", False)
-    afl_cmplog.add_to_plot(ax2, "afl_cmplog", False)
-    afl_tt.add_to_plot(ax2, "afl_tt", True)
-    afl_tt_cmplog.add_to_plot(ax2, "afl_tt_cmplog", True)
     ax2.set_title(f"{TARGET} (logscale)")
     ax2.set(xlabel='seconds', ylabel='coverage (edge)')
     ax2.legend()
     ax2.set_xscale("log")
 
     plt.show()
-    exit()
-    # endTEST
-
-
-    campaign_afl = None
-    campaign_combo = None 
-
-    try:
-        campaign_afl = CampaignResults.from_file(RES_AFL)
-        campaign_combo = CampaignResults.from_file(RES_COMBO)
-    except: 
-        pass
-
-    # Replay the inputs found by AFL
-    if not campaign_afl:
-        move_seeds(PASTIS_CORPUS_AFL)
-        campaign_afl = CampaignResults(TARGET,
-                        BINARY,
-                        PASTIS_CORPUS_AFL,
-                        RES_AFL)
-        campaign_afl.process()
-
-    # Replay the inputs found by AFL + Triton
-    if not campaign_combo:
-        move_seeds(PASTIS_CORPUS_COMBO)
-        campaign_combo = CampaignResults(TARGET,
-                        BINARY,
-                        PASTIS_CORPUS_COMBO,
-                        RES_COMBO)
-        campaign_combo.process()
-
-
-    # Plots using matplotlib
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-
-    campaign_combo.add_to_plot(ax1, "afl_tt", True)
-    ax1.set_title(f"{TARGET}")
-    campaign_afl.add_to_plot(ax1, "afl", False)
-    ax1.set(xlabel='seconds', ylabel='coverage (edge)')
-    ax1.legend()
-
-
-    campaign_combo.add_to_plot(ax2, "afl_tt", True)
-    campaign_afl.add_to_plot(ax2, "afl", False)
-    ax2.set_title(f"{TARGET} (logscale)")
-    ax2.set(xlabel='seconds', ylabel='coverage (edge)')
-    ax2.legend()
-    ax2.set_xscale("log")
-
-    plt.show()
-
-
-    # Plots using plotly
-
-#    X = [x.time_elapsed for x in  campaign_combo.stat_items]
-#    Y = [x.total_coverage for x in  campaign_combo.stat_items]
-#    F = [x.fuzzer for x in  campaign_combo.stat_items]
-#    df = pd.DataFrame({'x_data':X, 'y_data':Y})
-#    fig = px.line(df, x='x_data', y='y_data', title="Testing")
-#    fig.show()

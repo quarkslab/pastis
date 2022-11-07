@@ -7,8 +7,19 @@ BENCH_DIR = "/home/rac/bench"
 #TARGET = "libpng"
 # Name of the binary in `cmplog`
 #harness_name = "libpng_read_fuzzer"
-TARGET = "vorbis"
-harness_name = "decode_fuzzer"
+#TARGET = "vorbis"
+#harness_name = "decode_fuzzer"
+#TARGET = "zlib"
+#harness_name = "zlib_uncompress_fuzzer"
+
+TARGET = "harfbuzz"
+harness_name = "hb-shape-fuzzer"
+
+#TARGET = "freetype"
+#harness_name = "ftfuzzer"
+
+#TARGET = "openthread"
+#harness_name = "ip6-send-fuzzer"
 
 def run_instance(port, afl: bool, tt: bool, cmplog: bool, solver: str, hide_output=False):
     output_stream = subprocess.DEVNULL if hide_output else None
@@ -45,7 +56,7 @@ def run_instance(port, afl: bool, tt: bool, cmplog: bool, solver: str, hide_outp
         subprocess.Popen(tt, stdout=output_stream, stderr=output_stream)
 
 if __name__ == "__main__":
-    port = 4333
+    port = 7357
     run_instance(port,   afl=True, tt=False, cmplog=False, solver="bitwuzla")
     run_instance(port+1, afl=True, tt=True, cmplog=False, solver="bitwuzla")
     run_instance(port+2, afl=True, tt=False, cmplog=True, solver="bitwuzla")
