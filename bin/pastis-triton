@@ -42,7 +42,8 @@ def cli():
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
 @click.option('-s', '--solver', type=click.Choice(["bitwuzla", "z3"]), default="bitwuzla", help='Solver to use "bitwuzla" or "z3" (default bitwuzla)')
 @click.option('-w', '--workspace', type=str, default="", help='Path to TritonDSE workspace')
-def online(host: str, port: int, solver: str, workspace: str):
+@click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.value)
+def online(host: str, port: int, solver: str, workspace: str, covmode):
     """
     This is the online mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will try to connect to the broker. Then, the broker
@@ -51,11 +52,12 @@ def online(host: str, port: int, solver: str, workspace: str):
     :param host: The remote host to connect
     :param port: The remote host's port to connect
     """
+    covmode = CoverageMode(covmode)
     # Create the network agent and connect to the broker
     agent = ClientAgent()
 
     # Instanciate the pastis that will register the appropriate callbacks
-    pastis = PastisDSE(agent, solver, workspace)
+    pastis = PastisDSE(agent, solver, workspace, covmode)
 
     pastis.init_agent(host, port)
     pastis.run(online=True)

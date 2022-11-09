@@ -34,16 +34,18 @@ seeds_received = 0
 
 class PastisDSE(object):
 
-    def __init__(self, agent: ClientAgent, solver: str, workspace: str):
+    def __init__(self, agent: ClientAgent, solver: str, workspace: str, covmode: CoverageStrategy):
         self.agent = agent
         self.solver = SmtSolver.Z3 if solver == "z3" else SmtSolver.BITWUZLA
         self.workspace = workspace
+        self.covmode = covmode
         self._init_callbacks()  # register callbacks on the given agent
 
         #self.config     = Config(debug=False)
+        print(self.covmode)
         self.config = Config(seed_format=SeedFormat.COMPOSITE, 
                 skip_unsupported_import=True, 
-                coverage_strategy = CoverageStrategy.EDGE , 
+                coverage_strategy = self.covmode,
                 #exploration_limit=5, 
                 branch_solving_strategy=BranchSolvingStrategy.FIRST_LAST_NOT_COVERED | BranchSolvingStrategy.COVER_SYM_DYNJUMP | BranchSolvingStrategy.COVER_SYM_READ | BranchSolvingStrategy.COVER_SYM_WRITE, 
                 pipe_stderr=True, pipe_stdout=True, 
@@ -96,7 +98,7 @@ class PastisDSE(object):
         #self.config = Config(debug=False)
         self.config = Config(seed_format=SeedFormat.COMPOSITE, 
                 skip_unsupported_import=True, 
-                coverage_strategy = CoverageStrategy.EDGE , 
+                coverage_strategy = self.covmode, 
                 #exploration_limit=5, 
                 branch_solving_strategy=BranchSolvingStrategy.FIRST_LAST_NOT_COVERED | BranchSolvingStrategy.COVER_SYM_DYNJUMP | BranchSolvingStrategy.COVER_SYM_READ | BranchSolvingStrategy.COVER_SYM_WRITE, 
                 pipe_stderr=True, pipe_stdout=True, 
