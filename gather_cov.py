@@ -25,12 +25,12 @@ TRACE_INST = False
 #HARNESS = "ftfuzzer_tt"
 #TARGET = "harfbuzz"
 #HARNESS = "hb-shape-fuzzer_tt"
-#TARGET = "libpng"
-#HARNESS = "libpng_read_fuzzer_tt"
+TARGET = "libpng"
+HARNESS = "libpng_read_fuzzer_tt"
 #TARGET = "jsoncpp"
 #HARNESS = "jsoncpp_fuzzer_tt"
-TARGET = "zlib"
-HARNESS = "zlib_uncompress_fuzzer_tt"
+#TARGET = "zlib"
+#HARNESS = "zlib_uncompress_fuzzer_tt"
 #TARGET = "openthread"
 #HARNESS = "ip6-send-fuzzer_tt"
 #TARGET = "vorbis"
@@ -38,6 +38,8 @@ HARNESS = "zlib_uncompress_fuzzer_tt"
 
 BINARY = f"/home/rac/bench/{TARGET}/bins/{HARNESS}"
 RESULTS = f"/home/rac/bench/{TARGET}/results/"
+#RESULTS = f"/home/rac/bench/{TARGET}/results_solv/"
+#RESULTS = f"/home/rac/bench/{TARGET}/results_cov/"
 
 # NOTE For this script to work, we assume that the inputs are in chronological order in 
 # the corpus_path. This is the case with pastis's output directory.
@@ -148,8 +150,10 @@ class CampaignResults():
 
     def add_to_plot(self, ax, label, annotate_tt=False):
         X = [x.time_elapsed for x in  self.stat_items]
-        Y = [x.total_coverage_insts for x in  self.stat_items]
-        #Y = [x.total_coverage for x in  self.stat_items]
+        if TRACE_INST:
+            Y = [x.total_coverage_insts for x in  self.stat_items]
+        else:
+            Y = [x.total_coverage for x in  self.stat_items]
         F = [x.fuzzer for x in  self.stat_items]
 
         ax.plot(X, Y, label=label)
@@ -157,6 +161,38 @@ class CampaignResults():
         if annotate_tt:
             T, Y = find_tt_inp(X, Y, F)
             ax.plot(T, Y, 'bo', label="TT input")
+
+
+
+    def count_contributions(self, name):
+
+        def in_percent(d, total):
+            d_percent = dict()
+            for x in d:
+                d_percent[x] = (d[x] / total) * 100
+            return d_percent
+        
+        print(name)
+        inputs_found = dict()
+        edges_found = dict()
+        instructions_found = dict()
+        total_edges = self.stat_items[-1].total_coverage
+        for s in self.stat_items:
+            f = s.fuzzer
+            if f not in inputs_found: inputs_found[f] = 0
+            if f not in edges_found: edges_found[f] = 0
+            if f not in instructions_found: instructions_found[f] = 0
+            inputs_found[f] += 1
+            edges_found[f] += s.unique_coverage_len
+            instructions_found[f] += s.unique_coverage_len_insts
+
+        print(f"inputs: {inputs_found}, {in_percent(inputs_found, len(self.stat_items))}")
+        print(f"edges: {edges_found} {in_percent(edges_found, total_edges)}")
+        print(f"instructions: {instructions_found}")
+
+        print(f"{len(self.stat_items)} inputs")
+        print(f"{total_edges} edges")
+        print("")
 
 
 
@@ -295,6 +331,7 @@ def read_from_file_or_generate(target, binary, corpus_dir, res_file):
     except:
         return replay(target, binary, corpus_dir, res_file)
 
+
 if __name__ == "__main__":
     # TODO This is very hacky. 
     # QBDITrace doesn't work if the program calls longjmp. Because of this we hook longjmp@plt and
@@ -330,4 +367,7 @@ if __name__ == "__main__":
     ax2.legend()
     ax2.set_xscale("log")
 
-    plt.show()
+    for d in campaigns:
+        campaigns[d].count_contributions(d)
+
+    #plt.show()
