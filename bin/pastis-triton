@@ -40,10 +40,7 @@ def cli():
 @cli.command()
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
-@click.option('-s', '--solver', type=click.Choice(["bitwuzla", "z3"]), default="bitwuzla", help='Solver to use "bitwuzla" or "z3" (default bitwuzla)')
-@click.option('-w', '--workspace', type=str, default="", help='Path to TritonDSE workspace')
-@click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.value)
-def online(host: str, port: int, solver: str, workspace: str, covmode):
+def online(host: str, port: int):
     """
     This is the online mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will try to connect to the broker. Then, the broker
@@ -52,12 +49,12 @@ def online(host: str, port: int, solver: str, workspace: str, covmode):
     :param host: The remote host to connect
     :param port: The remote host's port to connect
     """
-    covmode = CoverageMode(covmode)
+
     # Create the network agent and connect to the broker
     agent = ClientAgent()
 
     # Instanciate the pastis that will register the appropriate callbacks
-    pastis = PastisDSE(agent, solver, workspace, covmode)
+    pastis = PastisDSE(agent)
 
     pastis.init_agent(host, port)
     pastis.run(online=True)
@@ -91,6 +88,7 @@ def load_probe_module(module) -> Optional[ProbeInterface]:
 @click.option('-n', '--name', type=str, default='', help="Name of the executable if program is an archive containing multiple files")
 @click.option('-t', '--target', type=str, help="Target alert address in case of ALERT_ONE checkmode")
 @click.option('-p', '--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
+@click.option('-w', '--workspace', type=str, default="", help='Path to TritonDSE workspace')
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
             kl_report: Optional[str],
@@ -105,7 +103,8 @@ def offline(program: str,
             name: str,
             target: str,
             pargvs: Tuple[str],
-            probe: Tuple[str]):
+            probe: Tuple[str],
+            workspace: Optional[str]):
     """
     This is the offline mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will be able to work without a remote broker. In
@@ -126,6 +125,7 @@ def offline(program: str,
     :param target: target alert address to cover and validate
     :param pargvs: The program arguments
     :param probe: Python module containing a ProbeInterface to attach to the execution
+    :param workspace: Workspace where to store data
     """
     global pastis
 
@@ -144,11 +144,13 @@ def offline(program: str,
     # Instanciate the pastis that will register the appropriate callbacks
     pastis = PastisDSE(agent)
 
-    #pastis.init_agent(host, port)  # Does not even call init_agent as it does nothing for the FileAgent
     if config:
         config = Path(config).read_text()
     else:
-        config = ""
+        config = Config()
+
+    if workspace:
+        config.workspace = workspace
 
     for p in list(probe):
         probe = load_probe_module(p)
@@ -162,12 +164,13 @@ def offline(program: str,
         if target:
             value = int(target, 16) if target.startswith("0x") else int(target)
             # Small hack to embed the target address in the config file
-            c = Config.from_json(config)
-            c.custom['target'] = value
-            config = c.to_json()
+            config.custom['target'] = value
         else:
             logging.error(f"CheckMode {chkmode.name} requires a target (use -t)")
             sys.exit(1)
+
+    # Reserialize config file
+    config = config.to_json()
 
     # Mimick a callback to start_received
     pastis.start_received(name if name else program.name,
