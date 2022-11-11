@@ -97,7 +97,7 @@ class PastisDSE(object):
         self._sending_count = 0
         logging.info("DSE Ready")
 
-    def run(self, online: bool):
+    def run(self, online: bool, debug_pp: bool=False):
 
         # Run while we are not instructed to stop
         while not self._stop:
@@ -108,6 +108,11 @@ class PastisDSE(object):
             # Just wait until the broker says let's go
             while self.dse is None:
                 time.sleep(0.10)
+
+            if debug_pp:
+                def cb_debug(se, _):
+                    se.debug_pp = True
+                self.dse.callback_manager.register_pre_execution_callback(cb_debug)
 
             if not self.run_one(online):
                 break
@@ -501,7 +506,7 @@ class PastisDSE(object):
             logging.warning(f"receiving seeds while the DSE is not instantiated {e}")
 
         rcv = len(self._seed_received)
-        logging.info(f"seeds reci: {rcv} | merged {self.seeds_merged} [{(self.seeds_merged/rcv) * 100:.2f}%]"
+        logging.info(f"seeds recv: {rcv} | merged {self.seeds_merged} [{(self.seeds_merged/rcv) * 100:.2f}%]"
                      f" rejected {self.seeds_rejected} [{(self.seeds_rejected/rcv) * 100:.2f}%]")
 
     def stop_received(self):

@@ -24,11 +24,12 @@ from tritondse import CoverageStrategy, ProbeInterface, Config
 pastis = None
 
 
-coloredlogs.install(level=logging.INFO,
-                fmt="%(asctime)s %(threadName)s [%(levelname)s] %(message)s",
-                level_styles={'debug': {'color': 'blue'}, 'info': {'color': 'white'}, 'warning': {'color': 'yellow'},
-                              'error': {'color': 'red'}, 'critical': {'bold': True, 'color': 'red'}},
-                field_styles = {'asctime': {'color': 'white'}, 'levelname': {'bold': True}})
+def configure_logs(level: int):
+    coloredlogs.install(level=level,
+                        fmt="%(asctime)s %(threadName)s [%(levelname)s] %(message)s",
+                        level_styles={'debug': {'color': 'blue'}, 'info': {'color': 'white'}, 'warning': {'color': 'yellow'},
+                                      'error': {'color': 'red'}, 'critical': {'bold': True, 'color': 'red'}},
+                        field_styles={'asctime': {'color': 'white'}, 'levelname': {'bold': True}})
 
 
 @click.group()
@@ -49,6 +50,8 @@ def online(host: str, port: int):
     :param host: The remote host to connect
     :param port: The remote host's port to connect
     """
+
+    configure_logs(logging.INFO)
 
     # Create the network agent and connect to the broker
     agent = ClientAgent()
@@ -89,6 +92,8 @@ def load_probe_module(module) -> Optional[ProbeInterface]:
 @click.option('-t', '--target', type=str, help="Target alert address in case of ALERT_ONE checkmode")
 @click.option('-p', '--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 @click.option('-w', '--workspace', type=str, default="", help='Path to TritonDSE workspace')
+@click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
+@click.option('--debug-pp', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debugging path predicate')
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
             kl_report: Optional[str],
@@ -104,7 +109,9 @@ def offline(program: str,
             target: str,
             pargvs: Tuple[str],
             probe: Tuple[str],
-            workspace: Optional[str]):
+            workspace: Optional[str],
+            debug: bool,
+            debug_pp: bool):
     """
     This is the offline mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will be able to work without a remote broker. In
@@ -126,6 +133,8 @@ def offline(program: str,
     :param pargvs: The program arguments
     :param probe: Python module containing a ProbeInterface to attach to the execution
     :param workspace: Workspace where to store data
+    :param debug: Enable debug logs
+    :param debug_pp: Enable debugging path predicate
     """
     global pastis
 
@@ -148,6 +157,12 @@ def offline(program: str,
         config = Path(config).read_text()
     else:
         config = Config()
+
+    if debug:
+        configure_logs(logging.DEBUG)
+        config.debug = True
+    else:
+        configure_logs(logging.INFO)
 
     if workspace:
         config.workspace = workspace
@@ -198,7 +213,7 @@ def offline(program: str,
                 pastis.seed_received(SeedType.INPUT, sub_s.read_bytes())
 
     # Call run to start exploration
-    pastis.run(online=False)
+    pastis.run(online=False, debug_pp=debug_pp)
 
 
 if __name__ == "__main__":
