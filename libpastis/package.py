@@ -18,7 +18,7 @@ from libpastis.types import Arch, Platform
 class BinaryPackage(object):
     def __init__(self, main_binary: Path):
         self._main_bin = Path(main_binary)
-        self._qbinexport = None
+        self._quokka = None
         self._callgraph = None
         self._cmplog = None
         self.other_files = []
@@ -36,8 +36,8 @@ class BinaryPackage(object):
         return self._main_bin.name
 
     @property
-    def qbinexport(self) -> Path:
-        return self._qbinexport
+    def quokka(self) -> Path:
+        return self._quokka
 
     @property
     def callgraph(self) -> Path:
@@ -47,8 +47,8 @@ class BinaryPackage(object):
     def cmplog(self) -> Path:
         return self._cmplog
 
-    def is_qbinexport(self) -> bool:
-        return self._qbinexport is not None
+    def is_quokka(self) -> bool:
+        return self._quokka is not None
 
     @property
     def arch(self) -> Arch:
@@ -73,7 +73,7 @@ class BinaryPackage(object):
         # Search for a Quokka file
         qfile = Path(str(bin_f)+".Quokka")
         if qfile.exists():
-            p._qbinexport = qfile
+            p._quokka = qfile
 
         # Search for a graph file (containing callgraph)
         cfile = Path(str(bin_f)+".gt")
@@ -99,7 +99,7 @@ class BinaryPackage(object):
         """
         p = BinaryPackage.auto(dir, exe_name)
         for file in Path(dir).iterdir():
-            if file not in [p._main_bin, p._callgraph, p._qbinexport, p._cmplog]:
+            if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog]:
                 p.other_files.append(file)
 
     def make_package(self) -> Path:
@@ -110,8 +110,8 @@ class BinaryPackage(object):
         fname = tempfile.mktemp(suffix=".zip")
         zip = zipfile.ZipFile(fname, "w")
         zip.write(self._main_bin, self._main_bin.name)
-        if self._qbinexport:
-            zip.write(self._qbinexport, self._qbinexport.name)
+        if self._quokka:
+            zip.write(self._quokka, self._quokka.name)
         if self._callgraph:
             zip.write(self._callgraph, self._callgraph.name)
         if self._cmplog:
@@ -176,7 +176,7 @@ class BinaryPackage(object):
             # Create the package object
             pkg = BinaryPackage.auto(extract_dir, name)
             for file in extract_dir.iterdir():
-                if file not in [pkg.executable_path, pkg.callgraph, pkg.qbinexport]:
+                if file not in [pkg.executable_path, pkg.callgraph, pkg.quokka]:
                     pkg.other_files.append(file)
             return pkg
         elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable', 'application/x-sharedlib']:
