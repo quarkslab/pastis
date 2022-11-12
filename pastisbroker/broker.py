@@ -340,7 +340,7 @@ class PastisBroker(BrokerAgent):
         engine = None
         exmode = ExecMode.SINGLE_EXEC
         fuzzmode = FuzzMode.INSTRUMENTED
-        engine_args = ""
+        engine_args = None
         package = covmode = fuzzmod = None
         engines = Counter({e: 0 for e in self.engines})
         engines.update(c.engine.NAME for c in self.clients.values() if c.is_running())  # Count instances of each engine running
@@ -407,9 +407,11 @@ class PastisBroker(BrokerAgent):
 
 
         # Update internal client info and send him the message
+        engine_args_str = engine_args.to_str() if engine_args else ""
         logging.info(f"send start client {client.id}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
-        client.set_running(package.name, engine, covmode, exmode, self.ck_mode)
+        client.set_running(package.name, engine, covmode, exmode, self.ck_mode, engine_args_str)
         client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
+
         self.send_start(client.netid,
                         package.name,
                         package.make_package() if package.is_quokka() else package.executable_path,
@@ -419,7 +421,7 @@ class PastisBroker(BrokerAgent):
                         self.ck_mode,
                         covmode,
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
-                        engine_args.to_str() if engine_args else "",
+                        engine_args_str,
                         self.inject,
                         self.kl_report.to_json() if self.kl_report else "")
 

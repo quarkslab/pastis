@@ -33,6 +33,7 @@ class PastisClient(object):
         self._program = None
         self._running = False
         self._engine = None  # FuzzingEngineDescriptor
+        self._engine_args = None
         self._coverage_mode = None
         self._exec_mode = None
         self._check_mode = None
@@ -138,13 +139,15 @@ class PastisClient(object):
         self._exec_mode = None
         self._check_mode = None
 
-    def set_running(self, program: str, engine: FuzzingEngineDescriptor, covmode: CoverageMode, exmode: ExecMode, ckmode: CheckMode):
+    def set_running(self, program: str, engine: FuzzingEngineDescriptor, covmode: CoverageMode, exmode: ExecMode,
+                    ckmode: CheckMode, engine_args: str = None):
         self._program = program
         self._running = True
         self._engine = engine
         self._coverage_mode = covmode
         self._exec_mode = exmode
         self._check_mode = ckmode
+        self._engine_args = engine_args
         self._seeds_received = set()  # Seed sent to the client
         self._seeds_submitted = set()  # Seed submitted by the client
 
@@ -165,6 +168,7 @@ class PastisClient(object):
             "hostname": self.hostname,
             "platform": self.platform.name,
             "engine": self._engine.NAME if self._engine else "",
+            "engine_args": self._engine_args,
             "coverage_mode": self._coverage_mode.name,
             "exec_mode": self._exec_mode.name,
             "check_mode": self._check_mode.name,
