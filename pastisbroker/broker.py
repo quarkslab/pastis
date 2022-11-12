@@ -16,7 +16,7 @@ from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, 
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
 from klocwork import KlocworkReport
 import lief
-from tritondse.qbinexportprogram import QBinExportProgram
+from tritondse import QuokkaProgram
 
 # Local imports
 from pastisbroker.client import PastisClient
@@ -515,14 +515,14 @@ class PastisBroker(BrokerAgent):
                 except ValueError:  # if not an executable
                     continue
 
-                # Check that we can find a QBinExport file associated otherwise reject it
+                # Check that we can find a Quokka file associated otherwise reject it
                 if self.ck_mode == CheckMode.ALERT_ONE:
-                    if pkg.is_qbinexport():
+                    if pkg.is_quokka():
                         try:
-                            # Instanciate the QBinExportProgram and monkey patch object
-                            pkg.qbinexport_obj = QBinExportProgram(pkg.qbinexport, pkg.executable_path)
-                            f = pkg.qbinexport_obj.get_function("__klocwork_alert_placeholder")
-                            self._slicing_ongoing[file.name] = {x: [] for x in pkg.qbinexport_obj.get_caller_instructions(f)}
+                            # Instanciate the Quokka Program and monkey patch object
+                            quokka_prog = QuokkaProgram(pkg.quokka, pkg.executable_path)
+                            f = quokka_prog.get_function("__klocwork_alert_placeholder")
+                            self._slicing_ongoing[file.name] = {x: [] for x in quokka_prog.get_caller_instructions(f)}
                         except ValueError:
                             logging.warning(f"can't find placeholder file in {file.name}, thus ignores it.")
                             continue

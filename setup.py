@@ -11,7 +11,7 @@ setup(
     description="PASTIS broker that perform the proxy between all fuzzing engines",
     packages=find_packages(),
     setup_requires=[],
-    install_requires=["click", "lief", "coloredlogs"],
+    install_requires=["click", "lief", "coloredlogs", "quokka-project"],
     tests_require=[],
     license="qb",
     author="Quarkslab",
