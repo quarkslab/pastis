@@ -46,8 +46,7 @@ class AFLPPProcess:
             aflpp_path = os.environ.get(AFLPPProcess.AFLPP_ENV_VAR)
             return Path(aflpp_path) / 'afl-fuzz' if aflpp_path else shutil.which(AFLPPProcess.BINARY)
 
-    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str]=None):
-        print(cmplog)
+    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str] = None):
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
 
@@ -64,7 +63,6 @@ class AFLPPProcess:
 
             f"-c {cmplog}" if cmplog is not None else ""
         ])
-        print(aflpp_arguments)
 
         # Export environmental variables.
         os.environ["AFL_NO_UI"] = "1"
@@ -81,7 +79,7 @@ class AFLPPProcess:
         # Build fuzzer command line.
         aflpp_cmdline = f'{self.__path} {aflpp_arguments} -- {target_cmdline}'
 
-        logging.info(f"Run AFL++ with: {aflpp_cmdline}")
+        logging.info(f"Run AFL++: {aflpp_cmdline}")
         logging.debug(f"\tWorkspace: {workspace.root_dir}")
 
         # Remove empty strings when converting the command to a list.
@@ -91,7 +89,6 @@ class AFLPPProcess:
         self.__logfile = open(workspace.root_dir / 'logfile.log', 'w')
 
         # Create a new fuzzer process and set it apart into a new process group.
-        print(command)
         self.__process = subprocess.Popen(command, cwd=str(workspace.root_dir), preexec_fn=os.setsid, stdout=self.__logfile)
 
         logging.debug(f'Process pid: {self.__process.pid}')

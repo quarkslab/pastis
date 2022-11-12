@@ -41,12 +41,11 @@ def cli():
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
 @click.option('-tf', '--telemetry-frequency', type=int, default=30, help='Frequency at which send telemetry (in sec)')
-@click.option('-c', '--cmplog', type=str, help='Path to cmplog binary')
-def online(host: str, port: int, telemetry_frequency: int, cmplog: Optional[str]):
+def online(host: str, port: int, telemetry_frequency: int):
     agent = ClientAgent()
 
     try:
-        aflpp = AFLPPDriver(agent, telemetry_frequency=telemetry_frequency, cmplog=cmplog)
+        aflpp = AFLPPDriver(agent, telemetry_frequency=telemetry_frequency)
     except FileNotFoundError as e:
         logging.error(f"Can't find AFL++ binary {e}")
         logging.error("Please check AFLPP_PATH environement variable, or that the binary is available in the path")

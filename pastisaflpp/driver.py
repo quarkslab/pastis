@@ -33,12 +33,11 @@ for logger in (logging.getLogger(x) for x in ["watchdog.observers.inotify_buffer
 
 class AFLPPDriver:
 
-    def __init__(self, agent: ClientAgent, telemetry_frequency: int = 30, cmplog=None):
+    def __init__(self, agent: ClientAgent, telemetry_frequency: int = 30):
 
         # Internal objects
         self._agent = agent
         self.workspace = Workspace()
-        self.cmplog = cmplog
         self.aflpp = AFLPPProcess()
 
         # Parameters received through start_received
@@ -76,22 +75,21 @@ class AFLPPDriver:
         return hashlib.md5(seed).hexdigest()
 
     def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, seed_inj: SeedInjectLoc, engine_args: str):
-        print(f"InjectLock = {seed_inj}")
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
 
         self.workspace.start()  # Start looking at directories
 
-        logging.info("Start process")
-        self.aflpp.start(str(self.__package.executable_path.absolute()),
-                             " ".join(argv),
-                             self.workspace,
-                             exmode,
-                             fuzzmode,
-                             seed_inj == SeedInjectLoc.STDIN,
-                             engine_args,
-                             self.cmplog)
+        logging.info(f"Start process (injectloc: {seed_inj.name})")
+        self.aflpp.start(str(package.executable_path.absolute()),
+                         " ".join(argv),
+                         self.workspace,
+                         exmode,
+                         fuzzmode,
+                         seed_inj == SeedInjectLoc.STDIN,
+                         engine_args,
+                         str(package.cmplog.absolute()) if package.cmplog else None)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
