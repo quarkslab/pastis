@@ -44,7 +44,7 @@ def iterate_file(file):
 @click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Klocwork report to use")
 @click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
 @click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking")
-@click.option('-c', '--chkmode', type=click.Choice([x.name for x in CheckMode]), default=CheckMode.CHECK_ALL, help="Check mode (all or alert driven)")
+@click.option('-c', '--chkmode', type=click.Choice([x.name for x in CheckMode]), default=CheckMode.CHECK_ALL.name, help="Check mode (all or alert driven)")
 @click.option('-e', '--engine', type=str, help="Fuzzing engine module to load (python module)", multiple=True)
 @click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Triton configuration file")
 @click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Honggfuzz configuration file")
