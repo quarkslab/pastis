@@ -1,6 +1,6 @@
 # built-in imports
 import logging
-from typing import Tuple, Generator, List, Optional, Union, Dict
+from typing import Generator, List, Optional, Union
 from pathlib import Path
 import time
 from hashlib import md5
@@ -8,7 +8,6 @@ from enum import Enum
 from collections import Counter
 import datetime
 import random
-import json
 
 # Third-party imports
 from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage
@@ -52,7 +51,7 @@ class Bcolors:
 
 class PastisBroker(BrokerAgent):
 
-    def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = []):
+    def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = None):
         super(PastisBroker, self).__init__()
         self.workspace = Workspace(Path(workspace))
         self._configure_logging()
@@ -64,7 +63,7 @@ class PastisBroker(BrokerAgent):
         self.broker_mode = broker_mode
         self.ck_mode = check_mode
         self.inject = SeedInjectLoc.STDIN  # At the moment injection location is hardcoded
-        self.argv = p_argv
+        self.argv = [] if p_argv is None else p_argv
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
 
@@ -220,13 +219,12 @@ class PastisBroker(BrokerAgent):
         client = self.get_client(cli_id)
         if not client:
             return
-        #logging.info(f"[{client.strid}] [LOG] [{level.name}] {message}")
         client.log(level, message)
 
     def telemetry_received(self, cli_id: bytes,
-        state: State = None, exec_per_sec: int = None, total_exec: int = None,
-        cycle: int = None, timeout: int = None, coverage_block: int = None, coverage_edge: int = None,
-        coverage_path: int = None, last_cov_update: int = None):
+                           _: State = None, exec_per_sec: int = None, total_exec: int = None,
+                           cycle: int = None, timeout: int = None, coverage_block: int = None, coverage_edge: int = None,
+                           coverage_path: int = None, last_cov_update: int = None):
         client = self.get_client(cli_id)
         if not client:
             return
@@ -343,6 +341,7 @@ class PastisBroker(BrokerAgent):
         exmode = ExecMode.SINGLE_EXEC
         fuzzmode = FuzzMode.INSTRUMENTED
         engine_args = ""
+        package = covmode = fuzzmod = None
         engines = Counter({e: 0 for e in self.engines})
         engines.update(c.engine.NAME for c in self.clients.values() if c.is_running())  # Count instances of each engine running
         for eng, _ in engines.most_common()[::-1]:
@@ -388,7 +387,7 @@ class PastisBroker(BrokerAgent):
             return
 
         if self.ck_mode == CheckMode.ALERT_ONE:
-            if package.is_qbinexport():
+            if package.is_quokka():
                 targets = self._slicing_ongoing[package.name]
                 sorted_targets = sorted(targets, key=lambda k: len(targets[k]), reverse=False)  # sort alert addresses by number of client instances working on it
                 if sorted_targets:
@@ -413,7 +412,7 @@ class PastisBroker(BrokerAgent):
         client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
         self.send_start(client.netid,
                         package.name,
-                        package.make_package() if package.is_qbinexport() else package.executable_path,
+                        package.make_package() if package.is_quokka() else package.executable_path,
                         self.argv,
                         exmode,
                         fuzzmod,
@@ -473,7 +472,7 @@ class PastisBroker(BrokerAgent):
         else:
             return supported_mods[0]
 
-    def start(self, running: bool=True):
+    def start(self, running: bool = True):
         super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.time()
         self._running = running
@@ -544,7 +543,7 @@ class PastisBroker(BrokerAgent):
 
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
-        for typ in SeedType:  # iter seed types: input, crash, hang..
+        for typ in list(SeedType):  # iter seed types: input, crash, hang..
             for file in self.workspace.iter_corpus_directory(typ):
                 logging.debug(f"Load seed in pool: {file.name}")
                 content = file.read_bytes()
