@@ -49,9 +49,12 @@ def iterate_file(file):
 @click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Triton configuration file")
 @click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Honggfuzz configuration file")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
+@click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
 @click.argument('pargvs', nargs=-1)
-def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, chkmode: str, engine: Tuple[str], tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], port: Optional[int], pargvs: Tuple[str]):
+def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, chkmode: str, engine: Tuple[str],
+         tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], timeout: Optional[int],
+         port: Optional[int], pargvs: Tuple[str]):
     global broker
     # Instanciate the broker
 
@@ -85,7 +88,7 @@ def main(workspace: str, kl_report: Optional[str], bins: str, mode: str, chkmode
 
     # Bind it and start listening (clients can connect)
     broker.bind(port)
-    broker.run()
+    broker.run(timeout)
 
 
 if __name__ == "__main__":
