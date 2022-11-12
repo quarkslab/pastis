@@ -20,6 +20,7 @@ class BinaryPackage(object):
         self._main_bin = Path(main_binary)
         self._qbinexport = None
         self._callgraph = None
+        self._cmplog = None
         self.other_files = []
 
         self._package_file = None
@@ -41,6 +42,10 @@ class BinaryPackage(object):
     @property
     def callgraph(self) -> Path:
         return self._callgraph
+
+    @property
+    def cmplog(self) -> Path:
+        return self._cmplog
 
     def is_qbinexport(self) -> bool:
         return self._qbinexport is not None
@@ -64,12 +69,22 @@ class BinaryPackage(object):
             raise ValueError(f"{exe_name} format is not supported")
         p = BinaryPackage(bin_f)
         p._platform, p._arch = data
-        qfile = bin_f.with_suffix(".QBinExport")
+
+        # Search for a Quokka file
+        qfile = Path(str(bin_f)+".Quokka")
         if qfile.exists():
             p._qbinexport = qfile
-        cfile = bin_f.with_suffix(".gt")
+
+        # Search for a graph file (containing callgraph)
+        cfile = Path(str(bin_f)+".gt")
         if cfile.exists():
             p._callgraph = cfile
+
+        # Search for a cmplog file if any
+        cfile = Path(str(bin_f)+".cmplog")
+        if cfile.exists():
+            p._cmplog = cfile
+
         return p
 
     @staticmethod
@@ -84,7 +99,7 @@ class BinaryPackage(object):
         """
         p = BinaryPackage.auto(dir, exe_name)
         for file in Path(dir).iterdir():
-            if file not in [p._main_bin, p._callgraph, p._qbinexport]:
+            if file not in [p._main_bin, p._callgraph, p._qbinexport, p._cmplog]:
                 p.other_files.append(file)
 
     def make_package(self) -> Path:
@@ -99,6 +114,8 @@ class BinaryPackage(object):
             zip.write(self._qbinexport, self._qbinexport.name)
         if self._callgraph:
             zip.write(self._callgraph, self._callgraph.name)
+        if self._cmplog:
+            zip.write(self._cmplog, self._cmplog.name)
         for file in self.other_files:
             zip.write(file)
         zip.close()
