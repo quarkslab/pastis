@@ -15,10 +15,11 @@ from triton               import MemoryAccess, CPUSIZE
 
 # Pastis & triton imports
 import pastisdse
-from tritondse            import TRITON_VERSION, Config, Program, CleLoader, CoverageStrategy, SymbolicExplorator, SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, Workspace, Seed, CompositeData, SeedFormat, BranchSolvingStrategy, SmtSolver
+from tritondse            import TRITON_VERSION, Config, Program, CleLoader, CoverageStrategy, SymbolicExplorator, \
+                                 SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, \
+                                 Workspace, Seed, CompositeData, SeedFormat, QuokkaProgram
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
 from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Platform
-#from tritondse.qbinexportprogram import QBinExportProgram
 from libpastis import ClientAgent, BinaryPackage
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
 from tritondse.trace      import QBDITrace, TraceException
@@ -296,9 +297,9 @@ class PastisDSE(object):
             logging.error("Invalid package data")
             return
 
-        if pkg.is_qbinexport():
-            logging.info(f"load QBinExportProgram: {pkg.qbinexport.name}")
-            self.program = QBinExportProgram(pkg.qbinexport, pkg.executable_path)
+        if pkg.is_quokka():
+            logging.info(f"load QuokkaProgram: {pkg.quokka.name}")
+            self.program = QuokkaProgram(pkg.quokka, pkg.executable_path)
         else:
             logging.info(f"load Program: {pkg.executable_path.name} [{self._seedloc.name}]")
             program = Program(pkg.executable_path)
@@ -366,8 +367,8 @@ class PastisDSE(object):
            dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
 
         elif chkmode == CheckMode.ALERT_ONE:  # targeted approach
-            if not isinstance(self.program, QBinExportProgram):
-                logging.error(f"Targeted mode [{chkmode.name}] requires a QBinExport program")
+            if not isinstance(self.program, QuokkaProgram):
+                logging.error(f"Targeted mode [{chkmode.name}] requires a Quokka program")
                 self.agent.stop()
                 return
 
@@ -393,7 +394,7 @@ class PastisDSE(object):
 
                     logging.info(f'Slicing program from {slice_from:#x} ({slice_from_fn.name}) to {slice_to:#x} ({slice_to_fn.name})')
 
-                    self._program_slice = QBinExportProgram.get_slice(call_graph, slice_from_fn.start, slice_to_fn.start)
+                    self._program_slice = QuokkaProgram.get_slice(call_graph, slice_from_fn.start, slice_to_fn.start)
 
                     logging.info(f'Call graph (full): #nodes: {len(call_graph.nodes)}, #edges: {len(call_graph.edges)}')
                     logging.info(f'Call graph (sliced): #nodes: {len(self._program_slice.nodes)}, #edges: {len(self._program_slice.edges)}')
