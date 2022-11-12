@@ -484,13 +484,20 @@ class PastisBroker(BrokerAgent):
                 if not c.is_running():
                     self.start_client(c)
 
-    def run(self):
+    def run(self, timeout: int = None):
         self.start()
 
         # Start infinite loop
         try:
             while True:
                 time.sleep(0.1)
+
+                # Check if the campaign have to be stopped
+                if timeout is not None:
+                    if time.time() > (self._start_time + timeout):
+                        logging.info("Campaign timeout reached, stop campaign.")
+                        self._stop = True
+
                 if self._stop:
                     logging.info("broker terminate")
                     break
