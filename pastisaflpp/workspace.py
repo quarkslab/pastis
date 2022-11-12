@@ -14,7 +14,7 @@ from watchdog.observers import Observer
 
 class Workspace(FileSystemEventHandler):
 
-    HFUZZ_WS_ENV_VAR = "AFLPP_WS"
+    AFLPP_WS_ENV_VAR = "AFLPP_WS"
     DEFAULT_WS_PATH = "aflpp_workspace"
     STATS_FILE = "fuzzer_stats"
 
@@ -26,7 +26,7 @@ class Workspace(FileSystemEventHandler):
         self._setup_workspace()
 
     def _setup_workspace(self):
-        root = Path(os.environ.get('AFLPP_WS', Path(tempfile.gettempdir()) / self.DEFAULT_WS_PATH))
+        root = Path(os.environ.get(self.AFLPP_WS_ENV_VAR, Path(tempfile.gettempdir()) / self.DEFAULT_WS_PATH))
         self.root_dir = root / str(time.time()).replace(".", "")
 
         for d in [self.target_dir, self.input_dir, self.dynamic_input_dir, self.corpus_dir, self.crash_dir]:
