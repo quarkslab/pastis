@@ -56,6 +56,9 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
 
     @staticmethod
     def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode], Optional[FuzzMode]]:
+        if str(binary_file).endswith(".cmplog"):
+            return False, None, None
+
         p = lief.parse(str(binary_file))
         if not p:
             return False, None, None
