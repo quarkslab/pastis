@@ -447,7 +447,7 @@ class PastisDSE(object):
                     Path(f.name).write_bytes(data)
 
                     # Adjust injection location before calling QBDITrace
-                    if self._seedloc == SeedInjectLoc.STDIN and not "input_file" in seed.content.files:
+                    if self._seedloc == SeedInjectLoc.STDIN and not (self.dse.config.seed_format == SeedFormat.COMPOSITE and "input_file" in seed.content.files):
                         stdin_file = f.name
                         argv = self.config.program_argv
                     else:
