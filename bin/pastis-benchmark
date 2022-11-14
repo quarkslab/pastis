@@ -92,6 +92,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, aflpp: bool, honggfuzz
     if triton:
         # Look for configuration files, add them to the broker and launch as many triton instances
         tt_confs = ws_root / "triton_confs"
+        broker.load_engine_addon("pastisttbroker")
         if tt_confs.exists():
             for conf in tt_confs.iterdir():
                 logging.info(f"Add Triton configuration: {conf}")
