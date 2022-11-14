@@ -279,7 +279,10 @@ class PastisDSE(object):
 
         self._seedloc = seed_inj
         # If the seed injection is STDIN = RAW, if ARGV = COMPOSITE
-        self.config.seed_format = SeedFormat.RAW if self._seedloc == SeedInjectLoc.STDIN else SeedFormat.COMPOSITE
+        # Currently the broker always sends SeedInjectLoc.STDIN. Therefore we rely on the TritonDSE config. 
+        # If the format is COMPOSITE, we keep it that way regardless of SeedInjectLoc
+        if self.config.seed_format == SeedFormat.RAW:
+            self.config.seed_format = SeedFormat.RAW if self._seedloc == SeedInjectLoc.STDIN else SeedFormat.COMPOSITE
 
         # If a workspace is given keep it other generate new unique one
         if not self.config.workspace:
@@ -444,7 +447,7 @@ class PastisDSE(object):
                     Path(f.name).write_bytes(data)
 
                     # Adjust injection location before calling QBDITrace
-                    if self._seedloc == SeedInjectLoc.STDIN:
+                    if self._seedloc == SeedInjectLoc.STDIN and not "input_file" in seed.content.files:
                         stdin_file = f.name
                         argv = self.config.program_argv
                     else:
@@ -452,10 +455,10 @@ class PastisDSE(object):
                         try:
                             # Replace '@@' in argv with the file name
                             argv = self.config.program_argv[:]
-                            idx = argv.index("@@")
+                            idx = argv.index("input_file")
                             argv[idx] = f.name
                         except ValueError:
-                            logging.error(f"seed injection {self._seedloc.name} but can't find '@@' on program argv")
+                            logging.error(f"seed injection {self._seedloc.name} but can't find 'input_file' on program argv")
                             return
 
                     # set the longjmp addr if defined
@@ -466,7 +469,7 @@ class PastisDSE(object):
                         # Run the seed and determine whether it improves our current coverage.
                         trace = QBDITrace.run(self.config.coverage_strategy,
                                               str(self.program.path.resolve()),
-                                              argv,
+                                              argv[1:] if len(argv) > 1 else [],
                                               stdin_file=stdin_file,
                                               cwd=Path(self.program.path).parent)
                         coverage = trace.get_coverage()
