@@ -4,6 +4,7 @@
 import click
 import sys
 import logging
+import json
 from typing import Optional, Tuple
 from pathlib import Path
 
@@ -94,7 +95,14 @@ def run(workspace: str, bins: str, seeds: str, mode: str, aflpp: bool, honggfuzz
         tt_confs = ws_root / "triton_confs"
         broker.load_engine_addon("pastisttbroker")
         if tt_confs.exists():
-            for conf in tt_confs.iterdir():
+            for i, conf in enumerate(tt_confs.iterdir()):
+                with open(conf, "r+") as fd:
+                    tt_ws = clients_ws / f"ttdse_{i}"
+                    c = json.load(fd)
+                    c["workspace"] = str(tt_ws)
+                    fd.seek(0)
+                    json.dump(c, fd, indent=2)
+                    fd.truncate()
                 logging.info(f"Add Triton configuration: {conf}")
                 broker.add_engine_configuration("TRITON", conf)
                 spawn_online_triton(port)
