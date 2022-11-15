@@ -453,7 +453,7 @@ class PastisDSE(object):
                     else:
                         stdin_file = None
                         try:
-                            # Replace '@@' in argv with the file name
+                            # Replace 'input_file' in argv with the file name
                             argv = self.config.program_argv[:]
                             idx = argv.index("input_file")
                             argv[idx] = f.name
