@@ -277,6 +277,10 @@ class PastisDSE(object):
             self.config = Config.from_json(engine_args)
             logging.root.level = logging.DEBUG if self.config.debug else logging.INFO  # dynamically change level
 
+            if "@@" in self.config.program_argv:
+                idx = self.config.program_argv.index("@@")
+                self.config.program_argv[idx] = "input_file"
+
         self._seedloc = seed_inj
         # If the seed injection is STDIN = RAW, if ARGV = COMPOSITE
         # Currently the broker always sends SeedInjectLoc.STDIN. Therefore we rely on the TritonDSE config. 
