@@ -13,7 +13,7 @@ import coloredlogs
 
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
-from libpastis.types import CheckMode
+from libpastis.types import CheckMode, SeedInjectLoc
 
 from pastisbenchmark.runner import spawn_online_aflpp, spawn_online_triton, spawn_online_honggfuzz, check_scaling_frequency
 
@@ -47,18 +47,19 @@ def cli():
 @click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
 @click.option('-s', '--seeds', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Directory containing initial corpus")
 @click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking")
+@click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
 @click.option('--aflpp', is_flag=True, type=bool, default=False, help="Enable AFL++")
 @click.option('--honggfuzz', is_flag=True, type=bool, default=False, help="Enable Honggfuzz")
 @click.option('--triton', is_flag=True, type=bool, help="Configuration to launch triton with")
 @click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
 @click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
-def run(workspace: str, bins: str, seeds: str, mode: str, aflpp: bool, honggfuzz: bool, triton: bool, debug: bool,
+def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, honggfuzz: bool, triton: bool, debug: bool,
         timeout: Optional[int], port: int):
 
     configure_logging(logging.DEBUG if debug else logging.INFO)
 
-    broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, None, [])
+    broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, SeedInjectLoc[injloc], None, [])
 
     # Add all given seeds as initial seed
     for s in iterate_file(seeds):  # File if one file, or iterate dir if directory
