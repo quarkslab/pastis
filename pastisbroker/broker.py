@@ -529,6 +529,9 @@ class PastisBroker(BrokerAgent):
                 except ValueError:  # if not an executable
                     continue
 
+                if pkg is None:
+                    continue
+
                 # Check that we can find a Quokka file associated otherwise reject it
                 if self.ck_mode == CheckMode.ALERT_ONE:
                     if pkg.is_quokka():
