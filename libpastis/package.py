@@ -3,7 +3,7 @@ from pathlib import Path
 import zipfile
 import tempfile
 import logging
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Union
 
 # third-party imports
 import lief
@@ -16,6 +16,9 @@ from libpastis.types import Arch, Platform
 
 
 class BinaryPackage(object):
+
+    EXTENSION_BLACKLIST = ['.gt', '.Quokka', '.quokka', '.cmplog']
+
     def __init__(self, main_binary: Path):
         self._main_bin = Path(main_binary)
         self._quokka = None
@@ -59,21 +62,33 @@ class BinaryPackage(object):
         return self._platform
 
     @staticmethod
-    def auto(dir: Path, exe_name: str):
-        bin_f = Path(dir) / exe_name
+    def auto(exe_file: Union[Path, str]) -> Optional['BinaryPackage']:
+        bin_f = Path(exe_file)
+
+        # Exclude file if have one of the
+        if bin_f.suffix in BinaryPackage.EXTENSION_BLACKLIST:
+            return None
+
+        # If do not exists
         if not bin_f.exists():
-            raise FileNotFoundError(f"{exe_name}")
-        bin_f.chmod(stat.S_IRWXU)  # make sur the binary executable
+            return None
+
+        # Make sure its an executable
         data = BinaryPackage._read_binary_infos(bin_f)
         if not data:
-            raise ValueError(f"{exe_name} format is not supported")
+            return None
+
+        bin_f.chmod(stat.S_IRWXU)  # make sur the binary executable
+
         p = BinaryPackage(bin_f)
         p._platform, p._arch = data
 
         # Search for a Quokka file
-        qfile = Path(str(bin_f)+".Quokka")
-        if qfile.exists():
-            p._quokka = qfile
+        qfile1, qfile2 = Path(str(bin_f)+".Quokka"), Path(str(bin_f)+".quokka")
+        if qfile1.exists():
+            p._quokka = qfile1
+        elif qfile2.exists():
+            p._quokka = qfile2
 
         # Search for a graph file (containing callgraph)
         cfile = Path(str(bin_f)+".gt")
@@ -88,17 +103,22 @@ class BinaryPackage(object):
         return p
 
     @staticmethod
-    def load_directory(dir: Path, exe_name: str) -> 'BinaryPackage':
+    def auto_directory(exe_file: Union[str, Path]) -> Optional['BinaryPackage']:
         """
         Create a BinaryPackage with all files it can find in the given
         directory.
 
-        :param dir: Source directory
-        :param exe_name: main executable in the directory
+        :param exe_file: main executable in the directory
         :return: BinaryPackage
         """
-        p = BinaryPackage.auto(dir, exe_name)
-        for file in Path(dir).iterdir():
+        bin_f = Path(exe_file)
+
+        p = BinaryPackage.auto(bin_f)
+
+        if p is None:
+            return None
+
+        for file in bin_f.parent.iterdir():
             if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog]:
                 p.other_files.append(file)
 
@@ -174,7 +194,9 @@ class BinaryPackage(object):
             # Extract the archive in the right directory
             shutil.unpack_archive(tmp_file.as_posix(), extract_dir)  # unpack it in dst directory
             # Create the package object
-            pkg = BinaryPackage.auto(extract_dir, name)
+            pkg = BinaryPackage.auto(Path(extract_dir) / name)
+            if pkg is None:
+                raise ValueError(f"Cannot create a BinaryPackage with {name}")
             for file in extract_dir.iterdir():
                 if file not in [pkg.executable_path, pkg.callgraph, pkg.quokka]:
                     pkg.other_files.append(file)
