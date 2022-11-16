@@ -183,7 +183,7 @@ class PastisBroker(BrokerAgent):
         p = Path(file)
         logging.info(f"Add seed {p.name} in pool")
         # Save seed in the workspace
-        self.workspace.save_seed_file(SeedType.INPUT, p)
+        self.workspace.save_seed_file(SeedType.INPUT, p, initial)
 
         seed = p.read_bytes()
         self._seed_pool[seed] = SeedType.INPUT
@@ -519,7 +519,7 @@ class PastisBroker(BrokerAgent):
         for file in d.iterdir():
             if file.is_file():
                 try:
-                    pkg = BinaryPackage.auto(d, file.name)  # try creating a package
+                    pkg = BinaryPackage.auto(file)  # try creating a package
                 except ValueError:  # if not an executable
                     continue
 
