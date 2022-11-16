@@ -62,8 +62,8 @@ class BinaryPackage(object):
         return self._platform
 
     @staticmethod
-    def auto(dir: Union[Path, str], exe_name: str) -> Optional['BinaryPackage']:
-        bin_f = Path(dir) / exe_name
+    def auto(exe_file: Union[Path, str]) -> Optional['BinaryPackage']:
+        bin_f = Path(exe_file)
 
         # Exclude file if have one of the
         if bin_f.suffix in BinaryPackage.EXTENSION_BLACKLIST:
@@ -103,21 +103,22 @@ class BinaryPackage(object):
         return p
 
     @staticmethod
-    def load_directory(dir: Path, exe_name: str) -> Optional['BinaryPackage']:
+    def auto_directory(exe_file: Union[str, Path]) -> Optional['BinaryPackage']:
         """
         Create a BinaryPackage with all files it can find in the given
         directory.
 
-        :param dir: Source directory
-        :param exe_name: main executable in the directory
+        :param exe_file: main executable in the directory
         :return: BinaryPackage
         """
-        p = BinaryPackage.auto(dir, exe_name)
+        bin_f = Path(exe_file)
+
+        p = BinaryPackage.auto(bin_f)
 
         if p is None:
             return None
 
-        for file in Path(dir).iterdir():
+        for file in bin_f.parent.iterdir():
             if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog]:
                 p.other_files.append(file)
 
@@ -193,7 +194,7 @@ class BinaryPackage(object):
             # Extract the archive in the right directory
             shutil.unpack_archive(tmp_file.as_posix(), extract_dir)  # unpack it in dst directory
             # Create the package object
-            pkg = BinaryPackage.auto(extract_dir, name)
+            pkg = BinaryPackage.auto(Path(extract_dir) / name)
             if pkg is None:
                 raise ValueError(f"Cannot create a BinaryPackage with {name}")
             for file in extract_dir.iterdir():
