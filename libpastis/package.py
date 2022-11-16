@@ -50,8 +50,19 @@ class BinaryPackage(object):
     def cmplog(self) -> Path:
         return self._cmplog
 
+    def is_cmplog(self) -> bool:
+        return self._cmplog is not None
+
     def is_quokka(self) -> bool:
         return self._quokka is not None
+
+    def is_binary_only(self) -> bool:
+        """
+        Indicates that this BinaryPackage only contains the program under test and no
+        additional files such as a Quokka database or a cmplog instrumented binary.
+        This is used in pastis-broker when sending the 'start' command to agents.
+        """
+        return not (self.is_quokka() or self.is_cmplog())
 
     @property
     def arch(self) -> Arch:
@@ -78,7 +89,7 @@ class BinaryPackage(object):
         if not data:
             return None
 
-        bin_f.chmod(stat.S_IRWXU)  # make sur the binary executable
+        bin_f.chmod(stat.S_IRWXU)  # make sure the binary is executable
 
         p = BinaryPackage(bin_f)
         p._platform, p._arch = data
@@ -99,6 +110,7 @@ class BinaryPackage(object):
         cfile = Path(str(bin_f)+".cmplog")
         if cfile.exists():
             p._cmplog = cfile
+            cfile.chmod(stat.S_IRWXU)  # make sure the cmplog binary is executable
 
         return p
 
