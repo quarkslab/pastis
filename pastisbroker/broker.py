@@ -420,7 +420,7 @@ class PastisBroker(BrokerAgent):
 
         self.send_start(client.netid,
                         package.name,
-                        package.make_package() if package.is_quokka() else package.executable_path,
+                        package.executable_path if package.is_binary_only() else package.make_package(),
                         self.argv,
                         exmode,
                         fuzzmod,
