@@ -14,6 +14,7 @@ class Workspace(object):
     LOG_DIR = "logs"
     BINS_DIR = "binaries"
     ALERTS_DIR = "alerts_data"
+    SEED_DIR = "seeds"
 
     KL_REPORT_COPY = "klreport.json"
     CSV_FILE = "results.csv"
@@ -30,7 +31,7 @@ class Workspace(object):
         # Create the base directory structure
         if not self.root.exists():
             self.root.mkdir()
-        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR, self.BINS_DIR]:
+        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR, self.BINS_DIR, self.SEED_DIR]:
             p = self.root / s
             if not p.exists():
                 p.mkdir()
@@ -116,10 +117,14 @@ class Workspace(object):
         p = ((self.root / self.ALERTS_DIR) / str(id)) / name
         p.write_bytes(data)
 
-    def save_seed_file(self, typ: SeedType, file: Path) -> None:
+    def save_seed_file(self, typ: SeedType, file: Path, initial: bool = False) -> None:
         dir_map = {SeedType.INPUT: self.INPUT_DIR, SeedType.CRASH: self.CRASH_DIR, SeedType.HANG: self.HANGS_DIR}
-        out = self.root / dir_map[typ] / file.name
-        shutil.copy(str(file), str(out))
+        if initial:
+            out = self.root / self.SEED_DIR / file.name
+        else:
+            out = self.root / dir_map[typ] / file.name
+        if str(file) != str(out):
+            shutil.copy(str(file), str(out))
 
     def save_seed(self, typ: SeedType, name: str, data: bytes) -> None:
         dir_map = {SeedType.INPUT: self.INPUT_DIR, SeedType.CRASH: self.CRASH_DIR, SeedType.HANG: self.HANGS_DIR}
