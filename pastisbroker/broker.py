@@ -51,7 +51,13 @@ class Bcolors:
 
 class PastisBroker(BrokerAgent):
 
-    def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = None):
+    def __init__(self, workspace: PathLike,
+                 binaries_dir: PathLike,
+                 broker_mode: BrokingMode,
+                 check_mode: CheckMode = CheckMode.CHECK_ALL,
+                 inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
+                 kl_report: PathLike = None,
+                 p_argv: List[str] = None):
         super(PastisBroker, self).__init__()
         self.workspace = Workspace(Path(workspace))
         self._configure_logging()
@@ -62,7 +68,7 @@ class PastisBroker(BrokerAgent):
         # Init internal state
         self.broker_mode = broker_mode
         self.ck_mode = check_mode
-        self.inject = SeedInjectLoc.STDIN  # At the moment injection location is hardcoded
+        self.inject = inject_loc
         self.argv = [] if p_argv is None else p_argv
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
