@@ -255,6 +255,9 @@ class AFLPPDriver:
         except FileNotFoundError:
             logging.error("Invalid package received")
             return
+        except ValueError:
+            logging.error("Invalid package received")
+            return
 
         if kl_report:
             if KLOCWORK_SUPPORTED:
