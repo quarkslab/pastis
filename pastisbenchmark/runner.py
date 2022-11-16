@@ -8,9 +8,10 @@ AFLPP_ENV_VAR = "AFLPP_WS"
 HFUZZ_ENV_VAR = "HFUZZ_WS"
 
 
-def spawn_online_aflpp(workspace: Optional[str], port: int = 5555):
+def spawn_online_aflpp(workspace: Optional[Path], port: int = 5555):
     env = os.environ
-    env[AFLPP_ENV_VAR] = str(workspace)
+    env[AFLPP_ENV_VAR] = str(workspace.absolute())
+    logging.info(f"aflpp workspace: {str(workspace.absolute())}")
     cmd_line_afl = ["pastis-aflpp", "online", "-p", f"{port}"]
     logging.info(f"run: {' '.join(cmd_line_afl)}")
     return subprocess.Popen(cmd_line_afl, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -21,9 +22,9 @@ def spawn_online_triton(port: int = 5555):
     subprocess.Popen(tt, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def spawn_online_honggfuzz(workspace: Optional[str], port: int = 5555):
+def spawn_online_honggfuzz(workspace: Optional[Path], port: int = 5555):
     env = os.environ
-    env[HFUZZ_ENV_VAR] = str(workspace)
+    env[HFUZZ_ENV_VAR] = str(workspace.absolute())
     cmd_line_honggfuzz = ["pastis-honggfuzz", "online", "-p", f"{port}"]
     subprocess.Popen(cmd_line_honggfuzz, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
