@@ -51,7 +51,13 @@ class Bcolors:
 
 class PastisBroker(BrokerAgent):
 
-    def __init__(self, workspace: PathLike, binaries_dir: PathLike, broker_mode: BrokingMode, check_mode: CheckMode = CheckMode.CHECK_ALL, kl_report: PathLike = None, p_argv: List[str] = None):
+    def __init__(self, workspace: PathLike,
+                 binaries_dir: PathLike,
+                 broker_mode: BrokingMode,
+                 check_mode: CheckMode = CheckMode.CHECK_ALL,
+                 inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
+                 kl_report: PathLike = None,
+                 p_argv: List[str] = None):
         super(PastisBroker, self).__init__()
         self.workspace = Workspace(Path(workspace))
         self._configure_logging()
@@ -62,7 +68,7 @@ class PastisBroker(BrokerAgent):
         # Init internal state
         self.broker_mode = broker_mode
         self.ck_mode = check_mode
-        self.inject = SeedInjectLoc.STDIN  # At the moment injection location is hardcoded
+        self.inject = inject_loc
         self.argv = [] if p_argv is None else p_argv
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
@@ -183,7 +189,7 @@ class PastisBroker(BrokerAgent):
         p = Path(file)
         logging.info(f"Add seed {p.name} in pool")
         # Save seed in the workspace
-        self.workspace.save_seed_file(SeedType.INPUT, p)
+        self.workspace.save_seed_file(SeedType.INPUT, p, initial)
 
         seed = p.read_bytes()
         self._seed_pool[seed] = SeedType.INPUT
@@ -414,7 +420,7 @@ class PastisBroker(BrokerAgent):
 
         self.send_start(client.netid,
                         package.name,
-                        package.make_package() if package.is_quokka() else package.executable_path,
+                        package.executable_path if package.is_binary_only() else package.make_package(),
                         self.argv,
                         exmode,
                         fuzzmod,
@@ -519,8 +525,11 @@ class PastisBroker(BrokerAgent):
         for file in d.iterdir():
             if file.is_file():
                 try:
-                    pkg = BinaryPackage.auto(d, file.name)  # try creating a package
+                    pkg = BinaryPackage.auto(file)  # try creating a package
                 except ValueError:  # if not an executable
+                    continue
+
+                if pkg is None:
                     continue
 
                 # Check that we can find a Quokka file associated otherwise reject it
