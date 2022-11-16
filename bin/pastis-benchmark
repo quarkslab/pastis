@@ -89,7 +89,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
         # create a workspace directory and launch it
         hf_ws = clients_ws / "hfuzz"
         hf_ws.mkdir()
-        spawn_online_honggfuzz(workspace, port)
+        spawn_online_honggfuzz(hf_ws, port)
 
     if triton:
         # Look for configuration files, add them to the broker and launch as many triton instances
