@@ -56,6 +56,9 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
 
     @staticmethod
     def accept_file(binary_file: Path) -> Tuple[bool, Optional[ExecMode], Optional[FuzzMode]]:
+        if str(binary_file).endswith(".cmplog"):
+            return False, None, None
+
         p = lief.parse(str(binary_file))
         if not p:
             return False, None, None
@@ -63,10 +66,16 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
         # Search for HF instrumentation
         instrumented = False
 
+        for s in p.symbols:
+            if "__afl_" in s.name:
+                instrumented = True
+                break
+
         for f in p.functions:
             if "__afl_" in f.name:
                 instrumented = True
                 break
+
         if not instrumented:
             # NOTE This can be improve. We usually use PERSISTENT mode when
             # fuzzing a binary-only target because of performance reasons but

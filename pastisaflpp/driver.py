@@ -81,14 +81,15 @@ class AFLPPDriver:
 
         self.workspace.start()  # Start looking at directories
 
-        logging.info("Start process")
-        self.aflpp.start(str(self.__package.executable_path.absolute()),
-                             " ".join(argv),
-                             self.workspace,
-                             exmode,
-                             fuzzmode,
-                             seed_inj == SeedInjectLoc.STDIN,
-                             engine_args)
+        logging.info(f"Start process (injectloc: {seed_inj.name})")
+        self.aflpp.start(str(package.executable_path.absolute()),
+                         " ".join(argv),
+                         self.workspace,
+                         exmode,
+                         fuzzmode,
+                         seed_inj == SeedInjectLoc.STDIN,
+                         engine_args,
+                         str(package.cmplog.absolute()) if package.cmplog else None)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
@@ -252,6 +253,9 @@ class AFLPPDriver:
         try:
             package = BinaryPackage.from_binary(fname, binary, self.workspace.target_dir)
         except FileNotFoundError:
+            logging.error("Invalid package received")
+            return
+        except ValueError:
             logging.error("Invalid package received")
             return
 
