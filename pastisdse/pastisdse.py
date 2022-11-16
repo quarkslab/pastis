@@ -29,6 +29,8 @@ from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKi
 
 class PastisDSE(object):
 
+    INPUT_FILE_NAME = "input_file"
+
     def __init__(self, agent: ClientAgent):
         self.agent = agent
         self._init_callbacks()  # register callbacks on the given agent
@@ -173,9 +175,7 @@ class PastisDSE(object):
             logging.warning(f"seed is not meant to be NEW in post execution current:{seed.status.name}")
         elif seed.status in [SeedStatus.CRASH, SeedStatus.HANG]:  # The stats is new send it back again
             if seed not in self._seed_received:  # Do not send back a seed that already came from broker
-                #self.agent.send_seed(mapper[seed.status], seed.content)
-                self.agent.send_seed(mapper[seed.status], seed.content.files["input_file"])
-                #self.agent.send_seed(mapper[seed.status], seed.content.files["stdin"])
+                self.agent.send_seed(mapper[seed.status], seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.content)
         else:  # INPUT
             pass  # Do not send it back again
 
@@ -272,21 +272,33 @@ class PastisDSE(object):
             logging.error(f"Pastis-DSE mismatch with one from the server {engine.version} (local: {pastisdse.__version__})")
             return
 
-        # Parse triton specific parameters and update conf if needed
+        self._seedloc = seed_inj
+
+        # ------- Create the TritonDSE configuration file ---------
         if engine_args:
             self.config = Config.from_json(engine_args)
             logging.root.level = logging.DEBUG if self.config.debug else logging.INFO  # dynamically change level
+        else:
+            self.config = Config()  # Empty configuration
 
+        # Override config argv if provided
+        if argv:
+            self.config.program_argv = argv
+
+        if seed_inj == SeedInjectLoc.ARGV:  # Make sure we inject input on argv
             if "@@" in self.config.program_argv:
                 idx = self.config.program_argv.index("@@")
-                self.config.program_argv[idx] = "input_file"
-
-        self._seedloc = seed_inj
-        # If the seed injection is STDIN = RAW, if ARGV = COMPOSITE
-        # Currently the broker always sends SeedInjectLoc.STDIN. Therefore we rely on the TritonDSE config. 
-        # If the format is COMPOSITE, we keep it that way regardless of SeedInjectLoc
-        if self.config.seed_format == SeedFormat.RAW:
-            self.config.seed_format = SeedFormat.RAW if self._seedloc == SeedInjectLoc.STDIN else SeedFormat.COMPOSITE
+                self.config.program_argv[idx] = self.INPUT_FILE_NAME
+            else:
+                logging.warning(f"seed inject {self._seedloc.name} but no '@@' found in argv (will likely not work!)")
+        else:  # SeedInjectLoc.STDIN
+            if engine_args:
+                if self.config.seed_format == SeedFormat.COMPOSITE:
+                    logging.warning("injecting on STDIN but seed format is COMPOSITE")
+            else:  # no config was provided just override
+                self.config.seed_format = SeedFormat.RAW
+            pass  # nothing to do ?
+        # ----------------------------------------------------------
 
         # If a workspace is given keep it other generate new unique one
         if not self.config.workspace:
@@ -339,10 +351,6 @@ class PastisDSE(object):
                 logging.info("Klocwork report not binded (bind it automatically)")
                 self.klreport.auto_bind()
             logging.info(f"Klocwork report loaded: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)})")
-
-        if argv: # Override config
-            self.config.program_argv = [str(self.program.path)]  # Set current binary
-            self.config.program_argv.extend(argv)
 
         # Set seed scheduler based on whether tracing is enabled.
         if self._tracing_enabled:
@@ -418,7 +426,7 @@ class PastisDSE(object):
     def _get_seed(self, seed: bytes) -> Seed:
         # Convert seed to CompositeData
         if self.config.seed_format == SeedFormat.COMPOSITE:
-            return Seed(CompositeData(files={"input_file": seed}))
+            return Seed(CompositeData(files={self.INPUT_FILE_NAME: seed}))
         else:
             return Seed(seed)
 
@@ -447,19 +455,19 @@ class PastisDSE(object):
                 coverage = None
 
                 with tempfile.NamedTemporaryFile(delete=True) as f:
-                    data = seed.content.files["input_file"] if seed.is_composite() else seed.bytes()
+                    data = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.bytes()
                     Path(f.name).write_bytes(data)
 
                     # Adjust injection location before calling QBDITrace
-                    if self._seedloc == SeedInjectLoc.STDIN and not (self.dse.config.seed_format == SeedFormat.COMPOSITE and "input_file" in seed.content.files):
+                    if self._seedloc == SeedInjectLoc.STDIN:
                         stdin_file = f.name
                         argv = self.config.program_argv
-                    else:
+                    else:  # SeedInjectLoc.ARGV
                         stdin_file = None
                         try:
-                            # Replace 'input_file' in argv with the file name
+                            # Replace 'input_file' in argv with the temporary file name created
                             argv = self.config.program_argv[:]
-                            idx = argv.index("input_file")
+                            idx = argv.index(self.INPUT_FILE_NAME)
                             argv[idx] = f.name
                         except ValueError:
                             logging.error(f"seed injection {self._seedloc.name} but can't find 'input_file' on program argv")
@@ -477,6 +485,8 @@ class PastisDSE(object):
                                               stdin_file=stdin_file,
                                               cwd=Path(self.program.path).parent)
                         coverage = trace.get_coverage()
+                    except FileNotFoundError:
+                        logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                     except TraceException:
                         logging.warning('There was an error while trying to re-run the seed')
 
@@ -551,7 +561,7 @@ class PastisDSE(object):
         if seed not in self._seed_received:  # Do not send back a seed that already came from broker
             self._sending_count += 1
             logging.info(f"Sending new: {seed.hash} [{self._sending_count}]")
-            bytes = seed.content.files["input_file"] if seed.is_composite() else seed.content
+            bytes = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.content
             self.agent.send_seed(SeedType.INPUT, bytes)
 
     def intrinsic_callback(self, se: SymbolicExecutor, state: ProcessState, addr: Addr):
