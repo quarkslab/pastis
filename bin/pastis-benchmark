@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+
+# built-in imports
+import click
+import sys
+import logging
+import json
+from typing import Optional, Tuple
+from pathlib import Path
+
+# Thirs-party imports
+import coloredlogs
+
+# Local imports
+from pastisbroker import PastisBroker, BrokingMode
+from libpastis.types import CheckMode, SeedInjectLoc
+
+from pastisbenchmark.runner import spawn_online_aflpp, spawn_online_triton, spawn_online_honggfuzz, check_scaling_frequency
+
+
+def configure_logging(level: int):
+    logging.root.name = f"\033[7m\033[39m[ BROKER ]\033[0m"
+    coloredlogs.install(level=level,
+                        fmt="%(asctime)s [%(levelname)s] %(message)s",
+                        level_styles={'debug': {'color': 'blue'}, # 10
+                                      'info': {}, # 20
+                                      'warning': {'color': 'yellow'},  # 30
+                                      'success': {'bold': True, 'color': 'green'}, # 35
+                                      'error': {'color': 'red'},
+                                      'critical': {'bold': True, 'color': 'red'}})
+
+def iterate_file(file):
+    p = Path(file)
+    if p.is_file():  # Add the seed file
+        yield p
+    elif p.is_dir():  # Add all file contained in the directory as triton configuration
+        for sub_s in p.iterdir():
+            yield sub_s
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command(context_settings=dict(show_default=True))
+@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
+@click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
+@click.option('-s', '--seeds', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Directory containing initial corpus")
+@click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking")
+@click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
+@click.option('--aflpp', is_flag=True, type=bool, default=False, help="Enable AFL++")
+@click.option('--honggfuzz', is_flag=True, type=bool, default=False, help="Enable Honggfuzz")
+@click.option('--triton', is_flag=True, type=bool, help="Configuration to launch triton with")
+@click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
+@click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
+@click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
+def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, honggfuzz: bool, triton: bool, debug: bool,
+        timeout: Optional[int], port: int):
+
+    configure_logging(logging.DEBUG if debug else logging.INFO)
+
+    broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, SeedInjectLoc[injloc], None, [])
+
+    # Add all given seeds as initial seed
+    for s in iterate_file(seeds):  # File if one file, or iterate dir if directory
+        broker.add_seed_file(s, initial=True)
+
+    ws_root = broker.workspace.root
+
+    clients_ws = ws_root / "clients_ws"
+
+    if clients_ws.exists():
+        logging.error("benchmarks have already been runnned in that directory")
+        sys.exit(1)
+    else:
+        clients_ws.mkdir()
+
+    if aflpp:
+        # create a workspace directory and launch it
+        if not check_scaling_frequency():
+            logging.error("CPU is not configured on performance (system uses on-demande CPU freq scaling)")
+            logging.info("try: echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
+            sys.exit(1)
+        aflpp_ws = clients_ws / "aflpp"
+        aflpp_ws.mkdir()
+        spawn_online_aflpp(aflpp_ws, port)
+
+    if honggfuzz:
+        # create a workspace directory and launch it
+        hf_ws = clients_ws / "hfuzz"
+        hf_ws.mkdir()
+        spawn_online_honggfuzz(workspace, port)
+
+    if triton:
+        # Look for configuration files, add them to the broker and launch as many triton instances
+        tt_confs = ws_root / "triton_confs"
+        broker.load_engine_addon("pastisttbroker")
+        if tt_confs.exists():
+            for i, conf in enumerate(tt_confs.iterdir()):
+                with open(conf, "r+") as fd:
+                    tt_ws = clients_ws / f"ttdse_{i}"
+                    c = json.load(fd)
+                    c["workspace"] = str(tt_ws)
+                    fd.seek(0)
+                    json.dump(c, fd, indent=2)
+                    fd.truncate()
+                logging.info(f"Add Triton configuration: {conf}")
+                broker.add_engine_configuration("TRITON", conf)
+                spawn_online_triton(port)
+        else:
+            logging.warning("Triton enabled but no configuration found")
+
+    # Bind it and start listening (clients can connect)
+    broker.bind(port)
+    broker.run(timeout)
+
+
+
+@cli.command(context_settings=dict(show_default=True))
+@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
+def replay(workspace: str, ):
+    # TODO: to implement
+    pass
+
+@cli.command(context_settings=dict(show_default=True))
+@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
+def plot(workspace: str, ):
+    # TODO: to implement
+    pass
+
+
+if __name__ == "__main__":
+    cli()
+
