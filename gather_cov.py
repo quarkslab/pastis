@@ -38,8 +38,6 @@ HARNESS = "libpng_read_fuzzer_tt"
 
 BINARY = f"/home/rac/bench/{TARGET}/bins/{HARNESS}"
 RESULTS = f"/home/rac/bench/{TARGET}/results/"
-#RESULTS = f"/home/rac/bench/{TARGET}/results_solv/"
-#RESULTS = f"/home/rac/bench/{TARGET}/results_cov/"
 
 # NOTE For this script to work, we assume that the inputs are in chronological order in 
 # the corpus_path. This is the case with pastis's output directory.
@@ -72,10 +70,10 @@ class CampaignResults():
             strat = CoverageStrategy.EDGE
 
         trace = QBDITrace.run(strat, BINARY, [filepath],
-                              stdin_file=filepath, cwd=Path(BINARY).parent)
+                              stdin_file=filepath, cwd=Path(BINARY).parent).coverage
 
         #covered_branches = trace._branches
-        edges = set([(b[0], b[1]) for b in trace._branches]) 
+        edges = set([(b[0], b[1]) for b in trace.covered_items.keys()]) 
         unique_edges = edges - self._global_cov_edge
 
         for e in edges:
@@ -84,11 +82,11 @@ class CampaignResults():
         covered_insts, unique_insts = (0, set())
         
         if TRACE_INST:
-            unique_insts = trace._instructions.keys() - self._global_cov_inst
-            for i in trace._instructions:
+            unique_insts = trace.covered_instructions.keys() - self._global_cov_inst
+            for i in trace.covered_instructions:
                 self._global_cov_inst.add(i)
 
-            covered_insts, unique_insts = (len(trace._instructions), unique_insts)
+            covered_insts, unique_insts = (len(trace.covered_instructions), unique_insts)
 
         return len(edges), unique_edges, covered_insts, unique_insts
 
@@ -148,7 +146,8 @@ class CampaignResults():
         return res
 
 
-    def add_to_plot(self, ax, label, annotate_tt=False):
+    def add_to_plot(self, ax, label, annotate_tt=False, label_tt=False):
+        label = label.replace("_edge", "")
         X = [x.time_elapsed for x in  self.stat_items]
         if TRACE_INST:
             Y = [x.total_coverage_insts for x in  self.stat_items]
@@ -156,11 +155,14 @@ class CampaignResults():
             Y = [x.total_coverage for x in  self.stat_items]
         F = [x.fuzzer for x in  self.stat_items]
 
-        ax.plot(X, Y, label=label)
+        ax.plot(X, Y, label=label, linewidth=2)
 
         if annotate_tt:
             T, Y = find_tt_inp(X, Y, F)
-            ax.plot(T, Y, 'bo', label="TT input")
+            if label_tt:
+                ax.plot(T, Y, 'bo', label="TT input")
+            else:
+                ax.plot(T, Y, 'bo')
 
 
 
@@ -350,24 +352,39 @@ if __name__ == "__main__":
             campaigns[d] = read_from_file_or_generate(TARGET, BINARY, corpus, output)
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
+    once_flag = False
 
     for d in campaigns:
         find_tt = False
         if "_tt" in d:
             find_tt = True
-        campaigns[d].add_to_plot(ax1, d, find_tt)
-        campaigns[d].add_to_plot(ax2, d, find_tt)
+        campaigns[d].add_to_plot(ax1, d, find_tt, not once_flag)
+        campaigns[d].add_to_plot(ax2, d, find_tt, not once_flag)
+        if "_tt" in d:
+            once_flag = True
 
-    ax1.set_title(f"{TARGET}")
+    label_size = 20
+
+    ticksize = 13
+    ax1.tick_params(axis='both', which='major', labelsize=ticksize)
+    ax1.tick_params(axis='both', which='minor', labelsize=ticksize)
+    ax2.tick_params(axis='both', which='major', labelsize=ticksize)
+    ax2.tick_params(axis='both', which='minor', labelsize=ticksize)
+
+    ax1.set_title(f"{TARGET}", fontsize=15)
     ax1.set(xlabel='seconds', ylabel='coverage (edge)')
-    ax1.legend()
+    ax1.yaxis.label.set_size(label_size)
+    ax1.xaxis.label.set_size(label_size)
+    ax1.legend(prop={'size': 14})
 
-    ax2.set_title(f"{TARGET} (logscale)")
+    ax2.set_title(f"{TARGET} (logscale)", fontsize=15)
     ax2.set(xlabel='seconds', ylabel='coverage (edge)')
-    ax2.legend()
+    ax2.legend(prop={'size': 14})
+    ax2.yaxis.label.set_size(label_size)
+    ax2.xaxis.label.set_size(label_size)
     ax2.set_xscale("log")
 
     for d in campaigns:
         campaigns[d].count_contributions(d)
 
-    #plt.show()
+    plt.show()
