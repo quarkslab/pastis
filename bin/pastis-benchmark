@@ -16,12 +16,13 @@ from pastisbroker import PastisBroker, BrokingMode
 from libpastis.types import CheckMode, SeedInjectLoc
 
 from pastisbenchmark.runner import spawn_online_aflpp, spawn_online_triton, spawn_online_honggfuzz, check_scaling_frequency
+from pastishf import HonggfuzzDriver
 
 
 def configure_logging(level: int):
     logging.root.name = f"\033[7m\033[39m[ BROKER ]\033[0m"
     coloredlogs.install(level=level,
-                        fmt="%(asctime)s [%(levelname)s] %(message)s",
+                        fmt="%(asctime)s %(name)s [%(levelname)s] %(message)s",
                         level_styles={'debug': {'color': 'blue'}, # 10
                                       'info': {}, # 20
                                       'warning': {'color': 'yellow'},  # 30
@@ -50,12 +51,13 @@ def cli():
 @click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
 @click.option('--aflpp', is_flag=True, type=bool, default=False, help="Enable AFL++")
 @click.option('--honggfuzz', is_flag=True, type=bool, default=False, help="Enable Honggfuzz")
-@click.option('--triton', is_flag=True, type=bool, help="Configuration to launch triton with")
+@click.option('--triton', is_flag=True, type=bool, help="Enable TritonDSE")
 @click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
 @click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
+@click.option('--hfuzz-path', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), required=False, help="Custom Honggfuzz path")
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, honggfuzz: bool, triton: bool, debug: bool,
-        timeout: Optional[int], port: int):
+        timeout: Optional[int], port: int, hfuzz_path: str):
 
     configure_logging(logging.DEBUG if debug else logging.INFO)
 
@@ -87,9 +89,18 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 
     if honggfuzz:
         # create a workspace directory and launch it
-        hf_ws = clients_ws / "hfuzz"
-        hf_ws.mkdir()
-        spawn_online_honggfuzz(hf_ws, port)
+        hf_exe_path = None
+
+        if not HonggfuzzDriver.honggfuzz_available() and hfuzz_path:
+            hf_exe_path = hfuzz_path
+
+        if not HonggfuzzDriver.honggfuzz_available():
+            logging.error("Can't find custom Honggfuzz directory (please set HFUZZ_PATH, or --hfuzz-path variable)")
+            sys.exit(1)
+        else:  # Honggfuzz is available
+            hf_ws = clients_ws / "hfuzz"
+            hf_ws.mkdir()
+            spawn_online_honggfuzz(hf_ws, hf_exe_path, port)
 
     if triton:
         # Look for configuration files, add them to the broker and launch as many triton instances
