@@ -44,10 +44,11 @@ def cli():
 def online(host: str, port: int, telemetry_frequency: int):
     agent = ClientAgent()
 
-    hfuzz = HonggfuzzDriver(agent, telemetry_frequency=telemetry_frequency)
-    if not hfuzz.honggfuzz_available():
-        logging.error("Cannot find HFUZZ_PATH environement variable")
+    if not HonggfuzzDriver.honggfuzz_available():
+        logging.error("Cannot find HFUZZ_PATH environment variable or invalid value")
         return
+
+    hfuzz = HonggfuzzDriver(agent, telemetry_frequency=telemetry_frequency)
 
     hfuzz.init_agent(host, port)
     try:
@@ -82,12 +83,13 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, fu
     # Create a dummy FileAgent
     agent = FileAgent(level=logging.DEBUG, log_file=logfile)
 
-    # Instanciate the pastis that will register the appropriate callbacks
-
-    honggfuzz = HonggfuzzDriver(agent)
-    if not honggfuzz.honggfuzz_available():
-        logging.error("Cannot find HFUZZ_PATH environement variable")
+    # Check the HFUZZ_PATH variable is found
+    if not HonggfuzzDriver.honggfuzz_available():
+        logging.error("Cannot find HFUZZ_PATH environment variable or invalid value")
         return
+
+    # Instanciate the pastis that will register the appropriate callbacks
+    honggfuzz = HonggfuzzDriver(agent)
 
     # Load the report if anyone provided
     report = Path(kl_report).read_text() if kl_report else ""

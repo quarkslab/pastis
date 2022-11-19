@@ -23,8 +23,10 @@ class HonggfuzzProcess:
     VERSION = "2.1"
 
     def __init__(self, path: str = None):
+        path = os.environ.get(self.HFUZZ_ENV_VAR) if path is None else path
         if path is None:
-            path = os.environ.get(self.HFUZZ_ENV_VAR)
+            raise Exception("Invalid Honggfuzz path provided")
+
         self.__path = Path(path) / self.BINARY
         self.__process = None
 
@@ -83,4 +85,8 @@ class HonggfuzzProcess:
 
     @staticmethod
     def hfuzz_environ_check() -> bool:
-        return os.environ.get(HonggfuzzProcess.HFUZZ_ENV_VAR) is not None
+        path = os.environ.get(HonggfuzzProcess.HFUZZ_ENV_VAR)
+        if path is None:
+            return False
+        else:
+            return (Path(path) / HonggfuzzProcess.BINARY).exists()
