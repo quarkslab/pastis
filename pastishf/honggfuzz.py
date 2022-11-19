@@ -27,11 +27,18 @@ class HonggfuzzProcess:
         if path is None:
             raise Exception("Invalid Honggfuzz path provided")
 
-        self.__path = Path(path) / self.BINARY
+        path = Path(path)
+        if not path.exists():
+            raise Exception('Invalid HFUZZ_PATH path!')
+        elif path.is_file() and path.name == self.BINARY:
+            self.__path = path
+        elif path.is_dir():
+            self.__path = Path(path) / self.BINARY
+            if not path.exists():
+                raise Exception("Can't find honggfuzz in HFUZZ_PATH path!")
+
         self.__process = None
 
-        if not self.__path.exists():
-            raise Exception('Invalid Honggfuzz path!')
 
     def start(self, target: str, target_arguments: str, workspace: Workspace, persistent: bool, stdin: bool, engine_args: str):
         # Build target command line.
