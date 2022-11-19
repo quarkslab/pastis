@@ -5,13 +5,10 @@ to support Pastis.
 
 ## Instructions
 
-To apply the pathc run the following command (in this case, for Honggfuzz
-version 2.5):
+To build a working Honggfuzz version with the patch run the following command:
 
 ```bash
-wget https://github.com/google/honggfuzz/archive/refs/tags/2.5.zip
-unzip 2.5.zip
-patch -s -p0 < honggfuzz-2.5-pastis.patch
-cd honggfuzz-2.5
-make all
+sudo apt-get install binutils-dev libunwind-dev libblocksruntime-dev clang
+
+./make_hf.sh
 ```

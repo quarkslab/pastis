@@ -310,5 +310,6 @@ class HonggfuzzDriver:
         seed_path = self.workspace.input_dir / p.name
         seed_path.write_bytes(p.read_bytes())
 
-    def honggfuzz_available(self):
-        return self.honggfuzz.hfuzz_environ_check()
+    @staticmethod
+    def honggfuzz_available() -> bool:
+        return HonggfuzzProcess.hfuzz_environ_check()
