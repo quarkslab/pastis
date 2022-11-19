@@ -4,8 +4,12 @@ from typing import Optional
 import subprocess
 import logging
 
+# AFL++ env variables
 AFLPP_ENV_VAR = "AFLPP_WS"
+
+# Honggfuzz env variables
 HFUZZ_ENV_VAR = "HFUZZ_WS"
+HFUZZ_PATH_VAR = "HFUZZ_PATH"
 
 
 def spawn_online_aflpp(workspace: Optional[Path], port: int = 5555):
@@ -22,9 +26,11 @@ def spawn_online_triton(port: int = 5555):
     subprocess.Popen(tt, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def spawn_online_honggfuzz(workspace: Optional[Path], port: int = 5555):
+def spawn_online_honggfuzz(workspace: Optional[Path], hf_path: Optional[str], port: int = 5555):
     env = os.environ
     env[HFUZZ_ENV_VAR] = str(workspace.absolute())
+    if hf_path:
+        env[HFUZZ_PATH_VAR] = str(hf_path)
     cmd_line_honggfuzz = ["pastis-honggfuzz", "online", "-p", f"{port}"]
     subprocess.Popen(cmd_line_honggfuzz, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
