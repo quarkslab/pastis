@@ -20,7 +20,7 @@ from tritondse import QuokkaProgram
 # Local imports
 from pastisbroker.client import PastisClient
 from pastisbroker.stat_manager import StatManager
-from pastisbroker.workspace import Workspace
+from pastisbroker.workspace import Workspace, WorkspaceStatus
 from pastisbroker.utils import load_engine_descriptor
 
 
@@ -484,6 +484,7 @@ class PastisBroker(BrokerAgent):
         super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.time()
         self._running = running
+        self.workspace.status = WorkspaceStatus.RUNNING
         logging.info("start broking")
 
         # Send the start message to all clients
@@ -511,6 +512,7 @@ class PastisBroker(BrokerAgent):
                     break
         except KeyboardInterrupt:
             logging.info("stop required (Ctrl+C)")
+        self.workspace.status = WorkspaceStatus.FINISHED
         self.stop_broker()
 
     def _find_binaries(self, binaries_dir) -> None:
