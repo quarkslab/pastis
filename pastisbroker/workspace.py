@@ -2,9 +2,15 @@ from pathlib import Path
 from typing import Iterator, Generator
 import shutil
 import stat
+from enum import Enum, auto
 
 from libpastis.types import SeedType, PathLike
 from klocwork import KlocworkReport
+
+class WorkspaceStatus(Enum):
+    NOT_STARTED = auto()
+    RUNNING = auto()
+    FINISHED = auto()
 
 
 class Workspace(object):
@@ -21,6 +27,7 @@ class Workspace(object):
     TELEMETRY_FILE = "telemetry.csv"
     CLIENTS_STATS = "clients-stats.json"
     LOG_FILE = "broker.log"
+    STATUS_FILE = "STATUS"
 
     def __init__(self, directory: Path, erase: bool = False):
         self.root = directory
@@ -36,14 +43,36 @@ class Workspace(object):
             if not p.exists():
                 p.mkdir()
 
+        # If no status file is found create one
+        status_file = Path(self.root / self.STATUS_FILE)
+        self._status = WorkspaceStatus.NOT_STARTED
+        if not status_file.exists():
+            status_file.write_text(self._status.name)
+        else:
+            self._status = WorkspaceStatus[status_file.read_text()]
+
+
     def iter_corpus_directory(self, typ: SeedType) -> Generator[Path, None, None]:
         dir_map = {SeedType.INPUT: self.INPUT_DIR, SeedType.CRASH: self.CRASH_DIR, SeedType.HANG: self.HANGS_DIR}
         dir = self.root / dir_map[typ]
         for file in dir.iterdir():
             yield file
 
+    def iter_initial_corpus_directory(self) -> Generator[Path, None, None]:
+        for file in (self.root / self.SEED_DIR).iterdir():
+            yield file
+
     def count_corpus_directory(self, typ: SeedType) -> int:
         return sum(1 for _ in self.iter_corpus_directory(typ))
+
+    @property
+    def status(self) -> WorkspaceStatus:
+        return self._status
+
+    @status.setter
+    def status(self, value: WorkspaceStatus) -> None:
+        self._status = value
+        Path(self.root / self.STATUS_FILE).write_text(value.name)
 
     @property
     def telemetry_file(self) -> Path:
