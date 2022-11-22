@@ -23,13 +23,22 @@ class HonggfuzzProcess:
     VERSION = "2.1"
 
     def __init__(self, path: str = None):
+        path = os.environ.get(self.HFUZZ_ENV_VAR) if path is None else path
         if path is None:
-            path = os.environ.get(self.HFUZZ_ENV_VAR)
-        self.__path = Path(path) / self.BINARY
+            raise Exception("Invalid Honggfuzz path provided")
+
+        path = Path(path)
+        if not path.exists():
+            raise Exception('Invalid HFUZZ_PATH path!')
+        elif path.is_file() and path.name == self.BINARY:
+            self.__path = path
+        elif path.is_dir():
+            self.__path = Path(path) / self.BINARY
+            if not path.exists():
+                raise Exception("Can't find honggfuzz in HFUZZ_PATH path!")
+
         self.__process = None
 
-        if not self.__path.exists():
-            raise Exception('Invalid Honggfuzz path!')
 
     def start(self, target: str, target_arguments: str, workspace: Workspace, persistent: bool, stdin: bool, engine_args: str):
         # Build target command line.
@@ -83,4 +92,8 @@ class HonggfuzzProcess:
 
     @staticmethod
     def hfuzz_environ_check() -> bool:
-        return os.environ.get(HonggfuzzProcess.HFUZZ_ENV_VAR) is not None
+        path = os.environ.get(HonggfuzzProcess.HFUZZ_ENV_VAR)
+        if path is None:
+            return False
+        else:
+            return (Path(path) / HonggfuzzProcess.BINARY).exists()
