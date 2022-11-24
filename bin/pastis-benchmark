@@ -14,9 +14,12 @@ import coloredlogs
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
 from libpastis.types import CheckMode, SeedInjectLoc
+from pastishf import HonggfuzzDriver
 
 from pastisbenchmark.runner import spawn_online_aflpp, spawn_online_triton, spawn_online_honggfuzz, check_scaling_frequency
-from pastishf import HonggfuzzDriver
+from pastisbenchmark.replayer import ReplayType, Replayer
+from pastisbenchmark.plotter import Plotter
+from pastisbenchmark.results import CampaignResult
 
 
 def configure_logging(level: int):
@@ -128,16 +131,54 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 
 
 @cli.command(context_settings=dict(show_default=True))
-@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
-def replay(workspace: str, ):
-    # TODO: to implement
-    pass
+@click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True))
+@click.option('-t', '--type', type=click.Choice([x.name for x in list(ReplayType)]), default=ReplayType.qbdi.name, help="Replay type")
+@click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
+@click.option('--live', type=bool, is_flag=True, default=False, help="Enable replaying input files during the campaign")
+@click.option('--stream', type=bool, is_flag=True, default=False, help="Enable streaming coverage on a ZMQ socket")
+@click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
+@click.argument('pargvs', nargs=-1)
+def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, program: str, pargvs: Tuple[str]):
+
+    configure_logging(logging.INFO)
+
+    rtype = ReplayType[type]
+    injloc = SeedInjectLoc[injloc]
+
+    replayer = Replayer(Path(program), Path(workspace), rtype, injloc, stream, *pargvs)
+
+    if live:
+        replayer.start()
+    else:
+        count = sum(1 for _ in replayer.iter())
+        for i, file in enumerate(replayer.iter()):
+            logging.info(f"[{i}/{count}] replay: {file.name}")
+
 
 @cli.command(context_settings=dict(show_default=True))
-@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data")
-def plot(workspace: str, ):
-    # TODO: to implement
-    pass
+@click.option('--show', type=bool, is_flag=True, default=True, help="Show the plots")
+@click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
+@click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), help="Workspace directory to plot", multiple=True)
+def plot(show: bool, name: str, workspace: Tuple[str]):
+
+    configure_logging(logging.INFO)
+
+    plotter = Plotter(name)
+    for ws in workspace:
+        campaign = CampaignResult(Path(ws))
+        if campaign.replay_ok():
+            plotter.add_campaign_to_plot(campaign)
+        else:
+            logging.warning(f"workspace: {ws} has not been replayed")
+
+    if show:
+        plotter.show()
+    else:
+        # Save the plots in all the selected workspaces
+        for ws in [Path(x) for x in workspace]:
+            out_dir = ws / "plots"
+            plotter.save_to(out_dir)
+            logging.info(f"plot written to: {out_dir}")
 
 
 if __name__ == "__main__":
