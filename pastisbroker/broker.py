@@ -59,7 +59,16 @@ class PastisBroker(BrokerAgent):
                  kl_report: PathLike = None,
                  p_argv: List[str] = None):
         super(PastisBroker, self).__init__()
+
+        # Initialize workspace
         self.workspace = Workspace(Path(workspace))
+        params = {"binaries_dir": str(Path(binaries_dir).absolute()),
+                  "broker_mode": broker_mode.name,
+                  "check_mode": check_mode.name,
+                  "inject_loc": inject_loc.name,
+                  "argvs": p_argv}
+        self.workspace.initialize_runtime(binaries_dir, params)
+
         self._configure_logging()
 
         # Register all agent callbacks

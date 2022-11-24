@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Iterator, Generator
 import shutil
@@ -28,6 +29,7 @@ class Workspace(object):
     CLIENTS_STATS = "clients-stats.json"
     LOG_FILE = "broker.log"
     STATUS_FILE = "STATUS"
+    RUNTIME_CONFIG_FILE = "config.json"
 
     def __init__(self, directory: Path, erase: bool = False):
         self.root = directory
@@ -51,6 +53,13 @@ class Workspace(object):
         else:
             self._status = WorkspaceStatus[status_file.read_text()]
 
+    def initialize_runtime(self, binaries_dir: PathLike, params: dict):
+        # First copy binary files in workspace if different directories
+        if self.root / self.BINS_DIR != binaries_dir:
+            shutil.copytree(binaries_dir, self.root / self.BINS_DIR, dirs_exist_ok=True)
+        # Save runtime configuration
+        config = self.root / self.RUNTIME_CONFIG_FILE
+        config.write_text(json.dumps(params))
 
     def iter_corpus_directory(self, typ: SeedType) -> Generator[Path, None, None]:
         dir_map = {SeedType.INPUT: self.INPUT_DIR, SeedType.CRASH: self.CRASH_DIR, SeedType.HANG: self.HANGS_DIR}
@@ -97,6 +106,10 @@ class Workspace(object):
     @property
     def broker_log_file(self) -> Path:
         return self.root / self.LOG_FILE
+
+    @property
+    def config_file(self) -> Path:
+        return self.root / self.RUNTIME_CONFIG_FILE
 
     def add_binary(self, binary_path: Path) -> Path:
         """
