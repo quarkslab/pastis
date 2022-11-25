@@ -153,12 +153,13 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, pro
         count = sum(1 for _ in replayer.iter())
         for i, file in enumerate(replayer.iter()):
             logging.info(f"[{i}/{count}] replay: {file.name}")
+            replayer.replay(file)
 
 
 @cli.command(context_settings=dict(show_default=True))
 @click.option('--show', type=bool, is_flag=True, default=True, help="Show the plots")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
-@click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), help="Workspace directory to plot", multiple=True)
+@click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
 def plot(show: bool, name: str, workspace: Tuple[str]):
 
     configure_logging(logging.INFO)

@@ -12,7 +12,7 @@ from datetime import datetime
 from pastisbroker.workspace import Workspace, WorkspaceStatus
 from libpastis.types import SeedInjectLoc, SeedType
 from tritondse.trace import QBDITrace
-
+from tritondse import CoverageStrategy
 
 
 class ReplayType(Enum):
@@ -29,9 +29,9 @@ class Replayer(object):
         self.workspace = Workspace(workspace)
         self.type = type
         self.stream = stream
-        self.program = program
+        self.program = Path(program)
         self._inject_loc = injloc
-        self._args = args
+        self._args = list(args)
 
         # initiatialize directories
         self._init_directories()
@@ -73,7 +73,21 @@ class Replayer(object):
             return self._replay_llvm_profile(input)
 
     def _replay_qbdi(self, input: Path) -> bool:
-        pass
+        out_file = self.corpus_replay_dir / (input.name + ".trace")
+        args = self._args
+
+        # If inject on argv try replacing the right argv
+        if self._inject_loc == SeedInjectLoc.ARGV:
+            if "@@" in args:
+                idx = args.index("@@")
+                args[idx] = str(input)
+
+        return QBDITrace.run(CoverageStrategy.EDGE,
+                             str(self.program.absolute()),
+                             args=args,
+                             output_path=str(out_file.absolute()),
+                             stdin_file=input if self._inject_loc == SeedInjectLoc.STDIN else None,
+                             cwd=self.program.parent)
 
     def _replay_llvm_profile(self, input: Path) -> bool:
         pass
