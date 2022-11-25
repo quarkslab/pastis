@@ -479,12 +479,17 @@ class PastisDSE(object):
 
                     try:
                         # Run the seed and determine whether it improves our current coverage.
-                        trace = QBDITrace.run(self.config.coverage_strategy,
-                                              str(self.program.path.resolve()),
-                                              argv[1:] if len(argv) > 1 else [],
-                                              stdin_file=stdin_file,
-                                              cwd=Path(self.program.path).parent)
-                        coverage = trace.get_coverage()
+                        with tempfile.NamedTemporaryFile(delete=False) as trace_file:
+                            if QBDITrace.run(self.config.coverage_strategy,
+                                                  str(self.program.path.resolve()),
+                                                  argv[1:] if len(argv) > 1 else [],
+                                                  output_path=trace_file,
+                                                  stdin_file=stdin_file,
+                                                  cwd=Path(self.program.path).parent):
+                                coverage = QBDITrace.from_file(trace_file).coverage
+                            else:
+                                logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
+                                coverage = None
                     except FileNotFoundError:
                         logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                     except TraceException:
