@@ -17,7 +17,7 @@ from pastisbroker import BrokingMode
 from pastisbroker.workspace import Workspace, WorkspaceStatus
 from libpastis.types import SeedInjectLoc, SeedType
 from tritondse.trace import QBDITrace
-from tritondse import CoverageStrategy, GlobalCoverage, BranchSolvingStrategy
+from tritondse import CoverageStrategy, GlobalCoverage, BranchSolvingStrategy, Config
 from tritondse.coverage import CovItem
 
 # local imports
@@ -65,12 +65,15 @@ class CampaignResult(object):
     QBDI_REPLAY_DIR = "replays_qbdi"
     LLVMPROFILE_REPLAY_DIR = "replays_llvmprof"
     REPLAYS_DELTA = "replays_delta"
+    CLIENT_STATS = "clients-stats.json"
 
     def __init__(self, workspace: Union[Path, str]):
         self.workspace = Workspace(Path(workspace))
         # Stat items
         self.fuzzers_items = {}     # fuzzer_name -> List[StatItem]
         self.fuzzers_coverage = {}  # fuzzer_name -> Coverage
+        self.fuzzers_config = {}    # fuzzer_name -> Union[str, Config]
+        self._load_fuzzer_configs()
 
         # Global branch coverage
         self.overall_coverage = GlobalCoverage(CoverageStrategy.EDGE, BranchSolvingStrategy.ALL_NOT_COVERED)
@@ -78,11 +81,39 @@ class CampaignResult(object):
         # initialize directories
         self._init_directories()
 
+        # Load fuzzers configuration
+
         self.mode = self.load_broking_mode(self.workspace)
+
+    def _load_fuzzer_configs(self):
+        f = self.workspace.root / self.CLIENT_STATS
+        data = json.loads(f.read_text())
+        for client in data:
+            id = client['strid']
+            conf = client['engine_args']
+            if self.is_triton(id):
+                self.fuzzers_config[id] = Config.from_json(conf)
+            else:
+                self.fuzzers_config[id] = conf
+
+    @staticmethod
+    def is_triton(fuzzer: str) -> bool:
+        return "TT" in fuzzer
 
     @property
     def is_full_duplex(self) -> bool:
         return bool(self.mode == BrokingMode.FULL)
+
+    @property
+    def slug_name(self) -> str:
+        print(self.fuzzers_config.keys())
+        data = ["AFL++" if any(("AFLPP" in x for x in self.fuzzers_config)) else "",
+                "Hfuzz" if any(("HF" in x for x in self.fuzzers_config)) else "",
+                "TritonDSE" if any(("TT" in x for x in self.fuzzers_config)) else ""]
+        if self.is_full_duplex:
+            return f"PASTIS[{'|'.join(x for x in data if x)}]"
+        else:
+            return "PASTIS()"
 
     @property
     def results(self):
@@ -170,7 +201,7 @@ class CampaignResult(object):
             # Get the fuzzer name (and coverage)
             if meta is None:
                 fuzzer = self.SEED_FUZZER
-            elif self.mode == BrokingMode.FULL:
+            elif self.is_full_duplex:
                 fuzzer = self.ALL_FUZZER
             elif self.mode == BrokingMode.NO_TRANSMIT:
                 fuzzer = meta[2]
@@ -188,11 +219,12 @@ class CampaignResult(object):
                 first = False
 
             # Compute differences to know what has been covered
-            new_items = fuzzer_coverage - cov
+            new_items = cov - fuzzer_coverage
             new_instrs = cov.covered_instructions.keys() - fuzzer_coverage.covered_instructions.keys()
 
             # Update global coverage
             fuzzer_coverage.merge(cov)
+
             # Update the total coverage (all fuzzers all together)
             self.overall_coverage.merge(cov)
 

@@ -209,6 +209,9 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
 
             if show_tt_inputs:
                 plotter.add_triton_input(campaign)
+
+            plotter.print_input_number_stats(campaign)
+            plotter.print_coverage_stats(campaign)
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
 
@@ -219,6 +222,8 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
         # Save the plots in all the selected workspaces
         for ws in [Path(x) for x in workspace]:
             out_dir = ws / "plots"
+            if not out_dir.exists():
+                out_dir.mkdir()
             plotter.save_to(out_dir)
             logging.info(f"plot written to: {out_dir}")
 
