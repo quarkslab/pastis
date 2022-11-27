@@ -22,10 +22,10 @@ from pastisbenchmark.plotter import Plotter
 from pastisbenchmark.results import CampaignResult
 
 
-def configure_logging(level: int):
+def configure_logging(level: int, fmt="%(message)s"):
     logging.root.name = f"\033[7m\033[39m[ BROKER ]\033[0m"
     coloredlogs.install(level=level,
-                        fmt="%(asctime)s %(name)s [%(levelname)s] %(message)s",
+                        fmt=fmt,
                         level_styles={'debug': {'color': 'blue'}, # 10
                                       'info': {}, # 20
                                       'warning': {'color': 'yellow'},  # 30
@@ -62,7 +62,7 @@ def cli():
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, honggfuzz: bool, triton: bool, debug: bool,
         timeout: Optional[int], port: int, hfuzz_path: str):
 
-    configure_logging(logging.DEBUG if debug else logging.INFO)
+    configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
     broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, SeedInjectLoc[injloc], None, [])
 
@@ -152,12 +152,12 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, pro
     else:
         count = sum(1 for _ in replayer.iter())
         for i, file in enumerate(replayer.iter()):
-            logging.info(f"[{i}/{count}] replay: {file.name}")
+            logging.info(f"[{i+1}/{count}] replay: {file.name}")
             replayer.replay(file)
 
 
 @cli.command(context_settings=dict(show_default=True))
-@click.option('--show', type=bool, is_flag=True, default=True, help="Show the plots")
+@click.option('--show/--no-show', type=bool, is_flag=True, default=True, help="Show the plots")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
 def plot(show: bool, name: str, workspace: Tuple[str]):
@@ -166,13 +166,16 @@ def plot(show: bool, name: str, workspace: Tuple[str]):
 
     plotter = Plotter(name)
     for ws in workspace:
+        logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
+        campaign.load()  # by default load in qbdi
         if campaign.replay_ok():
             plotter.add_campaign_to_plot(campaign)
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
 
     if show:
+        logging.info("Show plot")
         plotter.show()
     else:
         # Save the plots in all the selected workspaces
