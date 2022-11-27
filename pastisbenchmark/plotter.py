@@ -1,4 +1,5 @@
 # built-in imports
+import logging
 from pathlib import Path
 from typing import Generator, Optional, Union, List
 import matplotlib.pyplot as plt
@@ -54,23 +55,15 @@ class Plotter(object):
         F = [x.fuzzer for x in results]
         plot.plot(X, Y, label=fuzzer, linewidth=2)
 
-        # if annotate_tt:
-        #     T, Y = find_tt_inp(X, Y, F)
-        #     if label_tt:
-        #         ax.plot(T, Y, 'bo', label="TT input")
-        #     else:
-        #         ax.plot(T, Y, 'bo')
-
-    # @staticmethod
-    # def find_tt_inp(X, Y, F):
-    #     t = []
-    #     y = []
-    #     for i in range(len(X)):
-    #         if F[i] and "TT" in F[i]:
-    #             t.append(X[i])
-    #             y.append(Y[i])
-    #
-    #     return t, y
+    def add_triton_input(self, campaign: CampaignResult):
+        if campaign.is_full_duplex:
+            results = campaign.fuzzers_items[campaign.ALL_FUZZER]
+            X = [x.time_elapsed for x in results if "TT" in x.input_name]
+            Y = [x.total_coverage for x in results if "TT" in x.input_name]
+            self.ax1.plot(X, Y, 'bo', label="TT input")
+            self.ax2.plot(X, Y, 'bo', label="TT input")
+        else:
+            logging.warning(f"campaign:{campaign.workspace.root} not full duplex do not show triton inputs")
 
     def show(self):
         self._configure_plot(self.ax1, ylabel="coverage (edge)")

@@ -96,14 +96,3 @@ class Replayer(object):
     def start(self):
         # TODO: Start monitoring folders (and status file)
         pass
-
-    @staticmethod
-    def parse_filename(filename) -> Optional[tuple]:
-        if re.match("^\d{4}-\d{2}-\d{2}", filename):  # start by the date
-            date, time, elapsed, fuzzer_id, hash = filename.split("_")
-            date = datetime.strptime(f"{date}_{time}", "%Y-%m-%d_%H:%M:%S")
-            elapsed = datetime.strptime(elapsed, "%H:%M:%S.%f").time()
-            hash = hash[:-4] if hash.endswith(".cov") else hash
-            return date, elapsed, fuzzer_id, hash
-        else:
-            return None
