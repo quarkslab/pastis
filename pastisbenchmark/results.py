@@ -2,7 +2,7 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from pathlib import Path
-from typing import Generator, Optional, Union, List, Dict
+from typing import Generator, Optional, Union, List, Dict, Tuple, Set
 import os
 import json
 import subprocess
@@ -18,20 +18,20 @@ from pastisbroker.workspace import Workspace, WorkspaceStatus
 from libpastis.types import SeedInjectLoc, SeedType
 from tritondse.trace import QBDITrace
 from tritondse import CoverageStrategy, GlobalCoverage, BranchSolvingStrategy
+from tritondse.coverage import CovItem
 
 # local imports
 from pastisbenchmark.replayer import ReplayType
 
-
 class InputCovDelta(BaseModel):
-    time_elapsed: datetime     # Time elapsed when input generated
+    time_elapsed: float        # Time elapsed when input generated
     input_name: str            # Input name
     fuzzer: str                # The fuzzer that found that input
 
     # The coverage of this one input (len(covered_items))
     coverage: int
     # Coverage found by this seed that was not previsouly hit (not in global_coverage)
-    unique_coverage: set
+    unique_coverage: Set[CovItem]
     # The total coverage of the fuzz campaign at this point
     total_coverage: int
 
@@ -40,7 +40,7 @@ class InputCovDelta(BaseModel):
     # Total instruction coverage at this point
     total_coverage_insts: int
     # Instr
-    unique_coverage_insts: set
+    unique_coverage_insts: Set[int]
 
     @property
     def new_coverage_count(self) -> int:
@@ -85,8 +85,6 @@ class CampaignResult(object):
         return self.fuzzers_items.items()
 
     def _init_directories(self):
-        if not self.plot_dir.exists():
-            self.plot_dir.mkdir()
         if not self.replay_delta_dir.exists():
             self.replay_delta_dir.mkdir()
 
@@ -117,17 +115,18 @@ class CampaignResult(object):
 
     @staticmethod
     def parse_filename(filename) -> Optional[tuple]:
+        ref = datetime.strptime("0:00:00.00", "%H:%M:%S.%f")
         if re.match("^\d{4}-\d{2}-\d{2}", filename):  # start by the date
             date, time, elapsed, fuzzer_id, hash = filename.split("_")
             date = datetime.strptime(f"{date}_{time}", "%Y-%m-%d_%H:%M:%S")
-            elapsed = datetime.strptime(elapsed, "%H:%M:%S.%f").time()
+            elapsed = (datetime.strptime(elapsed, "%H:%M:%S.%f") - ref).total_seconds()
             hash = hash[:-4] if hash.endswith(".cov") else hash
             return date, elapsed, fuzzer_id, hash
         else:
             return None
 
     def _iter_sorted(self, path: Path):
-        files = {None:[]}
+        files = {None: []}
         for file in path.iterdir():
             res = self.parse_filename(file.name)
             if res is None:
@@ -147,6 +146,7 @@ class CampaignResult(object):
             yield files[k]
 
     def load(self, type: ReplayType = ReplayType.qbdi) -> None:
+        logging.info(f"load in {type.name} [mode:{self.mode.name}]")
         if len(list(self.replay_delta_dir.iterdir())) != 0:
             self.load_delta()
         elif type == ReplayType.qbdi:
@@ -157,6 +157,7 @@ class CampaignResult(object):
             assert False
 
     def load_qbdi(self) -> None:
+        logging.info("load qbdi trace files")
         first = True
         for file in self._iter_sorted(self.workspace.root / self.QBDI_REPLAY_DIR):
             # parse name
@@ -175,7 +176,7 @@ class CampaignResult(object):
             self._init_fuzzer_stats(fuzzer)
             fuzzer_coverage = self.fuzzers_coverage[fuzzer]
 
-            cov = QBDITrace.from_qbdi_trace_file(file).coverage
+            cov = QBDITrace.from_file(file).coverage
 
             # if first adapt coverage strategy to the
             if first:
@@ -193,7 +194,7 @@ class CampaignResult(object):
 
             # Create an InputCovDelta
             statitem = InputCovDelta(
-                time_elapsed=timedelta(0) if meta is None else meta[1],
+                time_elapsed=0 if meta is None else meta[1],
                 input_name=file.name,
                 fuzzer=fuzzer,
                 coverage=cov.unique_covitem_covered,  # number of items covered
@@ -206,7 +207,7 @@ class CampaignResult(object):
             )
             self.fuzzers_items[fuzzer].append(statitem)
 
-            with open(self.replay_delta_dir / file.name+".json", 'w') as f:
+            with open(self.replay_delta_dir / (file.name+".json"), 'w') as f:
                 f.write(statitem.json())
 
     def load_llvmprofile(self) -> None:
@@ -214,6 +215,7 @@ class CampaignResult(object):
         pass
 
     def load_delta(self) -> None:
+        logging.info("load delta directory")
         for file in self._iter_sorted(self.replay_delta_dir):
             meta = self.parse_filename(file.name)
 
