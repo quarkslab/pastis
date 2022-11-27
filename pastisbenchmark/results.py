@@ -66,8 +66,8 @@ class CampaignResult(object):
     LLVMPROFILE_REPLAY_DIR = "replays_llvmprof"
     REPLAYS_DELTA = "replays_delta"
 
-    def __init__(self, workspace: Path):
-        self.workspace = Workspace(workspace)
+    def __init__(self, workspace: Union[Path, str]):
+        self.workspace = Workspace(Path(workspace))
         # Stat items
         self.fuzzers_items = {}     # fuzzer_name -> List[StatItem]
         self.fuzzers_coverage = {}  # fuzzer_name -> Coverage
@@ -79,6 +79,10 @@ class CampaignResult(object):
         self._init_directories()
 
         self.mode = self.load_broking_mode(self.workspace)
+
+    @property
+    def is_full_duplex(self) -> bool:
+        return bool(self.mode == BrokingMode.FULL)
 
     @property
     def results(self):

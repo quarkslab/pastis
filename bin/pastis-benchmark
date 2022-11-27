@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 # built-in imports
+import shutil
+
 import click
 import sys
 import logging
@@ -13,6 +15,7 @@ import coloredlogs
 
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
+from pastisbroker.workspace import Workspace
 from libpastis.types import CheckMode, SeedInjectLoc
 from pastishf import HonggfuzzDriver
 
@@ -44,6 +47,36 @@ def iterate_file(file):
 @click.group()
 def cli():
     pass
+
+
+@cli.command(context_settings=dict(show_default=True))
+@click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True))
+def clean(workspace: str):
+    p = Path(workspace)
+    dirs = [Workspace.INPUT_DIR,
+            Workspace.HANGS_DIR,
+            Workspace.CRASH_DIR,
+            Workspace.LOG_DIR,
+            Workspace.BINS_DIR,
+            Workspace.ALERTS_DIR,
+            Workspace.SEED_DIR,
+            Replayer.QBDI_REPLAY_DIR,
+            "clients_ws"]
+
+    for file in (p / x for x in dirs):
+        if file.exists():
+            shutil.rmtree(file)
+
+    files = [Workspace.KL_REPORT_COPY,
+             Workspace.CSV_FILE,
+             Workspace.TELEMETRY_FILE,
+             Workspace.CLIENTS_STATS,
+             Workspace.LOG_FILE,
+             Workspace.STATUS_FILE,
+             Workspace.RUNTIME_CONFIG_FILE]
+
+    for file in (p / x for x in files):
+        file.unlink(missing_ok=True)
 
 
 @cli.command(context_settings=dict(show_default=True))
@@ -158,9 +191,10 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, pro
 
 @cli.command(context_settings=dict(show_default=True))
 @click.option('--show/--no-show', type=bool, is_flag=True, default=True, help="Show the plots")
+@click.option('--show-tt-inputs', type=bool, is_flag=True, default=False, help="Show the Triton inputs")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
-def plot(show: bool, name: str, workspace: Tuple[str]):
+def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
 
     configure_logging(logging.INFO)
 
@@ -169,8 +203,12 @@ def plot(show: bool, name: str, workspace: Tuple[str]):
         logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
         campaign.load()  # by default load in qbdi
+
         if campaign.replay_ok():
             plotter.add_campaign_to_plot(campaign)
+
+            if show_tt_inputs:
+                plotter.add_triton_input(campaign)
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
 
