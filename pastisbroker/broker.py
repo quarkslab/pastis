@@ -177,14 +177,16 @@ class PastisBroker(BrokerAgent):
         h = md5(seed).hexdigest()
 
         # Show log message and save seed to file
+        self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
+        cli.log(LogLevel.INFO, f"seed {h} [{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
+        cli.add_own_seed(seed)  # Add seed in client's seed
+        self.write_seed(typ, cli, seed) # Write seed to file
+
         if is_new:
-            self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
-            cli.log(LogLevel.INFO, f"new seed {h} [{self._colored_seed_type(typ)}]")
-            cli.add_own_seed(seed)  # Add seed in client's seed
-            self.write_seed(typ, cli, seed) # Write seed to file
             self._seed_pool[seed] = typ  # Save it in the local pool
         else:
-            logging.warning(f"receive duplicate seed {h} by {cli.strid}")
+            pass
+            # logging.warning(f"receive duplicate seed {h} by {cli.strid}")
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
@@ -599,6 +601,11 @@ class PastisBroker(BrokerAgent):
                   SeedType.HANG: Bcolors.WARNING,
                   SeedType.CRASH: Bcolors.FAIL}
         return mapper[typ]+typ.name+Bcolors.ENDC
+
+    def _colored_seed_newness(self, is_new: bool) -> str:
+        col, text = {True: (Bcolors.OKGREEN, "NEW"),
+                     False: (Bcolors.WARNING, "DUP")}[is_new]
+        return col+text+Bcolors.ENDC
 
     def _save_alert_seed(self, from_cli: PastisClient, alert: AlertData):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
