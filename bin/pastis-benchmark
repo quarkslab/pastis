@@ -213,6 +213,7 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
 
             plotter.print_input_number_stats(campaign)
             plotter.print_coverage_stats(campaign)
+            plotter.print_triton_stats(campaign)
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
 
