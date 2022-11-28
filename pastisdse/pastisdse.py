@@ -43,7 +43,6 @@ class PastisDSE(object):
         self.klreport   = None
         self._last_kid  = None
         self._last_kid_pc = None
-        self._seed_wait = False
         self._seed_received = set()
         self._probes = []
         self._chkmode = None
@@ -88,7 +87,6 @@ class PastisDSE(object):
         self.klreport = None
         self._program_slice = None
         self._seed_received = set()
-        self._seed_wait = False
         self.program = None
         self._stop = False
         self._chkmode = None
@@ -126,8 +124,8 @@ class PastisDSE(object):
         # Run while we are not instructed to stop
         while not self._stop:
 
-            # small delay giving the broker the opportunity to provide some seeds
-            time.sleep(1)
+            # wait for seed event
+            self._wait_seed_event()
 
             st = self.dse.explore()
 
@@ -147,15 +145,14 @@ class PastisDSE(object):
                     else: # wait for seed of peers
                         logging.info("exploration idle (worklist empty)")
                         self.agent.send_log(LogLevel.INFO, "exploration idle (worklist empty)")
-                        self._wait_seed_event()
                 else:
                     logging.error(f"explorator not meant to be in state: {st}")
                     return False
 
 
     def _wait_seed_event(self):
-        self._seed_wait = True
-        while self._seed_wait and not self._stop:
+        logging.info("wait to receive seeds")
+        while not self.dse.seeds_manager.seeds_available() and not self._stop:
             time.sleep(0.5)
 
 
@@ -448,7 +445,6 @@ class PastisDSE(object):
             if not self._tracing_enabled:
                 # Accept all seeds
                 self.dse.add_input_seed(seed)
-                self._seed_wait = False  # unlock main thread if waiting for a seed
 
             else:  # Try running the seed to know whether to keep it
                 # NOTE: re-run the seed regardless of its status
@@ -501,7 +497,6 @@ class PastisDSE(object):
                     # object). Modify WorklistAddressToSet to support it.
                     self.seeds_merged += 1
                     self.dse.add_input_seed(seed)
-                    self._seed_wait = False  # unlock main thread if waiting for a seed
                 else:
                     # Check whether the seed improves the current coverage.
                     if self.dse.coverage.improves_coverage(coverage):
@@ -512,9 +507,8 @@ class PastisDSE(object):
 
                         seed.coverage_objectives = self.dse.coverage.new_items_to_cover(coverage)
                         self.dse.add_input_seed(seed)
-                        logging.info(f"seed added {seed.hash} [{typ.name}]")
+                        logging.info(f"seed added {seed.hash} [{typ.name}] ({type(seed.content)})")
 
-                        self._seed_wait = False
                     else:
                         logging.info(f"NOT merging coverage from seed {seed.hash} [{typ.name}]")
                         self.seeds_rejected += 1
