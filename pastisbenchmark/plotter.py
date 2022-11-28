@@ -16,7 +16,7 @@ class Plotter(object):
     LABEL_SZ = 20
     TICK_SZ = 13
     FONT_SZ = 15
-    LEGEND_SZ = 14
+    LEGEND_SZ = 8
 
     SEED_FUZZER = "seeds"
     ALL_FUZZER = "all"
@@ -58,14 +58,16 @@ class Plotter(object):
     def format_fuzzer_name(self, campaign: CampaignResult, fuzzer: str) -> str:
         if fuzzer == self.ALL_FUZZER:
             return campaign.slug_name
+        elif fuzzer == self.SEED_FUZZER:
+            return self.SEED_FUZZER
         elif "TT" in fuzzer:
             config = campaign.fuzzers_config[fuzzer]
-            cov_name = {CoverageStrategy.BLOCK: "B", CoverageStrategy.EDGE: "E", CoverageStrategy.PREFIXED_EDGE:"PE",
-                        CoverageStrategy.PATH:"P"}[config.coverage_strategy]
+            cov_name = {CoverageStrategy.BLOCK: "B", CoverageStrategy.EDGE: "E", CoverageStrategy.PREFIXED_EDGE: "PE",
+                        CoverageStrategy.PATH: "P"}[config.coverage_strategy]
             param = [
-                "R" if BranchSolvingStrategy.COVER_SYM_READ in config else "-",
-                "W" if BranchSolvingStrategy.COVER_SYM_WRITE in config else "-",
-                "J" if BranchSolvingStrategy.COVER_SYM_DYNJUMP in config else "-"
+                "R" if BranchSolvingStrategy.COVER_SYM_READ in config.branch_solving_strategy else "-",
+                "W" if BranchSolvingStrategy.COVER_SYM_WRITE in config.branch_solving_strategy else "-",
+                "J" if BranchSolvingStrategy.COVER_SYM_DYNJUMP in config.branch_solving_strategy else "-"
             ]
             solver = {SmtSolver.Z3: "Z3", SmtSolver.BITWUZLA: "BZLA"}[config.smt_solver]
             return f"TritonDSE[{cov_name}][{''.join(param)}][{solver}]"
@@ -74,7 +76,7 @@ class Plotter(object):
         elif "HF" in fuzzer:
             return "Honggfuzz"
         else:
-            assert False
+            return fuzzer
 
     def add_triton_input(self, campaign: CampaignResult):
         if campaign.is_full_duplex:
@@ -114,7 +116,7 @@ class Plotter(object):
                         stats[fuzzer] = 1
         print("Input number stats:")
         for fuzzer, n in stats.items():
-            print(f"- {fuzzer}: {n}  [{n / tot_input:.2%}]")
+            print(f"- {self.format_fuzzer_name(campaign, fuzzer)}: {n}  [{n / tot_input:.2%}]")
         print(f"Total: {tot_input}")
 
 
@@ -138,5 +140,5 @@ class Plotter(object):
                         stats[fuzzer] = len(item.unique_coverage)
         print("Coverage stats:")
         for fuzzer, n in stats.items():
-            print(f"- {fuzzer}: {n}  [{n / tot_input:.2%}]")
+            print(f"- {self.format_fuzzer_name(campaign, fuzzer)}: {n}  [{n / tot_input:.2%}]")
         print(f"Total: {tot_input}")

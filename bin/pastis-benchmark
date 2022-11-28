@@ -61,6 +61,7 @@ def clean(workspace: str):
             Workspace.ALERTS_DIR,
             Workspace.SEED_DIR,
             Replayer.QBDI_REPLAY_DIR,
+            CampaignResult.REPLAYS_DELTA,
             "clients_ws"]
 
     for file in (p / x for x in dirs):
