@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 import threading
 import platform
+import json
 
 # third-party imports
 from triton               import MemoryAccess, CPUSIZE
@@ -30,6 +31,7 @@ from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKi
 class PastisDSE(object):
 
     INPUT_FILE_NAME = "input_file"
+    STAT_FILE = "pastidse-stats.json"
 
     def __init__(self, agent: ClientAgent):
         self.agent = agent
@@ -57,6 +59,11 @@ class PastisDSE(object):
         self._sending_count = 0
         self.seeds_merged = 0
         self.seeds_rejected = 0
+
+        # Timing stats
+        self._start_time = 0
+        self._replay_acc = 0
+
 
     def add_probe(self, probe: ProbeInterface):
         self._probes.append(probe)
@@ -96,6 +103,10 @@ class PastisDSE(object):
         self._last_cov_update = time.time()
         self._tracing_enabled = False
         self._sending_count = 0
+        self.seeds_merged = 0
+        self.seeds_rejected = 0
+        self._start_time = 0
+        self._replay_acc = 0
         logging.info("DSE Ready")
 
     def run(self, online: bool, debug_pp: bool=False):
@@ -126,6 +137,7 @@ class PastisDSE(object):
 
             # wait for seed event
             self._wait_seed_event()
+            self._start_time = time.time()
 
             st = self.dse.explore()
 
@@ -476,6 +488,7 @@ class PastisDSE(object):
                     try:
                         # Run the seed and determine whether it improves our current coverage.
                         with tempfile.NamedTemporaryFile(delete=False) as trace_file:
+                            t0 = time.time()
                             if QBDITrace.run(self.config.coverage_strategy,
                                                   str(self.program.path.resolve()),
                                                   argv[1:] if len(argv) > 1 else [],
@@ -486,6 +499,7 @@ class PastisDSE(object):
                             else:
                                 logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                                 coverage = None
+                            self._replay_acc += time.time() - t0  # Save time spent replaying inputs
                     except FileNotFoundError:
                         logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                     except TraceException:
@@ -534,9 +548,22 @@ class PastisDSE(object):
 
         if self.dse:
             self.dse.stop_exploration()
+
+        self.save_stats()  # Save stats
+
         self._stop = True
         # self.agent.stop()  # Can't call it here as this function executed from within agent thread
 
+    def save_stats(self):
+        stat_file = self.dse.workspace.get_metadata_file_path(self.STAT_FILE)
+        data = {
+            "total_time": time.time() - self._start_time,
+            "replay_time": self._replay_acc,
+            "seed_accepted": self.seeds_merged,
+            "seed_rejected": self.seeds_rejected,
+            "seed_received": self.seeds_merged + self.seeds_merged
+        }
+        stat_file.write_text(json.dumps(data))
 
     def dual_log(self, level: LogLevel, message: str) -> None:
         """
