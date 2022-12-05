@@ -171,16 +171,17 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 @click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
 @click.option('--live', type=bool, is_flag=True, default=False, help="Enable replaying input files during the campaign")
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Enable streaming coverage on a ZMQ socket")
+@click.option("-t", "--timeout", type=int, default=15, help="Replay timeout")
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.argument('pargvs', nargs=-1)
-def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, program: str, pargvs: Tuple[str]):
+def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, timeout: int, program: str, pargvs: Tuple[str]):
 
     configure_logging(logging.INFO)
 
     rtype = ReplayType[type]
     injloc = SeedInjectLoc[injloc]
 
-    replayer = Replayer(Path(program), Path(workspace), rtype, injloc, stream, *pargvs)
+    replayer = Replayer(Path(program), Path(workspace), rtype, injloc, stream, timeout, *pargvs)
 
     if live:
         replayer.start()
