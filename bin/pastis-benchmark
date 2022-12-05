@@ -15,6 +15,7 @@ import coloredlogs
 
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
+from pastisbroker.utils import load_engine_descriptor
 from pastisbroker.workspace import Workspace
 from libpastis.types import CheckMode, SeedInjectLoc
 from pastishf import HonggfuzzDriver
@@ -78,6 +79,24 @@ def clean(workspace: str):
 
     for file in (p / x for x in files):
         file.unlink(missing_ok=True)
+
+
+@cli.command(context_settings=dict(show_default=True))
+@click.argument('bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True))
+def showmap(bins: str):
+
+    MAP = {
+              "Triton": "pastisttbroker",
+              "Honggfuzz": "hfbroker",
+              "AFL++": "aflppbroker"
+    }
+    mapping = {k: load_engine_descriptor(v) for k,v in MAP.items()}
+    for file in iterate_file(bins):
+        print(file)
+        for engine, desc in mapping.items():
+            acc, exmode, fuzzmode = desc.accept_file(file)
+            if acc:
+                print(f"    - {engine} [{exmode.name}][{fuzzmode.name}]")
 
 
 @cli.command(context_settings=dict(show_default=True))
