@@ -87,14 +87,15 @@ def clean(workspace: str):
 @click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking")
 @click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
 @click.option('--aflpp', is_flag=True, type=bool, default=False, help="Enable AFL++")
-@click.option('--honggfuzz', is_flag=True, type=bool, default=False, help="Enable Honggfuzz")
+@click.option('--hfuzz', is_flag=True, type=bool, default=False, help="Enable Honggfuzz")
 @click.option('--triton', is_flag=True, type=bool, help="Enable TritonDSE")
 @click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
 @click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
 @click.option('--hfuzz-path', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), required=False, help="Custom Honggfuzz path")
-def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, honggfuzz: bool, triton: bool, debug: bool,
-        timeout: Optional[int], port: int, hfuzz_path: str):
+@click.option('--hfuzz-threads', type=int, default=0, help="Number of threads to launch Honggfuzz with")
+def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool, debug: bool,
+        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
@@ -124,7 +125,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
         aflpp_ws.mkdir()
         spawn_online_aflpp(aflpp_ws, port)
 
-    if honggfuzz:
+    if hfuzz:
         # create a workspace directory and launch it
         hf_exe_path = None
 
@@ -137,7 +138,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
         else:  # Honggfuzz is available
             hf_ws = clients_ws / "hfuzz"
             hf_ws.mkdir()
-            spawn_online_honggfuzz(hf_ws, hf_exe_path, port)
+            spawn_online_honggfuzz(hf_ws, hf_exe_path, port, hfuzz_threads)
 
     if triton:
         # Look for configuration files, add them to the broker and launch as many triton instances
