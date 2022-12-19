@@ -294,7 +294,18 @@ class PastisDSE(object):
         if argv:
             self.config.program_argv = argv
 
+        """
+        Actions taken depending on seed format & co:
+        Config    |  Inject  |  Result
+        RAW          STDIN      /
+        COMPOSITE    STDIN      / (but need 'stdin' in files)
+        RAW          ARGV       change to COMPOSITE to be able to inject on argv (and convert seeds on the fly)
+        COMPOSITE    ARGV       / (but need 'input_file' in files)
+        """
         if seed_inj == SeedInjectLoc.ARGV:  # Make sure we inject input on argv
+            if self.config.is_format_raw():
+                logging.warning("injection is ARGV thus switch config seed format to COMPOSITE")
+                self.config.seed_format = SeedFormat.COMPOSITE
             if "@@" in self.config.program_argv:
                 idx = self.config.program_argv.index("@@")
                 self.config.program_argv[idx] = self.INPUT_FILE_NAME
@@ -302,8 +313,8 @@ class PastisDSE(object):
                 logging.warning(f"seed inject {self._seedloc.name} but no '@@' found in argv (will likely not work!)")
         else:  # SeedInjectLoc.STDIN
             if engine_args:
-                if self.config.seed_format == SeedFormat.COMPOSITE:
-                    logging.warning("injecting on STDIN but seed format is COMPOSITE")
+                if self.config.is_format_composite():
+                    self.dual_log(LogLevel.WARNING, "injecting on STDIN but seed format is COMPOSITE")
             else:  # no config was provided just override
                 self.config.seed_format = SeedFormat.RAW
             pass  # nothing to do ?
@@ -432,12 +443,20 @@ class PastisDSE(object):
         # will trigger the dse to start has another thread is waiting for self.dse to be not None
         self.dse = dse
 
-    def _get_seed(self, seed: bytes) -> Seed:
+    def _get_seed(self, raw_seed: bytes) -> Seed:
         # Convert seed to CompositeData
-        if self.config.seed_format == SeedFormat.COMPOSITE:
-            return Seed(CompositeData(files={self.INPUT_FILE_NAME: seed}))
+        seed = Seed.from_bytes(raw_seed)
+
+        if self.config.is_format_composite() and seed.is_raw() and self._seedloc == SeedInjectLoc.ARGV:
+            logging.debug("convert raw seed to composite")
+            return Seed(CompositeData(files={self.INPUT_FILE_NAME: seed.content}))
+
+        elif self.config.is_format_composite() and seed.is_raw() and self._seedloc == SeedInjectLoc.STDIN:
+            logging.warning("Seed is RAW but format is COMPOSITE with injection on STDIN")
+            return Seed(CompositeData(files={"stdin": seed.content}))
+
         else:
-            return Seed(seed)
+            return seed
 
     def seed_received(self, typ: SeedType, seed: bytes):
         """
