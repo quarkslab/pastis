@@ -20,6 +20,7 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 # Local imports
 from pastisdse import PastisDSE, __version__
 from tritondse import CoverageStrategy, ProbeInterface, Config
+from tritondse.probes.basic_trace import BasicDebugTrace
 
 pastis = None
 
@@ -94,6 +95,7 @@ def load_probe_module(module) -> Optional[ProbeInterface]:
 @click.option('-w', '--workspace', type=str, default="", help='Path to TritonDSE workspace')
 @click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
 @click.option('--debug-pp', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debugging path predicate')
+@click.option("--trace", type=bool, is_flag=True, show_default=True, default=False, help="Show execution trace in debug logging")
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
             kl_report: Optional[str],
@@ -111,7 +113,8 @@ def offline(program: str,
             probe: Tuple[str],
             workspace: Optional[str],
             debug: bool,
-            debug_pp: bool):
+            debug_pp: bool,
+            trace: bool):
     """
     This is the offline mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will be able to work without a remote broker. In
@@ -135,6 +138,7 @@ def offline(program: str,
     :param workspace: Workspace where to store data
     :param debug: Enable debug logs
     :param debug_pp: Enable debugging path predicate
+    :param trace: show execution trace in debug logging
     """
     global pastis
 
@@ -154,7 +158,7 @@ def offline(program: str,
     pastis = PastisDSE(agent)
 
     if config:
-        config = Path(config).read_text()
+        config = Config.from_file(config)
     else:
         config = Config()
 
@@ -163,6 +167,9 @@ def offline(program: str,
         config.debug = True
     else:
         configure_logs(logging.INFO)
+
+    if trace:
+        pastis.add_probe(BasicDebugTrace())
 
     if workspace:
         config.workspace = workspace
