@@ -113,8 +113,9 @@ def showmap(bins: str):
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
 @click.option('--hfuzz-path', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), required=False, help="Custom Honggfuzz path")
 @click.option('--hfuzz-threads', type=int, default=0, help="Number of threads to launch Honggfuzz with")
+@click.option('--spawn/--no-spawn', type=bool, is_flag=True, default=True, help="Either to spawn engines or not")
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool, debug: bool,
-        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int):
+        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
@@ -142,7 +143,8 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
             sys.exit(1)
         aflpp_ws = clients_ws / "aflpp"
         aflpp_ws.mkdir()
-        spawn_online_aflpp(aflpp_ws, port)
+        if spawn:
+            spawn_online_aflpp(aflpp_ws, port)
 
     if hfuzz:
         # create a workspace directory and launch it
@@ -157,7 +159,8 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
         else:  # Honggfuzz is available
             hf_ws = clients_ws / "hfuzz"
             hf_ws.mkdir()
-            spawn_online_honggfuzz(hf_ws, hf_exe_path, port, hfuzz_threads)
+            if spawn:
+                spawn_online_honggfuzz(hf_ws, hf_exe_path, port, hfuzz_threads)
 
     if triton:
         # Look for configuration files, add them to the broker and launch as many triton instances
@@ -174,7 +177,8 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
                     fd.truncate()
                 logging.info(f"Add Triton configuration: {conf}")
                 broker.add_engine_configuration("TRITON", conf)
-                spawn_online_triton(port)
+                if spawn:
+                    spawn_online_triton(port)
         else:
             logging.warning("Triton enabled but no configuration found")
 
