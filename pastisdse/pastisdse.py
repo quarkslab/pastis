@@ -541,7 +541,7 @@ class PastisDSE(object):
 
                         seed.coverage_objectives = self.dse.coverage.new_items_to_cover(coverage)
                         self.dse.add_input_seed(seed)
-                        logging.info(f"seed added {seed.hash} [{typ.name}] ({type(seed.content)})")
+                        logging.info(f"seed added {seed.hash} [{typ.name}]")
 
                     else:
                         logging.info(f"NOT merging coverage from seed {seed.hash} [{typ.name}]")
