@@ -86,7 +86,7 @@ def load_probe_module(module) -> Optional[ProbeInterface]:
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
 @click.option('-x', '--exmode', type=click.Choice([x.name for x in list(ExecMode)]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
 @click.option('-fmod', '--fuzzmode', type=click.Choice([x.name for x in list(FuzzMode)]), help="Fuzz mode", default=FuzzMode.BINARY_ONLY.name)
-@click.option('-chk', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), help="Check mode", default=CheckMode.ALERT_ONLY.name)
+@click.option('-chk', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), help="Check mode", default=CheckMode.CHECK_ALL.name)
 @click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.value)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in list(SeedInjectLoc)]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.option('-n', '--name', type=str, default='', help="Name of the executable if program is an archive containing multiple files")
