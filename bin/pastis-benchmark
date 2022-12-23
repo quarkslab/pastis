@@ -25,6 +25,27 @@ from pastisbenchmark.replayer import ReplayType, Replayer
 from pastisbenchmark.plotter import Plotter
 from pastisbenchmark.results import CampaignResult
 
+class Bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def pp_good(s: str) -> str:
+    return Bcolors.OKGREEN + s + Bcolors.ENDC
+
+def pp_bad(s: str) -> str:
+    return Bcolors.FAIL + s + Bcolors.ENDC
+
+def pp_warning(s: str) -> str:
+    return Bcolors.WARNING + s + Bcolors.ENDC
+
+
 
 def configure_logging(level: int, fmt="%(message)s"):
     logging.root.name = f"\033[7m\033[39m[ BROKER ]\033[0m"
@@ -195,24 +216,27 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 @click.option('--live', type=bool, is_flag=True, default=False, help="Enable replaying input files during the campaign")
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Enable streaming coverage on a ZMQ socket")
 @click.option("-t", "--timeout", type=int, default=15, help="Replay timeout")
+@click.option('--full/--no-full', type=bool, is_flag=True, default=True, help="Replay with full instructions and trace")
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.argument('pargvs', nargs=-1)
-def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, timeout: int, program: str, pargvs: Tuple[str]):
+def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, timeout: int, full: bool, program: str, pargvs: Tuple[str]):
 
     configure_logging(logging.INFO)
 
     rtype = ReplayType[type]
     injloc = SeedInjectLoc[injloc]
 
-    replayer = Replayer(Path(program), Path(workspace), rtype, injloc, stream, timeout, *pargvs)
+    replayer = Replayer(Path(program), Path(workspace), rtype, injloc, stream, full, timeout, *pargvs)
 
     if live:
         replayer.start()
     else:
         count = sum(1 for _ in replayer.iter())
         for i, file in enumerate(replayer.iter()):
-            logging.info(f"[{i+1}/{count}] replay: {file.name}")
-            replayer.replay(file)
+            result = replayer.replay(file)
+
+            res = pp_good("OK") if result else pp_bad("KO")
+            logging.info(f"[{i+1}/{count}] replay: {file.name} [{res}]")
 
 
 @cli.command(context_settings=dict(show_default=True))
@@ -241,6 +265,16 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
             plotter.print_triton_stats(campaign)
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
+
+        out_dir = Path(ws) / "coverages"
+        if not out_dir.exists():
+            out_dir.mkdir()
+        for fuzzer, cov in campaign.fuzzers_coverage.items():
+            cov_file = out_dir / f"{fuzzer}.cov"
+            logging.info(f"save coverage file in: {cov_file}")
+            with open(cov_file, "w") as f:
+                f.write("\n".join(f"{x:#08x}" for x in cov.covered_instructions.keys()))
+                f.write("\n")
 
     if show:
         logging.info("Show plot")

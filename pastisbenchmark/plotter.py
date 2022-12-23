@@ -150,25 +150,28 @@ class Plotter(object):
             return str(datetime.timedelta(seconds=int(secs)))
 
         for fuzzer, config in campaign.fuzzers_config.items():
-            if campaign.is_triton(fuzzer):
-                workdir = Path(config.workspace)
-                pstats = json.loads((workdir / "pastidse-stats.json").read_text())
-                sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
-                print(f"---- {fuzzer}: {self.format_fuzzer_name(campaign, fuzzer)} ----")
+            try:
+                if campaign.is_triton(fuzzer):
+                    workdir = Path(config.workspace)
+                    pstats = json.loads((workdir / "pastidse-stats.json").read_text())
+                    sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
+                    print(f"---- {fuzzer}: {self.format_fuzzer_name(campaign, fuzzer)} ----")
 
-                # Timing stats
-                tot, replay_time = pstats["total_time"], pstats["replay_time"]
-                sovt = sstats['total_solving_time']
-                dse = tot - replay_time - sovt
-                print(f"Total: {tt(tot)} | DSE: {tt(dse)} ({dse/tot:.2%}) | SMT: {tt(sovt)} ({sovt/tot:.2%}) | REPLAY: {tt(replay_time)} ({replay_time/tot:.2%})")
+                    # Timing stats
+                    tot, replay_time = pstats["total_time"], pstats["replay_time"]
+                    sovt = sstats['total_solving_time']
+                    dse = tot - replay_time - sovt
+                    print(f"Total: {tt(tot)} | DSE: {tt(dse)} ({dse/tot:.2%}) | SMT: {tt(sovt)} ({sovt/tot:.2%}) | REPLAY: {tt(replay_time)} ({replay_time/tot:.2%})")
 
-                # Input stats
-                tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
-                print(f"Total: {tots} | Accepted: {accs} ({accs/tots:.2%}) |  Rejected: {rejs} ({rejs/tots:.2%})")
+                    # Input stats
+                    tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
+                    print(f"Total: {tots} | Accepted: {accs} ({accs/tots:.2%}) |  Rejected: {rejs} ({rejs/tots:.2%})")
 
-                # Solving stats
-                stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
-                print(f"Total: {stot}  SAT: {sat} ({sat/stot:.2%}) | UNSAT: {unsat} ({unsat/stot:.2%}) | TIMEOUT: {to} ({to/stot:.2%})")
+                    # Solving stats
+                    stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
+                    print(f"Total: {stot}  SAT: {sat} ({sat/stot:.2%}) | UNSAT: {unsat} ({unsat/stot:.2%}) | TIMEOUT: {to} ({to/stot:.2%})")
 
-                coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
-                print(f"Branch resolved: {coved} | Branch not solved: {uncoved}")
+                    coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
+                    print(f"Branch resolved: {coved} | Branch not solved: {uncoved}")
+            except FileNotFoundError:
+                logging.error(f"can't find Triton stats for {fuzzer}")
