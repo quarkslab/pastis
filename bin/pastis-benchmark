@@ -252,6 +252,7 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
     for ws in workspace:
         logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
+        is_delta = campaign.has_delta_files()
         campaign.load()  # by default load in qbdi
 
         if campaign.replay_ok():
@@ -266,15 +267,16 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
 
-        out_dir = Path(ws) / "coverages"
-        if not out_dir.exists():
-            out_dir.mkdir()
-        for fuzzer, cov in campaign.fuzzers_coverage.items():
-            cov_file = out_dir / f"{fuzzer}.cov"
-            logging.info(f"save coverage file in: {cov_file}")
-            with open(cov_file, "w") as f:
-                f.write("\n".join(f"{x:#08x}" for x in cov.covered_instructions.keys()))
-                f.write("\n")
+        if not is_delta:  # Out of delta files cannot compute the coverage (so do it once on qbdi loading)
+            out_dir = Path(ws) / "coverages"
+            if not out_dir.exists():
+                out_dir.mkdir()
+            for fuzzer, cov in campaign.fuzzers_coverage.items():
+                cov_file = out_dir / f"{fuzzer}.cov"
+                logging.info(f"save coverage file in: {cov_file}")
+                with open(cov_file, "w") as f:
+                    f.write("\n".join(f"{x:#08x}" for x in cov.covered_instructions.keys()))
+                    f.write("\n")
 
     if show:
         logging.info("Show plot")

@@ -145,6 +145,9 @@ class CampaignResult(object):
     def replay_delta_dir(self) -> Path:
         return self.workspace.root / self.REPLAYS_DELTA
 
+    def has_delta_files(self) -> bool:
+        return len(list(self.replay_delta_dir.iterdir())) != 0
+
     def replay_ok(self) -> bool:
         return len(list(self.replay_delta_dir.iterdir())) != 0
 
@@ -182,7 +185,7 @@ class CampaignResult(object):
 
     def load(self, type: ReplayType = ReplayType.qbdi) -> None:
         logging.info(f"load in {type.name} [mode:{self.mode.name}]")
-        if len(list(self.replay_delta_dir.iterdir())) != 0:
+        if self.has_delta_files():
             self.load_delta()
         elif type == ReplayType.qbdi:
             self.load_qbdi()
@@ -194,8 +197,11 @@ class CampaignResult(object):
     def load_qbdi(self) -> None:
         logging.info("load qbdi trace files")
         first = True
-        for file in self._iter_sorted(self.workspace.root / self.QBDI_REPLAY_DIR):
+        folder = self.workspace.root / self.QBDI_REPLAY_DIR
+        total = sum(1 for _ in self._iter_sorted(folder))
+        for i, file in enumerate(self._iter_sorted(folder)):
             # parse name
+            print(f"[{i+1}/{total}] {file}\r", end="")
             meta = self.parse_filename(file.name)
 
             # Get the fuzzer name (and coverage)
