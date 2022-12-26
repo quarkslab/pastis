@@ -77,7 +77,7 @@ class Replayer(object):
 
     def _replay_qbdi(self, input: Path) -> bool:
         out_file = self.corpus_replay_dir / (input.name + ".trace")
-        args = self._args
+        args = self._args[:]
 
         # If inject on argv try replacing the right argv
         if self._inject_loc == SeedInjectLoc.ARGV:
