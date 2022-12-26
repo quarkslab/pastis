@@ -514,7 +514,7 @@ class PastisDSE(object):
                                                   output_path=trace_file.name,
                                                   stdin_file=stdin_file,
                                                   cwd=Path(self.program.path).parent,
-                                                  timeout=15):
+                                                  timeout=60):
                                 coverage = QBDITrace.from_file(trace_file.name).coverage
                             else:
                                 logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
