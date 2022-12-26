@@ -152,7 +152,7 @@ class Plotter(object):
         for fuzzer, config in campaign.fuzzers_config.items():
             try:
                 if campaign.is_triton(fuzzer):
-                    workdir = Path(config.workspace)
+                    workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     pstats = json.loads((workdir / "pastidse-stats.json").read_text())
                     sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
                     print(f"---- {fuzzer}: {self.format_fuzzer_name(campaign, fuzzer)} ----")
