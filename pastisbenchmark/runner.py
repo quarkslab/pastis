@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 import subprocess
 import logging
 
@@ -21,8 +21,10 @@ def spawn_online_aflpp(workspace: Optional[Path], port: int = 5555):
     return subprocess.Popen(cmd_line_afl, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-def spawn_online_triton(port: int = 5555):
+def spawn_online_triton(port: int = 5555, probe: Tuple[str] = ()):
     tt = ["pastis-triton", "online", "-p", f"{port}"]
+    if len(probe) > 0:
+        tt += ["--probe", f"{probe}"]
     subprocess.Popen(tt, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
