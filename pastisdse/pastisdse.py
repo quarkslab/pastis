@@ -581,7 +581,7 @@ class PastisDSE(object):
             "replay_time": self._replay_acc,
             "seed_accepted": self.seeds_merged,
             "seed_rejected": self.seeds_rejected,
-            "seed_received": self.seeds_merged + self.seeds_merged
+            "seed_received": self.seeds_merged + self.seeds_rejected
         }
         stat_file.write_text(json.dumps(data))
 
