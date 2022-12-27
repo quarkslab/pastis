@@ -3,6 +3,7 @@
 # built-in imports
 import shutil
 
+import os
 import click
 import sys
 import logging
@@ -12,6 +13,7 @@ from pathlib import Path
 
 # Thirs-party imports
 import coloredlogs
+import joblib
 
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode
@@ -217,26 +219,36 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Enable streaming coverage on a ZMQ socket")
 @click.option("-t", "--timeout", type=int, default=15, help="Replay timeout")
 @click.option('--full/--no-full', type=bool, is_flag=True, default=True, help="Replay with full instructions and trace")
+@click.option("--max-threads/--no-max-threads", type=bool, is_flag=True, default=False, help="Enable maximum parrallelizing")
+@click.option("--debug", type=bool, is_flag=True, default=False, help="Enable debugging")
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.argument('pargvs', nargs=-1)
-def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, timeout: int, full: bool, program: str, pargvs: Tuple[str]):
+def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, timeout: int, full: bool,  max_threads: bool, debug: bool, program: str, pargvs: Tuple[str]):
 
-    configure_logging(logging.INFO)
+    configure_logging(logging.DEBUG if debug else logging.INFO)
 
     rtype = ReplayType[type]
     injloc = SeedInjectLoc[injloc]
 
     replayer = Replayer(Path(program), Path(workspace), rtype, injloc, stream, full, timeout, *pargvs)
 
+    def replay_one(replayer, file, i, tot):
+        result = replayer.replay(file)
+
+        res = pp_good("OK") if result else pp_bad("KO")
+        logging.info(f"[{i + 1}/{tot}] replay: {file.name} [{res}]")
+
+
     if live:
         replayer.start()
     else:
         count = sum(1 for _ in replayer.iter())
-        for i, file in enumerate(replayer.iter()):
-            result = replayer.replay(file)
-
-            res = pp_good("OK") if result else pp_bad("KO")
-            logging.info(f"[{i+1}/{count}] replay: {file.name} [{res}]")
+        if max_threads:
+            job_count = os.cpu_count()
+            joblib.Parallel(n_jobs=job_count)(replay_one(replayer, file, i, count) for i, file in enumerate(replayer.iter()))
+        else:
+            for i, file in enumerate(replayer.iter()):
+                replay_one(replayer, file, i, tot)
 
 
 @cli.command(context_settings=dict(show_default=True))
@@ -278,17 +290,18 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
                     f.write("\n".join(f"{x:#08x}" for x in cov.covered_instructions.keys()))
                     f.write("\n")
 
+    # FIXME: saving plot to pdf/png does not save the legend. Need to be fixed
+    # for ws in [Path(x) for x in workspace]:
+    #     out_dir = ws / "plots"
+    #     if not out_dir.exists():
+    #         out_dir.mkdir()
+    #     plotter.save_to(out_dir)
+    #     logging.info(f"plot written to: {out_dir}")
+
     if show:
         logging.info("Show plot")
         plotter.show()
-    else:
-        # Save the plots in all the selected workspaces
-        for ws in [Path(x) for x in workspace]:
-            out_dir = ws / "plots"
-            if not out_dir.exists():
-                out_dir.mkdir()
-            plotter.save_to(out_dir)
-            logging.info(f"plot written to: {out_dir}")
+
 
 
 if __name__ == "__main__":

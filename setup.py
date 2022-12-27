@@ -17,7 +17,8 @@ setup(
                       "python-magic",
                       "quokka-project",
                       "pydantic",
-                      "matplotlib"
+                      "matplotlib",
+                      "joblib"
                       # "libpastis @ git+ssh://gitlab@gitlab.qb/pastis/core/libpastis.git",
                       # "klocwork @ git+ssh://gitlab@gitlab.qb/pastis/core/klocwork.git",
                       # "tritondse @ git+ssh://gitlab@gitlab.qb/pastis/core/tritondse.git",
