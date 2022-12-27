@@ -33,6 +33,20 @@ def configure_logs(level: int):
                         field_styles={'asctime': {'color': 'white'}, 'levelname': {'bold': True}})
 
 
+def load_probe_module(module) -> Optional[ProbeInterface]:
+    # base = module_id.split(":")z
+    try:
+        module = import_module(module)
+    except ImportError as e:
+        logging.error(f"Can't load module: {module}")
+        return
+    classes = getmembers(module, lambda m: isclass(m) and issubclass(m, ProbeInterface) and m != ProbeInterface)
+    if classes:
+        return classes[0][1]()
+    else:
+        logging.error(f"Can't find a ProbeInterface in module: {module}")
+
+
 @click.group()
 @click.version_option(__version__)
 def cli():
@@ -42,7 +56,8 @@ def cli():
 @cli.command()
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
-def online(host: str, port: int):
+@click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
+def online(host: str, port: int, probe: Tuple[str]):
     """
     This is the online mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will try to connect to the broker. Then, the broker
@@ -60,22 +75,13 @@ def online(host: str, port: int):
     # Instanciate the pastis that will register the appropriate callbacks
     pastis = PastisDSE(agent)
 
+    for p in list(probe):
+        probe = load_probe_module(p)
+        if probe:
+            pastis.add_probe(probe)
+
     pastis.init_agent(host, port)
     pastis.run(online=True)
-
-
-def load_probe_module(module) -> Optional[ProbeInterface]:
-    # base = module_id.split(":")z
-    try:
-        module = import_module(module)
-    except ImportError:
-        logging.error(f"Can't load module: {module}")
-        return
-    classes = getmembers(module, lambda m: isclass(m) and issubclass(m, ProbeInterface) and m != ProbeInterface)
-    if classes:
-        return classes[0][1]()
-    else:
-        logging.error(f"Can't find a ProbeInterface in module: {module}")
 
 
 @cli.command(context_settings=dict(show_default=True))
