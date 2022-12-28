@@ -67,6 +67,7 @@ class CampaignResult(object):
     LLVMPROFILE_REPLAY_DIR = "replays_llvmprof"
     REPLAYS_DELTA = "replays_delta"
     CLIENT_STATS = "clients-stats.json"
+    COVERAGE_DIR = "coverages"
 
     def __init__(self, workspace: Union[Path, str]):
         self.workspace = Workspace(Path(workspace))
