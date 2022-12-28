@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Generator, Optional, Union, List, Dict, Tuple, Set
 import os
 import json
+import sys
 import subprocess
 import logging
 import re
@@ -201,7 +202,7 @@ class CampaignResult(object):
         total = sum(1 for _ in self._iter_sorted(folder))
         for i, file in enumerate(self._iter_sorted(folder)):
             # parse name
-            print(f"[{i+1}/{total}] {file}\r", end="")
+            print(f"[{i+1}/{total}] {file}\r", file=sys.stderr, end="")
             meta = self.parse_filename(file.name)
 
             # Get the fuzzer name (and coverage)
