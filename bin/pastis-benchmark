@@ -249,7 +249,7 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
             joblib.Parallel(n_jobs=job_count)(replay_one(replayer, file, i, count) for i, file in enumerate(replayer.iter()))
         else:
             for i, file in enumerate(replayer.iter()):
-                replay_one(replayer, file, i, tot)
+                replay_one(replayer, file, i, count)
 
 
 @cli.command(context_settings=dict(show_default=True))
