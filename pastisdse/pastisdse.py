@@ -161,6 +161,8 @@ class PastisDSE(object):
                     logging.error(f"explorator not meant to be in state: {st}")
                     return False
 
+            # Finished an exploration batch
+            self.save_stats()  # Save stats
 
     def _wait_seed_event(self):
         logging.info("wait to receive seeds")
