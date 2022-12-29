@@ -267,7 +267,6 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
     for ws in workspace:
         logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
-        is_delta = campaign.has_delta_files()
         campaign.load()  # by default load in qbdi
 
         if campaign.replay_ok():
@@ -276,22 +275,19 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
             if show_tt_inputs:
                 plotter.add_triton_input(campaign)
 
-            plotter.print_input_number_stats(campaign)
-            plotter.print_coverage_stats(campaign)
-            plotter.print_triton_stats(campaign)
+            # save stats
+            stats = plotter.calculate_stats(campaign)
+            out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
+            print(f"save stats in: {out_file}")
+            out_file.write_text(stats.json())
+
+            plotter.print_stats(stats)
+            # plotter.print_input_number_stats(campaign)
+            # plotter.print_coverage_stats(campaign)
+            # plotter.print_triton_stats(campaign)
         else:
             logging.warning(f"workspace: {ws} has not been replayed")
 
-        if not is_delta:  # Out of delta files cannot compute the coverage (so do it once on qbdi loading)
-            out_dir = Path(ws) / "coverages"
-            if not out_dir.exists():
-                out_dir.mkdir()
-            for fuzzer, cov in campaign.fuzzers_coverage.items():
-                cov_file = out_dir / f"{fuzzer}.cov"
-                logging.info(f"save coverage file in: {cov_file}")
-                with open(cov_file, "w") as f:
-                    f.write("\n".join(f"{x:#08x}" for x in cov.covered_instructions.keys()))
-                    f.write("\n")
 
     # FIXME: saving plot to pdf/png does not save the legend. Need to be fixed
     # for ws in [Path(x) for x in workspace]:

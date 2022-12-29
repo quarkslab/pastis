@@ -18,7 +18,8 @@ setup(
                       "quokka-project",
                       "pydantic",
                       "matplotlib",
-                      "joblib"
+                      "joblib",
+                      "rich"
                       # "libpastis @ git+ssh://gitlab@gitlab.qb/pastis/core/libpastis.git",
                       # "klocwork @ git+ssh://gitlab@gitlab.qb/pastis/core/klocwork.git",
                       # "tritondse @ git+ssh://gitlab@gitlab.qb/pastis/core/tritondse.git",
