@@ -6,9 +6,14 @@ import matplotlib.pyplot as plt
 import json
 import datetime
 
+# third-party imports
+from rich.console import Console
+from rich.table import Table
+
 # local imports
 from pastisbenchmark.replayer import ReplayType
 from pastisbenchmark.results import InputCovDelta, CampaignResult
+from pastisbenchmark.models import CampaignStats, InputEntry, CoverageEntry, ExecEntry, SeedSharingEntry, SmtEntry
 from tritondse import Config, CoverageStrategy, SmtSolver, BranchSolvingStrategy
 
 
@@ -19,8 +24,6 @@ class Plotter(object):
     FONT_SZ = 15
     LEGEND_SZ = 8
 
-    SEED_FUZZER = "seeds"
-    ALL_FUZZER = "all"
     PLOT_DIR = "plots"
 
     def __init__(self, name: str):
@@ -44,7 +47,9 @@ class Plotter(object):
     def add_campaign_to_plot(self, campaign: CampaignResult):
         """ Iterate all stat_items and generate coverage plot."""
         for fuzzer, results in campaign.results:
-            if fuzzer == self.SEED_FUZZER:
+            if fuzzer == CampaignResult.SEED_FUZZER:
+                continue
+            if fuzzer == CampaignResult.ALL_FUZZER and not campaign.is_full_duplex:
                 continue
             self.add_to_plot(self.ax1, self.format_fuzzer_name(campaign, fuzzer), results)
             self.add_to_plot(self.ax2, self.format_fuzzer_name(campaign, fuzzer), results)
@@ -57,10 +62,10 @@ class Plotter(object):
         plot.plot(X, Y, label=fuzzer, linewidth=2)
 
     def format_fuzzer_name(self, campaign: CampaignResult, fuzzer: str) -> str:
-        if fuzzer == self.ALL_FUZZER:
+        if fuzzer == CampaignResult.ALL_FUZZER:
             return campaign.slug_name
-        elif fuzzer == self.SEED_FUZZER:
-            return self.SEED_FUZZER
+        elif fuzzer == CampaignResult.SEED_FUZZER:
+            return CampaignResult.SEED_FUZZER
         elif "TT" in fuzzer:
             config = campaign.fuzzers_config[fuzzer]
             cov_name = {CoverageStrategy.BLOCK: "B", CoverageStrategy.EDGE: "E", CoverageStrategy.PREFIXED_EDGE: "PE",
@@ -97,57 +102,53 @@ class Plotter(object):
     def save_to(self, dir: Union[str, Path]) -> None:
         plt.savefig(dir / "plot.pdf", dpi=600)
 
-    def print_input_number_stats(self, campaign: CampaignResult):
-        tot_input = sum(len(y) for x, y in campaign.results)
 
-        stats = {}  # Fuzzer -> count
-
-        for fuzzer, results in campaign.results:
-            for item in results:
-                if fuzzer == campaign.ALL_FUZZER:
-                    date, elapsed, fuzzer_id, hash = campaign.parse_filename(item.input_name)
-                    if fuzzer_id in stats:
-                        stats[fuzzer_id] += 1
-                    else:
-                        stats[fuzzer_id] = 1
-                else:
-                    if fuzzer in stats:
-                        stats[fuzzer] += 1
-                    else:
-                        stats[fuzzer] = 1
-        print("Input number stats:")
-        for fuzzer, n in stats.items():
-            print(f"- {self.format_fuzzer_name(campaign, fuzzer)}: {n}  [{n / tot_input:.2%}]")
-        print(f"Total: {tot_input}")
+    def calculate_stats(self, campaign: CampaignResult) -> CampaignStats:
+        input_stats = self._calcul_input_stats(campaign)
+        coverage_stats = self._calcul_coverage_stats(campaign)
+        exec_stats = self._calcul_exec_stats(campaign)
+        seed_sharing_stats = self._calcul_seed_sharing_stats(campaign)
+        smt_stats = self._calcul_smt_stats(campaign, coverage_stats)
+        return CampaignStats(input_stats=input_stats, coverage_stats=coverage_stats, exec_stats=exec_stats,
+                             seed_sharing_stats=seed_sharing_stats, smt_stats=smt_stats)
 
 
-    def print_coverage_stats(self, campaign: CampaignResult):
-        tot_input = sum(len(z.unique_coverage) for x, y in campaign.results for z in y)
+    def _calcul_input_stats(self, campaign: CampaignResult) -> List[InputEntry]:
+        entries = []
 
-        stats = {}  # Fuzzer -> count
+        # FIXME: Compute uniquness
 
-        for fuzzer, results in campaign.results:
-            for item in results:
-                if fuzzer == campaign.ALL_FUZZER:
-                    date, elapsed, fuzzer_id, hash = campaign.parse_filename(item.input_name)
-                    if fuzzer_id in stats:
-                        stats[fuzzer_id] += len(item.unique_coverage)
-                    else:
-                        stats[fuzzer_id] = len(item.unique_coverage)
-                else:
-                    if fuzzer in stats:
-                        stats[fuzzer] += len(item.unique_coverage)
-                    else:
-                        stats[fuzzer] = len(item.unique_coverage)
-        print("Coverage stats:")
-        for fuzzer, n in stats.items():
-            print(f"- {self.format_fuzzer_name(campaign, fuzzer)}: {n}  [{n / tot_input:.2%}]")
-        print(f"Total: {tot_input}")
+        for fuzzer, items in campaign.results:
+            num = len(items)
+            syms = {"CC": 0, "SR": 0, "SW": 0, "DYN": 0}
+            if campaign.is_triton(fuzzer):
+                conf = campaign.fuzzers_config[fuzzer]
+                for file in (Path(conf.workspace) / "corpus").iterdir():
+                    for s in syms:
+                        if s in str(file):
+                            syms[s] += 1
+            entry = InputEntry(engine=fuzzer, number=num, unique=0, condition=syms["CC"],
+                               symread=syms["SR"], symwrite=syms["SW"], symjump=syms["DYN"])
+            entries.append(entry)
+        return entries
 
+    def _calcul_coverage_stats(self, campaign: CampaignResult) -> List[CoverageEntry]:
+        # all_cov = campaign.fuzzers_items[campaign.ALL_FUZZER]
+        seed_cov = campaign.fuzzers_coverage[campaign.SEED_FUZZER]
 
-    def print_triton_stats(self, campaign: CampaignResult) -> None:
-        def tt(secs):
-            return str(datetime.timedelta(seconds=int(secs)))
+        entries = []
+
+        for fuzzer, items in campaign.results:
+            cov = campaign.fuzzers_coverage[fuzzer]
+            num = len(cov.difference(seed_cov)) if fuzzer != campaign.SEED_FUZZER else cov.unique_covitem_covered
+
+            # FIXME: Compute unique & first
+            entry = CoverageEntry(engine=fuzzer, number=num, unique=-1, first=-1, total=cov.unique_covitem_covered)
+            entries.append(entry)
+        return entries
+
+    def _calcul_exec_stats(self, campaign: CampaignResult) -> List[ExecEntry]:
+        entries = []
 
         for fuzzer, config in campaign.fuzzers_config.items():
             try:
@@ -155,23 +156,149 @@ class Plotter(object):
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
                     sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
-                    print(f"---- {fuzzer}: {self.format_fuzzer_name(campaign, fuzzer)} ----")
 
                     # Timing stats
                     tot, replay_time = pstats["total_time"], pstats["replay_time"]
                     sovt = sstats['total_solving_time']
                     dse = tot - replay_time - sovt
-                    print(f"Total: {tt(tot)} | DSE: {tt(dse)} ({dse/tot:.2%}) | SMT: {tt(sovt)} ({sovt/tot:.2%}) | REPLAY: {tt(replay_time)} ({replay_time/tot:.2%})")
 
-                    # Input stats
-                    tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
-                    print(f"Total: {tots} | Accepted: {accs} ({accs/tots:.2%}) |  Rejected: {rejs} ({rejs/tots:.2%})")
-
-                    # Solving stats
-                    stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
-                    print(f"Total: {stot}  SAT: {sat} ({sat/stot:.2%}) | UNSAT: {unsat} ({unsat/stot:.2%}) | TIMEOUT: {to} ({to/stot:.2%})")
-
-                    coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
-                    print(f"Branch resolved: {coved} | Branch not solved: {uncoved}")
+                    entry = ExecEntry(engine=fuzzer, dse=dse, smt=sovt, replay=replay_time, total=tot)
+                    entries.append(entry)
             except FileNotFoundError:
                 logging.error(f"can't find Triton stats for {fuzzer}")
+        return entries
+
+    def _calcul_seed_sharing_stats(self, campaign: CampaignResult) -> List[SeedSharingEntry]:
+        entries = []
+
+        for fuzzer, config in campaign.fuzzers_config.items():
+            try:
+                if campaign.is_triton(fuzzer):
+                    workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
+                    pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
+                    tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
+                    ratio = accs/rejs if rejs else 1
+
+                    entry = SeedSharingEntry(engine=fuzzer, accepted=accs, rejected=rejs, total=tots, ratio=ratio)
+                    entries.append(entry)
+            except FileNotFoundError:
+                logging.error(f"can't find Triton stats for {fuzzer}")
+        return entries
+
+
+    def _calcul_smt_stats(self, campaign: CampaignResult, cov_results: List[CoverageEntry]) -> List[SmtEntry]:
+        cov_data = {cov.engine: cov for cov in cov_results}
+
+        entries = []
+
+        for fuzzer, config in campaign.fuzzers_config.items():
+            try:
+                if campaign.is_triton(fuzzer):
+                    workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
+                    sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
+
+                    # Solving stats
+                    sovt = sstats['total_solving_time']
+                    stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
+                    coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
+                    ratio = cov_data[fuzzer].number / sat if stot else cov_data[fuzzer].number
+                    entry = SmtEntry(engine=fuzzer, sat=sat, unsat=unsat, timeout=to, total=stot, avg_query=sovt/stot,
+                                     cov_sat_ratio=ratio, branch_solved=coved, branch_not_solved=uncoved)
+                    entries.append(entry)
+            except FileNotFoundError:
+                logging.error(f"can't find Triton stats for {fuzzer}")
+        return entries
+
+
+    def print_stats(self, stats: CampaignStats):
+        console = Console()
+
+        for stat in (getattr(stats, x) for x in stats.schema()['properties']):
+            table = Table(show_header=True, title=str(type(stat[0])), header_style="bold magenta")
+            item = stat[0]
+
+            for name, column in {x: getattr(item, x) for x in item.schema()['properties']}.items():
+                table.add_column(name)
+            for item in stat:
+                table.add_row(*[str(getattr(item, x)) for x in item.schema()['properties']])
+            console.print(table)
+
+
+    # def print_input_number_stats(self, campaign: CampaignResult):
+    #     tot_input = sum(len(y) for x, y in campaign.results)
+    #
+    #     stats = {}  # Fuzzer -> count
+    #
+    #     for fuzzer, results in campaign.results:
+    #         for item in results:
+    #             if fuzzer == campaign.ALL_FUZZER:
+    #                 date, elapsed, fuzzer_id, hash = campaign.parse_filename(item.input_name)
+    #                 if fuzzer_id in stats:
+    #                     stats[fuzzer_id] += 1
+    #                 else:
+    #                     stats[fuzzer_id] = 1
+    #             else:
+    #                 if fuzzer in stats:
+    #                     stats[fuzzer] += 1
+    #                 else:
+    #                     stats[fuzzer] = 1
+    #     print("Input number stats:")
+    #     for fuzzer, n in stats.items():
+    #         print(f"- {self.format_fuzzer_name(campaign, fuzzer)}: {n}  [{n / tot_input:.2%}]")
+    #     print(f"Total: {tot_input}")
+    #
+    #
+    # def print_coverage_stats(self, campaign: CampaignResult):
+    #     tot_input = sum(len(z.unique_coverage) for x, y in campaign.results for z in y)
+    #
+    #     stats = {}  # Fuzzer -> count
+    #
+    #     for fuzzer, results in campaign.results:
+    #         for item in results:
+    #             if fuzzer == campaign.ALL_FUZZER:
+    #                 date, elapsed, fuzzer_id, hash = campaign.parse_filename(item.input_name)
+    #                 if fuzzer_id in stats:
+    #                     stats[fuzzer_id] += len(item.unique_coverage)
+    #                 else:
+    #                     stats[fuzzer_id] = len(item.unique_coverage)
+    #             else:
+    #                 if fuzzer in stats:
+    #                     stats[fuzzer] += len(item.unique_coverage)
+    #                 else:
+    #                     stats[fuzzer] = len(item.unique_coverage)
+    #     print("Coverage stats:")
+    #     for fuzzer, n in stats.items():
+    #         print(f"- {self.format_fuzzer_name(campaign, fuzzer)}: {n}  [{n / tot_input:.2%}]")
+    #     print(f"Total: {tot_input}")
+    #
+    #
+    # def print_triton_stats(self, campaign: CampaignResult) -> None:
+    #     def tt(secs):
+    #         return str(datetime.timedelta(seconds=int(secs)))
+    #
+    #     for fuzzer, config in campaign.fuzzers_config.items():
+    #         try:
+    #             if campaign.is_triton(fuzzer):
+    #                 workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
+    #                 pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
+    #                 sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
+    #                 print(f"---- {fuzzer}: {self.format_fuzzer_name(campaign, fuzzer)} ----")
+    #
+    #                 # Timing stats
+    #                 tot, replay_time = pstats["total_time"], pstats["replay_time"]
+    #                 sovt = sstats['total_solving_time']
+    #                 dse = tot - replay_time - sovt
+    #                 print(f"Total: {tt(tot)} | DSE: {tt(dse)} ({dse/tot:.2%}) | SMT: {tt(sovt)} ({sovt/tot:.2%}) | REPLAY: {tt(replay_time)} ({replay_time/tot:.2%})")
+    #
+    #                 # Input stats
+    #                 tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
+    #                 print(f"Total: {tots} | Accepted: {accs} ({accs/tots:.2%}) |  Rejected: {rejs} ({rejs/tots:.2%})")
+    #
+    #                 # Solving stats
+    #                 stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
+    #                 print(f"Total: {stot}  SAT: {sat} ({sat/stot:.2%}) | UNSAT: {unsat} ({unsat/stot:.2%}) | TIMEOUT: {to} ({to/stot:.2%})")
+    #
+    #                 coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
+    #                 print(f"Branch resolved: {coved} | Branch not solved: {uncoved}")
+    #         except FileNotFoundError:
+    #             logging.error(f"can't find Triton stats for {fuzzer}")
