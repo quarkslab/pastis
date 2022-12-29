@@ -18,6 +18,7 @@ class HonggfuzzNotFound(Exception):
 class HonggfuzzProcess:
 
     HFUZZ_ENV_VAR = "HFUZZ_PATH"
+    HFUZZ_THREADS_VAR = "HFUZZ_THREADS"
     BINARY = "honggfuzz"
     STAT_FILE = "statsfile.log"
     VERSION = "2.1"
@@ -36,6 +37,8 @@ class HonggfuzzProcess:
             self.__path = Path(path) / self.BINARY
             if not path.exists():
                 raise Exception("Can't find honggfuzz in HFUZZ_PATH path!")
+
+        self._threads = os.environ.get(self.HFUZZ_THREADS_VAR)
 
         self.__process = None
 
@@ -57,7 +60,8 @@ class HonggfuzzProcess:
             f"--dynamic_input {workspace.dynamic_input_dir}",
             f"--output {workspace.corpus_dir}",
             f"--crashdir {workspace.crash_dir}",
-            f"--workspace {workspace.root_dir}"
+            f"--workspace {workspace.root_dir}",
+            f"--threads {self._threads}" if self._threads else ""
         ])
 
         # Build fuzzer command line.
