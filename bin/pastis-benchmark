@@ -253,6 +253,7 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
             for i, file in enumerate(replayer.iter()):
                 replay_one(replayer, file, i, count)
 
+    replayer.save_fails()
 
 @cli.command(context_settings=dict(show_default=True))
 @click.option('--show/--no-show', type=bool, is_flag=True, default=True, help="Show the plots")
