@@ -115,4 +115,4 @@ class Replayer(object):
 
     def save_fails(self):
         with open(self.workspace.root / self.REPLAY_FAILS_LOG, "w") as f:
-            f.write("\n".join(self._fails))
+            f.write("\n".join(str(x) for x in self._fails))
