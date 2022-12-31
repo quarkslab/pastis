@@ -248,7 +248,8 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
         count = sum(1 for _ in replayer.iter())
         if max_threads:
             job_count = os.cpu_count()
-            joblib.Parallel(n_jobs=job_count)(replay_one(replayer, file, i, count) for i, file in enumerate(replayer.iter()))
+            joblib.Parallel(n_jobs=job_count)(joblib.delayed(replayer.replay)(file) for file in replayer.iter())
+            #joblib.Parallel(n_jobs=job_count)(joblib.delayed(replay_one(replayer, file, i, count) for i, file in enumerate(replayer.iter())))
         else:
             for i, file in enumerate(replayer.iter()):
                 replay_one(replayer, file, i, count)
