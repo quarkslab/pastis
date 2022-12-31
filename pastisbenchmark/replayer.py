@@ -11,7 +11,7 @@ from datetime import datetime
 # third-party
 from pastisbroker.workspace import Workspace, WorkspaceStatus
 from libpastis.types import SeedInjectLoc, SeedType
-from tritondse.trace import QBDITrace
+from tritondse.trace import QBDITrace, TraceException
 from tritondse import CoverageStrategy
 
 
@@ -24,6 +24,7 @@ class Replayer(object):
 
     QBDI_REPLAY_DIR = "replays_qbdi"
     LLVMPROFILE_REPLAY_DIR = "replays_llvmprof"
+    REPLAY_FAILS_LOG = "replay_fails.log"
 
     def __init__(self, program: Path, workspace: Path, type: ReplayType, injloc: SeedInjectLoc,
                  stream: bool = False, full: bool = False, timeout: int = 15, *args):
@@ -35,6 +36,7 @@ class Replayer(object):
         self._inject_loc = injloc
         self._timeout = timeout
         self._args = list(args)
+        self._fails = []
 
         # initiatialize directories
         self._init_directories()
@@ -77,6 +79,11 @@ class Replayer(object):
 
     def _replay_qbdi(self, input: Path) -> bool:
         out_file = self.corpus_replay_dir / (input.name + ".trace")
+
+        if out_file.exists():
+            # The trace has already been generated
+            return True
+
         args = self._args[:]
 
         # If inject on argv try replacing the right argv
@@ -85,14 +92,18 @@ class Replayer(object):
                 idx = args.index("@@")
                 args[idx] = str(input.absolute())
 
-        return QBDITrace.run(CoverageStrategy.EDGE,
-                             str(self.program.absolute()),
-                             args=args,
-                             output_path=str(out_file.absolute()),
-                             stdin_file=input if self._inject_loc == SeedInjectLoc.STDIN else None,
-                             dump_trace=self._full,
-                             cwd=self.program.parent,
-                             timeout=self._timeout)
+        try:
+            return QBDITrace.run(CoverageStrategy.EDGE,
+                                 str(self.program.absolute()),
+                                 args=args,
+                                 output_path=str(out_file.absolute()),
+                                 stdin_file=input if self._inject_loc == SeedInjectLoc.STDIN else None,
+                                 dump_trace=self._full,
+                                 cwd=self.program.parent,
+                                 timeout=self._timeout)
+        except TraceException as e:
+            self._fails.append(input)
+            return False
 
     def _replay_llvm_profile(self, input: Path) -> bool:
         pass
@@ -101,3 +112,7 @@ class Replayer(object):
     def start(self):
         # TODO: Start monitoring folders (and status file)
         pass
+
+    def save_fails(self):
+        with open(self.workspace.root / self.REPLAY_FAILS_LOG, "w") as f:
+            f.write("\n".join(self._fails))
