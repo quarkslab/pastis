@@ -33,6 +33,10 @@ class PastisDSE(object):
     INPUT_FILE_NAME = "input_file"
     STAT_FILE = "pastidse-stats.json"
 
+    RAMDISK = "/mnt/ramdisk"
+    TMP_SEED = "seed.seed"
+    TMP_TRACE = "result.trace"
+
     def __init__(self, agent: ClientAgent):
         self.agent = agent
         self._init_callbacks()  # register callbacks on the given agent
@@ -65,6 +69,19 @@ class PastisDSE(object):
         self._start_time = 0
         self._replay_acc = 0
 
+        self.replay_trace_file, self.replay_seed_file = self._initialize_tmp_files()
+
+    def _initialize_tmp_files(self) -> Tuple[Path, Path]:
+        ramdisk = Path(self.RAMDISK)
+        pid = os.getpid()
+        if ramdisk.exists():  # there is a ramdisk available
+            dir = ramdisk / f"triton_{pid}"
+            dir.mkdir()
+            logging.info(f"tmp directory set to: {dir}")
+            return dir / self.TMP_TRACE, dir / self.TMP_SEED
+        else:
+            logging.info(f"tmp directory set to: /tmp")
+            return Path(f"/tmp/triton_{pid}.trace"), Path("/tmp/triton_{pid}.seed")
 
     def add_probe(self, probe: ProbeInterface):
         self._probes.append(probe)
@@ -507,49 +524,47 @@ class PastisDSE(object):
                 coverage = None
                 logging.info(f"process seed received {seed.hash} (pool: {len(self._seed_queue)})")
 
-                with tempfile.NamedTemporaryFile(delete=True) as f:
-                    data = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.bytes()
-                    Path(f.name).write_bytes(data)
+                data = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.bytes()
+                self.replay_seed_file.write_bytes(data)
 
-                    # Adjust injection location before calling QBDITrace
-                    if self._seedloc == SeedInjectLoc.STDIN:
-                        stdin_file = f.name
-                        argv = self.config.program_argv
-                    else:  # SeedInjectLoc.ARGV
-                        stdin_file = None
-                        try:
-                            # Replace 'input_file' in argv with the temporary file name created
-                            argv = self.config.program_argv[:]
-                            idx = argv.index(self.INPUT_FILE_NAME)
-                            argv[idx] = f.name
-                        except ValueError:
-                            logging.error(f"seed injection {self._seedloc.name} but can't find 'input_file' on program argv")
-                            return
-
-                    # set the longjmp addr if defined
-                    if hasattr(self.program, "longjmp_addr"):
-                        os.environ["TT_LONGJMP_ADDR"] = str(self.program.longjmp_addr)
-
+                # Adjust injection location before calling QBDITrace
+                if self._seedloc == SeedInjectLoc.STDIN:
+                    stdin_file = str(self.replay_seed_file)
+                    argv = self.config.program_argv
+                else:  # SeedInjectLoc.ARGV
+                    stdin_file = None
                     try:
-                        # Run the seed and determine whether it improves our current coverage.
-                        with tempfile.NamedTemporaryFile(delete=False) as trace_file:
-                            t0 = time.time()
-                            if QBDITrace.run(self.config.coverage_strategy,
-                                                  str(self.program.path.resolve()),
-                                                  argv[1:] if len(argv) > 1 else [],
-                                                  output_path=trace_file.name,
-                                                  stdin_file=stdin_file,
-                                                  cwd=Path(self.program.path).parent,
-                                                  timeout=60):
-                                coverage = QBDITrace.from_file(trace_file.name).coverage
-                            else:
-                                logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
-                                coverage = None
-                            self._replay_acc += time.time() - t0  # Save time spent replaying inputs
-                    except FileNotFoundError:
+                        # Replace 'input_file' in argv with the temporary file name created
+                        argv = self.config.program_argv[:]
+                        idx = argv.index(self.INPUT_FILE_NAME)
+                        argv[idx] = str(self.replay_seed_file)
+                    except ValueError:
+                        logging.error(f"seed injection {self._seedloc.name} but can't find 'input_file' on program argv")
+                        return
+
+                # set the longjmp addr if defined
+                if hasattr(self.program, "longjmp_addr"):
+                    os.environ["TT_LONGJMP_ADDR"] = str(self.program.longjmp_addr)
+
+                try:
+                    # Run the seed and determine whether it improves our current coverage.
+                    t0 = time.time()
+                    if QBDITrace.run(self.config.coverage_strategy,
+                                          str(self.program.path.resolve()),
+                                          argv[1:] if len(argv) > 1 else [],
+                                          output_path=str(self.replay_trace_file),
+                                          stdin_file=stdin_file,
+                                          cwd=Path(self.program.path).parent,
+                                          timeout=60):
+                        coverage = QBDITrace.from_file(str(self.replay_trace_file)).coverage
+                    else:
                         logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
-                    except TraceException:
-                        logging.warning('There was an error while trying to re-run the seed')
+                        coverage = None
+                    self._replay_acc += time.time() - t0  # Save time spent replaying inputs
+                except FileNotFoundError:
+                    logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
+                except TraceException:
+                    logging.warning('There was an error while trying to re-run the seed')
 
                 if not coverage:
                     # Add the seed anyway, if it was not possible to re-run the seed.
