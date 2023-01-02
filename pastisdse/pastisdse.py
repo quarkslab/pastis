@@ -568,10 +568,10 @@ class PastisDSE(object):
                         seed.coverage_objectives = self.dse.coverage.new_items_to_cover(coverage)
                         self.dse.add_input_seed(seed)
                     else:
-                        logging.info(f"NOT merging coverage from seed {seed.hash} [{typ.name}]")
+                        logging.info(f"seed archived {seed.hash} [{typ.name}] (NOT merging coverage)")
                         self.seeds_rejected += 1
                         #self.dse.seeds_manager.archive_seed(seed)
-                        logging.info(f"seed archived {seed.hash} [{typ.name}]")
+                        # logging.info(f"seed archived {seed.hash} [{typ.name}]")
 
             self._seed_received.add(seed)  # Remember seed received not to send them back
         except FileNotFoundError as e:
