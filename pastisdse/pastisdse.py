@@ -10,6 +10,7 @@ from pathlib import Path
 import threading
 import platform
 import json
+import queue
 
 # third-party imports
 from triton               import MemoryAccess, CPUSIZE
@@ -60,7 +61,7 @@ class PastisDSE(object):
         self.nb_to, self.nb_crash = 0, 0
         self._cur_cov_count = 0
         self._last_cov_update = time.time()
-        self._seed_queue = []
+        self._seed_queue = queue.Queue()
         self._sending_count = 0
         self.seeds_merged = 0
         self.seeds_rejected = 0
@@ -233,8 +234,9 @@ class PastisDSE(object):
             logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
 
     def try_process_seed_queue(self):
-        while self._seed_queue:
-            seed, typ = self._seed_queue.pop(0)
+
+        while not self._seed_queue.empty() and not self._stop:
+            seed, typ = self._seed_queue.get()
             self._process_seed_received(typ, seed)
 
     def cb_telemetry(self, dse: SymbolicExplorator):
@@ -502,8 +504,8 @@ class PastisDSE(object):
             logging.warning(f"receiving seed already known: {seed.hash} (dropped)")
             return
         else:
-            self._seed_queue.append((seed, typ))
-            logging.info(f"seed received {seed.hash} (pool: {len(self._seed_queue)})")
+            self._seed_queue.put((seed, typ))
+            logging.info(f"seed received {seed.hash} (pool: {self._seed_queue.qsize()})")
 
 
     def _process_seed_received(self, typ: SeedType, seed: Seed):
@@ -522,11 +524,10 @@ class PastisDSE(object):
             else:  # Try running the seed to know whether to keep it
                 # NOTE: re-run the seed regardless of its status
                 coverage = None
-                logging.info(f"process seed received {seed.hash} (pool: {len(self._seed_queue)})")
+                logging.info(f"process seed received {seed.hash} (pool: {self._seed_queue.qsize()})")
 
                 data = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.bytes()
                 self.replay_seed_file.write_bytes(data)
-
                 # Adjust injection location before calling QBDITrace
                 if self._seedloc == SeedInjectLoc.STDIN:
                     stdin_file = str(self.replay_seed_file)
@@ -545,7 +546,6 @@ class PastisDSE(object):
                 # set the longjmp addr if defined
                 if hasattr(self.program, "longjmp_addr"):
                     os.environ["TT_LONGJMP_ADDR"] = str(self.program.longjmp_addr)
-
                 try:
                     # Run the seed and determine whether it improves our current coverage.
                     t0 = time.time()
@@ -567,6 +567,7 @@ class PastisDSE(object):
                     logging.warning('There was an error while trying to re-run the seed')
 
                 if not coverage:
+                    logging.warning(f"coverage not found after replaying: {seed.hash} [{typ.name}] (add it anyway)")
                     # Add the seed anyway, if it was not possible to re-run the seed.
                     # TODO Set seed.coverage_objectives as "empty" (use ellipsis
                     # object). Modify WorklistAddressToSet to support it.
