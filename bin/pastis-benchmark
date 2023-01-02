@@ -220,7 +220,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 @click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location")
 @click.option('--live', type=bool, is_flag=True, default=False, help="Enable replaying input files during the campaign")
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Enable streaming coverage on a ZMQ socket")
-@click.option("-t", "--timeout", type=int, default=15, help="Replay timeout")
+@click.option("-t", "--timeout", type=int, default=60, help="Replay timeout")
 @click.option('--full/--no-full', type=bool, is_flag=True, default=True, help="Replay with full instructions and trace")
 @click.option("--max-threads/--no-max-threads", type=bool, is_flag=True, default=False, help="Enable maximum parrallelizing")
 @click.option("--debug", type=bool, is_flag=True, default=False, help="Enable debugging")
@@ -254,6 +254,7 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
             for i, file in enumerate(replayer.iter()):
                 replay_one(replayer, file, i, count)
 
+    replayer.print_stats()
     replayer.save_fails()
 
 @cli.command(context_settings=dict(show_default=True))

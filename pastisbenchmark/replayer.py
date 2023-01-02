@@ -5,8 +5,9 @@ from typing import Generator, Optional
 import os
 import subprocess
 import logging
+import time
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # third-party
 from pastisbroker.workspace import Workspace, WorkspaceStatus
@@ -37,6 +38,7 @@ class Replayer(object):
         self._timeout = timeout
         self._args = list(args)
         self._fails = []
+        self._tracing_times = []
 
         # initiatialize directories
         self._init_directories()
@@ -93,7 +95,8 @@ class Replayer(object):
                 args[idx] = str(input.absolute())
 
         try:
-            return QBDITrace.run(CoverageStrategy.EDGE,
+            t0 = time.time()
+            res = QBDITrace.run(CoverageStrategy.EDGE,
                                  str(self.program.absolute()),
                                  args=args,
                                  output_path=str(out_file.absolute()),
@@ -101,6 +104,8 @@ class Replayer(object):
                                  dump_trace=self._full,
                                  cwd=self.program.parent,
                                  timeout=self._timeout)
+            self._tracing_times.append(time.time()-t0)
+            return res
         except TraceException as e:
             self._fails.append(input)
             return False
@@ -116,3 +121,10 @@ class Replayer(object):
     def save_fails(self):
         with open(self.workspace.root / self.REPLAY_FAILS_LOG, "w") as f:
             f.write("\n".join(str(x) for x in self._fails))
+
+    def print_stats(self):
+        def tt(secs):
+            return str(timedelta(seconds=int(secs)))
+        sum_tracing = sum(self._tracing_times)
+        mean_replay = sum_tracing / len(self._tracing_times)
+        print(f"Tracing: {tt(sum_tracing)} (avg: {mean_replay}s)")
