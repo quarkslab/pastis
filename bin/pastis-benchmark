@@ -281,7 +281,7 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
             stats = plotter.calculate_stats(campaign)
             out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
             print(f"save stats in: {out_file}")
-            out_file.write_text(stats.json())
+            # out_file.write_text(stats.json())
 
             plotter.print_stats(stats)
             # plotter.print_input_number_stats(campaign)

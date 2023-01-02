@@ -46,17 +46,22 @@ class Plotter(object):
 
     def add_campaign_to_plot(self, campaign: CampaignResult):
         """ Iterate all stat_items and generate coverage plot."""
+        max_elapsed = max(x[1][-1].time_elapsed for x in campaign.results)
         for fuzzer, results in campaign.results:
             if fuzzer == CampaignResult.SEED_FUZZER:
                 continue
             if fuzzer == CampaignResult.ALL_FUZZER and not campaign.is_full_duplex:
                 continue
-            self.add_to_plot(self.ax1, self.format_fuzzer_name(campaign, fuzzer), results)
-            self.add_to_plot(self.ax2, self.format_fuzzer_name(campaign, fuzzer), results)
+            self.add_to_plot(self.ax1, self.format_fuzzer_name(campaign, fuzzer), results, max_elapsed)
+            self.add_to_plot(self.ax2, self.format_fuzzer_name(campaign, fuzzer), results, max_elapsed)
 
-    def add_to_plot(self, plot, fuzzer: str, results: List[InputCovDelta], annotate_tt=False, label_tt=False):
+    def add_to_plot(self, plot, fuzzer: str, results: List[InputCovDelta], max_elapsed, annotate_tt=False, label_tt=False):
         X = [x.time_elapsed for x in results]
         Y = [x.total_coverage for x in results]
+
+        # Add dummy value to make horizontal line
+        X.append(max_elapsed)
+        Y.append(Y[-1])
 
         F = [x.fuzzer for x in results]
         plot.plot(X, Y, label=fuzzer, linewidth=2)
@@ -194,6 +199,7 @@ class Plotter(object):
         for fuzzer, config in campaign.fuzzers_config.items():
             try:
                 if campaign.is_triton(fuzzer):
+                    cov_number = cov_data[fuzzer].number if fuzzer in cov_data else 0
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
 
@@ -201,7 +207,7 @@ class Plotter(object):
                     sovt = sstats['total_solving_time']
                     stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
                     coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
-                    ratio = cov_data[fuzzer].number / sat if stot else cov_data[fuzzer].number
+                    ratio = cov_number / sat if sat else cov_number
                     entry = SmtEntry(engine=fuzzer, sat=sat, unsat=unsat, timeout=to, total=stot, avg_query=sovt/stot,
                                      cov_sat_ratio=ratio, branch_solved=coved, branch_not_solved=uncoved)
                     entries.append(entry)
@@ -214,6 +220,9 @@ class Plotter(object):
         console = Console()
 
         for stat in (getattr(stats, x) for x in stats.schema()['properties']):
+            if not stat:
+                print(f"Stat {stat} is empty")
+                continue
             table = Table(show_header=True, title=str(type(stat[0])), header_style="bold magenta")
             item = stat[0]
 
