@@ -69,7 +69,7 @@ class NetworkAgent(object):
         return True
 
     def start(self):
-        self._th = threading.Thread(target=self._recv_loop, daemon=True)
+        self._th = threading.Thread(name="[LIBPASTIS]", target=self._recv_loop, daemon=True)
         self._th.start()
 
     def run(self):
