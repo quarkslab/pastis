@@ -43,7 +43,7 @@ class PastisDSE(object):
         self.program    = None
         self._stop      = False
         self.klreport   = None
-        self._last_kid  = None
+        self._last_kid = None
         self._last_kid_pc = None
         self._seed_received = set()
         self._probes = []
@@ -56,6 +56,7 @@ class PastisDSE(object):
         self.nb_to, self.nb_crash = 0, 0
         self._cur_cov_count = 0
         self._last_cov_update = time.time()
+        self._seed_queue = []
         self._sending_count = 0
         self.seeds_merged = 0
         self.seeds_rejected = 0
@@ -167,6 +168,7 @@ class PastisDSE(object):
     def _wait_seed_event(self):
         logging.info("wait to receive seeds")
         while not self.dse.seeds_manager.seeds_available() and not self._stop:
+            self.try_process_seed_queue()
             time.sleep(0.5)
 
 
@@ -205,10 +207,18 @@ class PastisDSE(object):
                 alert.validated = True
                 self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content, self._last_kid_pc))
 
+        # Process all the seed received
+        self.try_process_seed_queue()
+
         # Print stats
         if self.klreport:
             d, v = self.klreport.get_stats()
             logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+
+    def try_process_seed_queue(self):
+        while self._seed_queue:
+            seed, typ = self._seed_queue.pop(0)
+            self._process_seed_received(typ, seed)
 
     def cb_telemetry(self, dse: SymbolicExplorator):
         """
@@ -358,6 +368,7 @@ class PastisDSE(object):
 
         # Enable local tracing if the binary is compatible with local architecture
         self._tracing_enabled = self.is_compatible_with_local(self.program)
+        logging.info(f"Local arch and program arch matching: {self._tracing_enabled}")
 
         # Update the coverage strategy in the current config (it overrides the config file one)
         try:
@@ -473,7 +484,19 @@ class PastisDSE(object):
         if seed in self._seed_received:
             logging.warning(f"receiving seed already known: {seed.hash} (dropped)")
             return
+        else:
+            self._seed_queue.append((seed, typ))
+            logging.info(f"seed received {seed.hash} (pool: {len(self._seed_queue)})")
 
+
+    def _process_seed_received(self, typ: SeedType, seed: Seed):
+        """
+        This function is called when we receive a seed from the broker.
+
+        :param typ: The type of the seed
+        :param seed: The seed
+        :return: None
+        """
         try:
             if not self._tracing_enabled:
                 # Accept all seeds
@@ -482,6 +505,7 @@ class PastisDSE(object):
             else:  # Try running the seed to know whether to keep it
                 # NOTE: re-run the seed regardless of its status
                 coverage = None
+                logging.info(f"process seed received {seed.hash} (pool: {len(self._seed_queue)})")
 
                 with tempfile.NamedTemporaryFile(delete=True) as f:
                     data = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.bytes()
@@ -536,15 +560,13 @@ class PastisDSE(object):
                 else:
                     # Check whether the seed improves the current coverage.
                     if self.dse.coverage.improves_coverage(coverage):
-                        logging.info(f"merging coverage from seed {seed.hash} [{typ.name}]")
+                        logging.info(f"seed added {seed.hash} [{typ.name}] (coverage merged)")
                         self.seeds_merged += 1
                         self.dse.coverage.merge(coverage)
                         self.dse.seeds_manager.worklist.update_worklist(coverage)
 
                         seed.coverage_objectives = self.dse.coverage.new_items_to_cover(coverage)
                         self.dse.add_input_seed(seed)
-                        logging.info(f"seed added {seed.hash} [{typ.name}]")
-
                     else:
                         logging.info(f"NOT merging coverage from seed {seed.hash} [{typ.name}]")
                         self.seeds_rejected += 1
@@ -552,7 +574,6 @@ class PastisDSE(object):
                         logging.info(f"seed archived {seed.hash} [{typ.name}]")
 
             self._seed_received.add(seed)  # Remember seed received not to send them back
-            logging.info(f"seed received {seed.hash} [{typ.name}]")
         except FileNotFoundError as e:
             # NOTE If reset() is call during the execution of this function,
             #      self.dse will be set to None and an AttributeError will occur.
