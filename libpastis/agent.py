@@ -55,10 +55,10 @@ class NetworkAgent(object):
     def register_callback(self, typ: MessageType, callback: Callable) -> None:
         self._cbs[typ].append(callback)
 
-    def bind(self, port: int = 5555):
+    def bind(self, port: int = 5555, ip: str = "*"):
         self.socket = self.ctx.socket(zmq.ROUTER)
         self.socket.RCVTIMEO = 500  # 500 milliseconds
-        self.socket.bind(f"tcp://*:{port}")
+        self.socket.bind(f"tcp://{ip}:{port}")
         self.mode = AgentMode.BROKER
 
     def connect(self, remote: str = "localhost", port: int = 5555) -> bool:
@@ -137,8 +137,12 @@ class NetworkAgent(object):
             logging.error(f"invalid message type: {type(msg)} (cannot find associated topic)")
 
     def __broker_transfer_to_callback(self, id: bytes, message: bytes):
-        msg = EnvelopeMsg()
-        msg.ParseFromString(message)
+        try:
+            msg = EnvelopeMsg()
+            msg.ParseFromString(message)
+        except:
+            logging.error(f"can't parse message from {id} (len:{len(message)})")
+            return
         message, topic = self._unpack_message(msg)
         if topic in [MessageType.START]:
             logging.error(f"Invalid message of type {topic.name} received")
