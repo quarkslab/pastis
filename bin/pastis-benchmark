@@ -139,9 +139,10 @@ def showmap(bins: str):
 @click.option('--hfuzz-path', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), required=False, help="Custom Honggfuzz path")
 @click.option('--hfuzz-threads', type=int, default=0, help="Number of threads to launch Honggfuzz with")
 @click.option('--spawn/--no-spawn', type=bool, is_flag=True, default=True, help="Either to spawn engines or not")
+@click.option("--allow-remote", type=bool, is_flag=True, default=False, help="Enable remote connection")
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool, debug: bool,
-        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool, probe: Tuple[str]):
+        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool, allow_remote: bool, probe: Tuple[str]):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
@@ -209,7 +210,8 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
             logging.warning("Triton enabled but no configuration found")
 
     # Bind it and start listening (clients can connect)
-    broker.bind(port)
+    ip = "*" if allow_remote else "127.0.0.1"
+    broker.bind(port, ip)
     broker.run(timeout)
 
 
