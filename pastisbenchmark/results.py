@@ -29,27 +29,22 @@ class InputCovDelta(BaseModel):
     input_name: str            # Input name
     fuzzer: str                # The fuzzer that found that input
 
-    # The coverage of this one input (len(covered_items))
-    coverage: int
-    # Coverage found by this seed that was not previsouly hit (not in global_coverage)
-    unique_coverage: Set[CovItem]
-    # The total coverage of the fuzz campaign at this point
-    total_coverage: int
+    # Trace generic info
+    unique_items_covered_count: int            # The coverage of this one input (len(covered_items))
+    unique_insts_covered_count: int            # Instruction coverage of that input
 
-    # Instruction coverage of that input
-    coverage_insts: int
-    # Total instruction coverage at this point
-    total_coverage_insts: int
-    # Instr
-    unique_coverage_insts: Set[int]
+    # Local to the fuzzer
+    fuzzer_new_items_covered: Set[CovItem]  # New items covered by THIS fuzzer
+    fuzzer_coverage_sum: int            # Sum of covered items by THIS fuzzer at this point
+    fuzzer_inst_coverage_sum: int       # Sum of unique instructions covered by THIS FUZZER at this point
+    fuzzer_new_insts_covered: Set[int]  # Instr
 
-    @property
-    def new_coverage_count(self) -> int:
-        return len(self.unique_coverage)
+    # Global accros all fuzzers of the campaign
+    overall_new_items_covered: Set[CovItem]  # New items covered by this fuzzer agains ALL THE OTHERS
+    overall_coverage_sum: int            # The total coverage of the fuzz campaign at this point
+    overall_inst_coverage_sum: int       # Total instruction coverage at this point
+    overall_new_insts_covered: Set[int]  # Instr
 
-    @property
-    def new_instruction_count(self) -> int:
-        return len(self.unique_coverage_insts)
 
     def is_initial_input(self) -> bool:
         return self.fuzzer == "seeds"
@@ -104,6 +99,10 @@ class CampaignResult(object):
         return bool(self.mode == BrokingMode.FULL)
 
     @property
+    def is_half_duplex(self) -> bool:
+        return bool(self.mode == BrokingMode.NO_TRANSMIT)
+
+    @property
     def slug_name(self) -> str:
         print(self.fuzzers_config.keys())
         data = ["AFL++" if any(("AFLPP" in x for x in self.fuzzers_config)) else "",
@@ -112,7 +111,7 @@ class CampaignResult(object):
         if self.is_full_duplex:
             return f"PASTIS[{'|'.join(x for x in data if x)}]"
         else:
-            return "PASTIS()"
+            return f"U[{'|'.join(x for x in data if x)}]"
 
     @property
     def results(self):
@@ -217,39 +216,50 @@ class CampaignResult(object):
 
             self._init_fuzzer_stats(fuzzer)
 
-            fuzzer_coverage = self.fuzzers_coverage[fuzzer]
-            all_coverage = self.fuzzers_coverage[self.ALL_FUZZER]
-
             cov = QBDITrace.from_file(file).coverage
 
             # Compute differences to know what has been covered
-            if self.is_full_duplex:
-                new_items = cov - all_coverage
-                new_instrs = cov.covered_instructions.keys() - all_coverage.covered_instructions.keys()
-            else:  # NO_TRANSMIT
-                new_items = cov - fuzzer_coverage
-                new_instrs = cov.covered_instructions.keys() - fuzzer_coverage.covered_instructions.keys()
+            if self.is_half_duplex:
+                fuzzer_coverage = self.fuzzers_coverage[fuzzer]   # get the fuzzer coverage at this point
+                local_new_items = cov - fuzzer_coverage
+                local_new_instrs = cov.covered_instructions.keys() - fuzzer_coverage.covered_instructions.keys()
+                fuzzer_coverage.merge(cov)   # Merge the new coverage
+                cov_sum = fuzzer_coverage.unique_covitem_covered
+                inst_sum = fuzzer_coverage.unique_instruction_covered
+            else:  # FULL DUPLEX
+                local_new_items, local_new_instrs, cov_sum, inst_sum = set(), set(), 0, 0
 
-            # Update global coverage
-            fuzzer_coverage.merge(cov)
 
-            # Update the total coverage (all fuzzers all together)
-            all_coverage.merge(cov)
+            # Update coverage and info OVERALL
+            all_coverage = self.fuzzers_coverage[self.ALL_FUZZER]  # get the overall coverage
+            overall_new_items = cov - all_coverage                 # compute new items
+            overall_new_instrs = cov.covered_instructions.keys() - all_coverage.covered_instructions.keys()
+            all_coverage.merge(cov)                                # Merge all of them (all fuzzers all together)
+
 
             # Create an InputCovDelta
             statitem = InputCovDelta(
                 time_elapsed=0 if meta is None else meta[1],
                 input_name=file.name,
                 fuzzer=fuzzer,
-                coverage=cov.unique_covitem_covered,  # number of items covered
-                unique_coverage=new_items,
-                total_coverage=fuzzer_coverage.unique_covitem_covered,  # total items covered
-                coverage_insts=cov.unique_instruction_covered,
-                total_coverage_insts=fuzzer_coverage.unique_instruction_covered,
-                unique_coverage_insts=new_instrs
-
+                # Trace generic info
+                unique_items_covered_count=cov.unique_covitem_covered,         # The coverage of this one input (len(covered_items))
+                unique_insts_covered_count=cov.unique_instruction_covered, # Instruction coverage of that input
+                # Local to the fuzzer
+                fuzzer_new_items_covered=local_new_items, # New items covered by THIS fuzzer
+                fuzzer_coverage_sum=cov_sum,              # Sum of covered items by THIS fuzzer at this point
+                fuzzer_inst_coverage_sum=inst_sum,        # Sum of unique instructions covered by THIS FUZZER at this point
+                fuzzer_new_insts_covered=local_new_instrs,# Instr
+                # Global accros all fuzzers of the campaign
+                overall_new_items_covered=overall_new_items,              # New items covered by this fuzzer agains ALL THE OTHERS
+                overall_coverage_sum=all_coverage.unique_covitem_covered, # The total coverage of the fuzz campaign at this point
+                overall_inst_coverage_sum=all_coverage.unique_instruction_covered, # Total instruction coverage at this point
+                overall_new_insts_covered=overall_new_instrs
             )
-            self.fuzzers_items[fuzzer].append(statitem)
+
+            if self.is_half_duplex:
+                self.fuzzers_items[fuzzer].append(statitem)
+
             self.fuzzers_items[self.ALL_FUZZER].append(statitem)
 
             # Write the delta file
