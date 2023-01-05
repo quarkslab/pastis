@@ -262,9 +262,10 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
 @cli.command(context_settings=dict(show_default=True))
 @click.option('--show/--no-show', type=bool, is_flag=True, default=True, help="Show the plots")
 @click.option('--show-tt-inputs', type=bool, is_flag=True, default=False, help="Show the Triton inputs")
+@click.option('--union/--no-union', type=bool, is_flag=True, default=True, help="Show union of analyses")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
-def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
+def plot(show: bool, show_tt_inputs: bool, union: bool, name: str, workspace: Tuple[str]):
 
     configure_logging(logging.INFO)
 
@@ -275,7 +276,7 @@ def plot(show: bool, show_tt_inputs: bool, name: str, workspace: Tuple[str]):
         campaign.load()  # by default load in qbdi
 
         if campaign.replay_ok():
-            plotter.add_campaign_to_plot(campaign)
+            plotter.add_campaign_to_plot(campaign, show_union=union)
 
             if show_tt_inputs:
                 plotter.add_triton_input(campaign)

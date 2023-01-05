@@ -1,20 +1,18 @@
 # built-in imports
 import logging
 from pathlib import Path
-from typing import Generator, Optional, Union, List
+from typing import Union, List
 import matplotlib.pyplot as plt
 import json
-import datetime
 
 # third-party imports
 from rich.console import Console
 from rich.table import Table
 
 # local imports
-from pastisbenchmark.replayer import ReplayType
 from pastisbenchmark.results import InputCovDelta, CampaignResult
 from pastisbenchmark.models import CampaignStats, InputEntry, CoverageEntry, ExecEntry, SeedSharingEntry, SmtEntry
-from tritondse import Config, CoverageStrategy, SmtSolver, BranchSolvingStrategy
+from tritondse import CoverageStrategy, SmtSolver, BranchSolvingStrategy
 
 
 class Plotter(object):
@@ -44,27 +42,28 @@ class Plotter(object):
         if is_log:
             plot.set_xscale("log")
 
-    def add_campaign_to_plot(self, campaign: CampaignResult):
+    def add_campaign_to_plot(self, campaign: CampaignResult, show_union: bool=True):
         """ Iterate all stat_items and generate coverage plot."""
         max_elapsed = max(x[1][-1].time_elapsed for x in campaign.results)
         for fuzzer, results in campaign.results:
+            is_all_fuzzer = bool(fuzzer == CampaignResult.ALL_FUZZER)
             if fuzzer == CampaignResult.SEED_FUZZER:
                 continue
-            if fuzzer == CampaignResult.ALL_FUZZER and not campaign.is_full_duplex:
+            if is_all_fuzzer and campaign.is_half_duplex and not show_union:
                 continue
-            self.add_to_plot(self.ax1, self.format_fuzzer_name(campaign, fuzzer), results, max_elapsed)
-            self.add_to_plot(self.ax2, self.format_fuzzer_name(campaign, fuzzer), results, max_elapsed)
+            self.add_to_plot(self.ax1, self.format_fuzzer_name(campaign, fuzzer), results, max_elapsed, is_all_fuzzer)
+            self.add_to_plot(self.ax2, self.format_fuzzer_name(campaign, fuzzer), results, max_elapsed, is_all_fuzzer)
 
-    def add_to_plot(self, plot, fuzzer: str, results: List[InputCovDelta], max_elapsed, annotate_tt=False, label_tt=False):
-        X = [x.time_elapsed for x in results]
-        Y = [x.total_coverage for x in results]
+    def add_to_plot(self, plot, fuzzer: str, results: List[InputCovDelta], max_elapsed, use_global: bool, annotate_tt=False, label_tt=False):
+        xaxe = [x.time_elapsed for x in results]
+        yaxe = [(x.overall_coverage_sum if use_global else x.fuzzer_coverage_sum) for x in results]
 
         # Add dummy value to make horizontal line
-        X.append(max_elapsed)
-        Y.append(Y[-1])
+        xaxe.append(max_elapsed)
+        yaxe.append(yaxe[-1])
 
         F = [x.fuzzer for x in results]
-        plot.plot(X, Y, label=fuzzer, linewidth=2)
+        plot.plot(xaxe, yaxe, label=fuzzer, linewidth=2)
 
     def format_fuzzer_name(self, campaign: CampaignResult, fuzzer: str) -> str:
         if fuzzer == CampaignResult.ALL_FUZZER:
