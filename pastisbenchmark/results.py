@@ -104,7 +104,6 @@ class CampaignResult(object):
 
     @property
     def slug_name(self) -> str:
-        print(self.fuzzers_config.keys())
         data = ["AFL++" if any(("AFLPP" in x for x in self.fuzzers_config)) else "",
                 "Hfuzz" if any(("HF" in x for x in self.fuzzers_config)) else "",
                 "TritonDSE" if any(("TT" in x for x in self.fuzzers_config)) else ""]
@@ -121,17 +120,16 @@ class CampaignResult(object):
         if not self.replay_delta_dir.exists():
             self.replay_delta_dir.mkdir()
 
-    def _init_fuzzer_stats(self, fuzzer_name: str) -> None:
-        if fuzzer_name in self.fuzzers_items:
+    def _init_fuzzer_coverage(self, fuzzer_name: str) -> None:
+        if fuzzer_name in self.fuzzers_coverage:
             return None
 
         # consider seed inputs as common to all
-        if self.SEED_FUZZER in self.fuzzers_items:
+        if self.SEED_FUZZER in self.fuzzers_coverage:
             cov = self.fuzzers_coverage[self.SEED_FUZZER].clone()
         else: # else create an empty coverage file
             cov = GlobalCoverage(CoverageStrategy.EDGE, BranchSolvingStrategy.ALL_NOT_COVERED)
 
-        self.fuzzers_items[fuzzer_name] = []
         self.fuzzers_coverage[fuzzer_name] = cov
 
     @staticmethod
@@ -184,24 +182,26 @@ class CampaignResult(object):
     def load(self, type: ReplayType = ReplayType.qbdi) -> None:
         logging.info(f"load in {type.name} [mode:{self.mode.name}]")
         if self.has_delta_files():
-            self.load_delta()
+            items = self.load_delta_directory()
             self.load_coverage()  # If delta, coverage files shall also be present
         elif type == ReplayType.qbdi:
-            self.load_qbdi()
+            items = self.load_qbdi()
             self.save_coverage()  # Once loaded save coverage files
         elif type == ReplayType.llvm_profile:
             self.load_llvmprofile()
         else:
             assert False
+        self.load_delta(items)
 
-
-    def load_qbdi(self) -> None:
+    def load_qbdi(self) -> List[Tuple[str, InputCovDelta]]:
         logging.info("load qbdi trace files")
         folder = self.workspace.root / self.QBDI_REPLAY_DIR
         total = sum(1 for _ in self._iter_sorted(folder))
 
+        items = []
+
         # initialize a "all" fuzzer in all cases
-        self._init_fuzzer_stats(self.ALL_FUZZER)
+        self._init_fuzzer_coverage(self.ALL_FUZZER)
 
         for i, file in enumerate(self._iter_sorted(folder)):
             # parse name
@@ -214,7 +214,7 @@ class CampaignResult(object):
             else:
                 fuzzer = meta[2]
 
-            self._init_fuzzer_stats(fuzzer)
+            self._init_fuzzer_coverage(fuzzer)
 
             cov = QBDITrace.from_file(file).coverage
 
@@ -257,24 +257,21 @@ class CampaignResult(object):
                 overall_new_insts_covered=overall_new_instrs
             )
 
-            if self.is_half_duplex:
-                self.fuzzers_items[fuzzer].append(statitem)
-
-            self.fuzzers_items[self.ALL_FUZZER].append(statitem)
+            items.append((fuzzer, statitem))
 
             # Write the delta file
             with open(self.replay_delta_dir / (file.name+".json"), 'w') as f:
                 f.write(statitem.json())
-
+        return items
 
     def load_llvmprofile(self) -> None:
         # TODO: to implement
         pass
 
-    def load_delta(self) -> None:
+    def load_delta_directory(self) -> List[Tuple[str, InputCovDelta]]:
         logging.info("load delta directory")
 
-        self.fuzzers_items[self.ALL_FUZZER] = []
+        items = []
 
         for file in self._iter_sorted(self.replay_delta_dir):
             meta = self.parse_filename(file.name)
@@ -285,12 +282,25 @@ class CampaignResult(object):
             else:
                 fuzzer = meta[2]
 
-            if fuzzer not in self.fuzzers_items:
-                self.fuzzers_items[fuzzer] = []
-
             delta = InputCovDelta.parse_file(file)
-            self.fuzzers_items[fuzzer].append(delta)
-            self.fuzzers_items[self.ALL_FUZZER].append(delta)
+            items.append((fuzzer, delta))
+        return items
+
+    def load_delta(self, items: List[Tuple[str, InputCovDelta]]) -> None:
+        self.fuzzers_items[self.SEED_FUZZER] = []
+        self.fuzzers_items[self.ALL_FUZZER] = []
+
+        for fuzzer, item in items:
+            if fuzzer in self.fuzzers_items:
+                self.fuzzers_items[fuzzer].append(item)
+                self.fuzzers_items[self.ALL_FUZZER].append(item)
+            else:  # Fuzzer does not exists
+                if self.is_half_duplex:
+                    self.fuzzers_items[fuzzer] = [item]
+
+                if fuzzer != self.SEED_FUZZER:  # Add in ALL, all that are not seed ones
+                    self.fuzzers_items[self.ALL_FUZZER].append(item)
+
 
     def save_coverage(self):
         cov_dir = self.workspace.root / self.COVERAGE_DIR
