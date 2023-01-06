@@ -309,6 +309,18 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, name: str, workspace: Tu
 
 
 
+@cli.command(context_settings=dict(show_default=True))
+@click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True))
+def history(workspace: str):
+
+    logging.info(f"Load workspace: {workspace}")
+    campaign = CampaignResult(Path(workspace))
+    campaign.load()
+
+    plotter = Plotter(workspace)
+    plotter.show_delta_history(campaign)
+
+
 if __name__ == "__main__":
     cli()
 
