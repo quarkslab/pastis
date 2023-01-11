@@ -263,13 +263,14 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
 @click.option('--show/--no-show', type=bool, is_flag=True, default=True, help="Show the plots")
 @click.option('--show-tt-inputs', type=bool, is_flag=True, default=False, help="Show the Triton inputs")
 @click.option('--union/--no-union', type=bool, is_flag=True, default=True, help="Show union of analyses")
+@click.option('-t', "--timeout", type=int, default=86400, help="Duration of the campaign (timeout)")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
-def plot(show: bool, show_tt_inputs: bool, union: bool, name: str, workspace: Tuple[str]):
+def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, workspace: Tuple[str]):
 
     configure_logging(logging.INFO)
 
-    plotter = Plotter(name)
+    plotter = Plotter(name, timeout)
     for ws in workspace:
         logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
@@ -282,12 +283,12 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, name: str, workspace: Tu
                 plotter.add_triton_input(campaign)
 
             # save stats
-            stats = plotter.calculate_stats(campaign)
-            out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
-            print(f"save stats in: {out_file}")
+            #stats = plotter.calculate_stats(campaign)
+            #out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
+            #print(f"save stats in: {out_file}")
             # out_file.write_text(stats.json())
 
-            plotter.print_stats(stats)
+            #plotter.print_stats(stats)
             # plotter.print_input_number_stats(campaign)
             # plotter.print_coverage_stats(campaign)
             # plotter.print_triton_stats(campaign)

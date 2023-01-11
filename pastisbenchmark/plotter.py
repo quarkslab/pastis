@@ -27,9 +27,10 @@ class Plotter(object):
 
     PLOT_DIR = "plots"
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, timeout: int):
         self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2)
         self.name = name
+        self._timeout = timeout
 
         # self._configure_plot(self.ax1, ylabel="coverage (edge)")
         # self._configure_plot(self.ax2, ylabel="coverage (edge)", is_log=True)
@@ -47,7 +48,6 @@ class Plotter(object):
 
     def add_campaign_to_plot(self, campaign: CampaignResult, show_union: bool=True):
         """ Iterate all stat_items and generate coverage plot."""
-        max_elapsed = max(x[1][-1].time_elapsed for x in campaign.results)
         for fuzzer, results in campaign.results:
             is_all_fuzzer = bool(fuzzer == CampaignResult.ALL_FUZZER)
             if fuzzer == CampaignResult.SEED_FUZZER:
@@ -60,17 +60,17 @@ class Plotter(object):
             # fmt = self.format_plot(fuzzer, campaign.is_full_duplex)
 
             marker = "--" if campaign.is_half_duplex and is_all_fuzzer else "-"
-            color = self.format_plot(fuzzer, campaign.is_full_duplex)
+            color = self.format_plot(campaign, fuzzer)
 
-            self.add_to_plot(self.ax1, name, results, max_elapsed, is_all_fuzzer, linestyle=marker, color=color)
-            self.add_to_plot(self.ax2, name, results, max_elapsed, is_all_fuzzer, linestyle=marker, color=color)
+            self.add_to_plot(self.ax1, name, results, is_all_fuzzer, linestyle=marker, color=color)
+            self.add_to_plot(self.ax2, name, results, is_all_fuzzer, linestyle=marker, color=color)
 
-    def add_to_plot(self, plot, fuzzer: str, results: List[InputCovDelta], max_elapsed, use_global: bool, **kwargs):
+    def add_to_plot(self, plot, fuzzer: str, results: List[InputCovDelta], use_global: bool, **kwargs):
         xaxe = [x.time_elapsed for x in results]
         yaxe = [(x.overall_coverage_sum if use_global else x.fuzzer_coverage_sum) for x in results]
 
         # Add dummy value to make horizontal line
-        xaxe.append(max_elapsed)
+        xaxe.append(self._timeout)
         yaxe.append(yaxe[-1])
 
         plot.plot(xaxe, yaxe, label=fuzzer, linewidth=2, **kwargs)
@@ -100,9 +100,15 @@ class Plotter(object):
         else:
             return fuzzer
 
-    def format_plot(self, fuzzer, full_duplex) -> str:
+    def format_plot(self, campaign, fuzzer) -> str:
+        green = "#30a230"
+        grey = "#1f77b4"
+        brown = "#944b0c"
         if fuzzer == CampaignResult.ALL_FUZZER:
-            return "#30a230" if full_duplex else "#1f77b4"
+            if campaign.is_full_duplex:
+                return green if campaign.has_honggfuzz() else brown
+            else:
+                return grey
         elif "TT" in fuzzer:
             return "#d62728"
         elif "AFLPP" in fuzzer:

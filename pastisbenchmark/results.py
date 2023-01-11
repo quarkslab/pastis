@@ -91,6 +91,12 @@ class CampaignResult(object):
             else:
                 self.fuzzers_config[id] = conf
 
+    def has_honggfuzz(self):
+        for fuzz in self.fuzzers_items.keys():
+            if "HF" in fuzz:
+                return True
+        return False
+
     @staticmethod
     def is_triton(fuzzer: str) -> bool:
         return "TT" in fuzzer
