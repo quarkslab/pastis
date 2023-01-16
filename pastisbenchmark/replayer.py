@@ -125,6 +125,9 @@ class Replayer(object):
     def print_stats(self):
         def tt(secs):
             return str(timedelta(seconds=int(secs)))
+        if not self._tracing_times:
+            print("nothing replayed")
+            return
         sum_tracing = sum(self._tracing_times)
         mean_replay = sum_tracing / len(self._tracing_times)
         print(f"Tracing: {tt(sum_tracing)} (avg: {mean_replay}s)")

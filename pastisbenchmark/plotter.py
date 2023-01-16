@@ -69,6 +69,10 @@ class Plotter(object):
         xaxe = [x.time_elapsed for x in results]
         yaxe = [(x.overall_coverage_sum if use_global else x.fuzzer_coverage_sum) for x in results]
 
+        if not yaxe:
+            print(f"no plot for {fuzzer}")
+            return
+
         # Add dummy value to make horizontal line
         xaxe.append(self._timeout)
         yaxe.append(yaxe[-1])
@@ -212,14 +216,21 @@ class Plotter(object):
                 if campaign.is_triton(fuzzer):
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
-                    sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
 
                     # Timing stats
                     tot, replay_time = pstats["total_time"], pstats["replay_time"]
-                    sovt = sstats['total_solving_time']
-                    dse = tot - replay_time - sovt
+                    emu_time = pstats.get("emulation_time", 0)
 
-                    entry = ExecEntry(engine=fuzzer, dse=dse, smt=sovt, replay=replay_time, total=tot)
+                    solv_time = pstats.get("solving_time")
+                    if solv_time is None:
+                        sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
+                        solv_time = sstats['total_solving_time']
+
+                    dse = emu_time - replay_time
+                    run_time = dse + replay_time + solv_time
+                    wait = tot - run_time
+
+                    entry = ExecEntry(engine=fuzzer, dse=dse, smt=solv_time, replay=replay_time, total=run_time, wait=wait)
                     entries.append(entry)
             except FileNotFoundError:
                 logging.error(f"can't find Triton stats for {fuzzer}")
