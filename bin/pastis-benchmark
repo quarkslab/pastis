@@ -283,12 +283,12 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
                 plotter.add_triton_input(campaign)
 
             # save stats
-            #stats = plotter.calculate_stats(campaign)
-            #out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
-            #print(f"save stats in: {out_file}")
-            # out_file.write_text(stats.json())
+            stats = plotter.calculate_stats(campaign)
+            out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
+            print(f"save stats in: {out_file}")
+            out_file.write_text(stats.json())
 
-            #plotter.print_stats(stats)
+            plotter.print_stats(stats)
             # plotter.print_input_number_stats(campaign)
             # plotter.print_coverage_stats(campaign)
             # plotter.print_triton_stats(campaign)
@@ -318,7 +318,7 @@ def history(workspace: str):
     campaign = CampaignResult(Path(workspace))
     campaign.load()
 
-    plotter = Plotter(workspace)
+    plotter = Plotter(workspace, 0)
     plotter.show_delta_history(campaign)
 
 

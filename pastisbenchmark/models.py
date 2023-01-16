@@ -20,10 +20,11 @@ class CoverageEntry(BaseModel):
 
 class ExecEntry(BaseModel):
     engine: str
-    dse: int
-    smt: int
-    replay: int
-    total: int
+    dse: float
+    smt: float
+    replay: float
+    total: float
+    wait: float
 
 class SeedSharingEntry(BaseModel):
     engine: str
@@ -39,7 +40,7 @@ class SmtEntry(BaseModel):
     timeout: int
     total: int
     avg_query: float
-    cov_sat_ratio: int
+    cov_sat_ratio: float
     branch_solved: int
     branch_not_solved: int
 
