@@ -279,21 +279,77 @@ class Plotter(object):
         return entries
 
 
-    def print_stats(self, stats: CampaignStats):
+    def print_stats(self, campaign: CampaignResult, stats: CampaignStats):
         console = Console()
 
-        for stat in (getattr(stats, x) for x in stats.schema()['properties']):
-            if not stat:
-                print(f"Stat {stat} is empty")
-                continue
-            table = Table(show_header=True, title=str(type(stat[0])), header_style="bold magenta")
-            item = stat[0]
+        def sfmt(seconds, total, w = True) -> str:
+            m, s = divmod(seconds, 60)
+            h, m = divmod(m, 60)
+            s = int(s) if int(s) > 0 else f"{s:.2f}"
+            t = (f"{int(h)}h" if h else '') + f"{int(m)}m{s}s"
+            perc = f"{seconds / total:.2%}"
+            return f"{t} ({perc})" if w else t
 
-            for name, column in {x: getattr(item, x) for x in item.schema()['properties']}.items():
-                table.add_column(name)
-            for item in stat:
-                table.add_row(*[str(getattr(item, x)) for x in item.schema()['properties']])
-            console.print(table)
+
+        # InputEntry
+        table = Table(show_header=True, title="COVERAGE", header_style="bold magenta")
+        for name in ["engine", "#input", "#unique", "CC", "SR", "SW", "SDYN"]:
+            table.add_column(name)
+        for it in stats.input_stats:
+            fname = self.format_fuzzer_name(campaign, it.engine, False)
+            table.add_row(fname, str(it.number), str(it.unique), str(it.condition), str(it.symread), str(it.symwrite), str(it.symjump))
+        console.print(table)
+
+        # Coverage
+        table = Table(show_header=True, title="INPUTS", header_style="bold magenta")
+        for name in ["engine", "number", "unique", "first", "total"]:
+            table.add_column(name)
+        for it in stats.coverage_stats:
+            fname = self.format_fuzzer_name(campaign, it.engine, False)
+            table.add_row(fname, str(it.number), str(it.unique), str(it.first), str(it.total))
+        console.print(table)
+
+        # ExecEntry
+        table = Table(show_header=True, title="EXECUTION", header_style="bold magenta")
+        for name in ["engine", "DSE", "SMT", "replay", "total", "wait"]:
+            table.add_column(name)
+        for it in stats.exec_stats:
+            fname = self.format_fuzzer_name(campaign, it.engine, False)
+            tot = it.total
+            table.add_row(fname, sfmt(it.dse, tot), sfmt(it.smt, tot), sfmt(it.replay, tot), sfmt(tot, tot, False), sfmt(it.wait, tot, False))
+        console.print(table)
+
+        # SeedSharingEntry
+        table = Table(show_header=True, title="SEED SHARING", header_style="bold magenta")
+        for name in ["engine", "accepted", "rejected", "total", "ratio"]:
+            table.add_column(name)
+        for it in stats.seed_sharing_stats:
+            fname = self.format_fuzzer_name(campaign, it.engine, False)
+            table.add_row(fname, str(it.accepted), str(it.rejected), str(it.total), f"{it.ratio:.2f}")
+        console.print(table)
+
+        # SmtEntry
+        table = Table(show_header=True, title="SMT SOLVING", header_style="bold magenta")
+        for name in ["engine", "SAT", "UNSAT", "TO", "Total", "mean query", "cov/input", "branches solved", "branches not solved"]:
+            table.add_column(name)
+        for it in stats.smt_stats:
+            fname = self.format_fuzzer_name(campaign, it.engine, False)
+            table.add_row(fname, str(it.sat), str(it.unsat), str(it.timeout), str(it.total), f"{it.avg_query:.2f}", f"{it.cov_sat_ratio:.2f}", str(it.branch_solved), str(it.branch_not_solved))
+        console.print(table)
+
+
+        # for stat in (getattr(stats, x) for x in stats.schema()['properties']):
+        #     if not stat:
+        #         print(f"Stat {stat} is empty")
+        #         continue
+        #     table = Table(show_header=True, title=str(type(stat[0])), header_style="bold magenta")
+        #     item = stat[0]
+        #
+        #     for name, column in {x: getattr(item, x) for x in item.schema()['properties']}.items():
+        #         table.add_column(name)
+        #     for item in stat:
+        #         table.add_row(*[str(getattr(item, x)) for x in item.schema()['properties']])
+        #     console.print(table)
 
 
 

@@ -290,7 +290,7 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
             print(f"save stats in: {out_file}")
             out_file.write_text(stats.json())
 
-            plotter.print_stats(stats)
+            plotter.print_stats(campaign, stats)
             # plotter.print_input_number_stats(campaign)
             # plotter.print_coverage_stats(campaign)
             # plotter.print_triton_stats(campaign)
