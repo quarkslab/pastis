@@ -617,6 +617,8 @@ class PastisDSE(object):
         stat_file = self.dse.workspace.get_metadata_file_path(self.STAT_FILE)
         data = {
             "total_time": time.time() - self._start_time,
+            "emulation_time": self.dse.total_emulation_time,
+            "solving_time": self.dse.seeds_manager.total_solving_time,
             "replay_time": self._replay_acc,
             "seed_accepted": self.seeds_merged,
             "seed_rejected": self.seeds_rejected,
