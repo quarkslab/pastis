@@ -285,6 +285,8 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
             # save stats
             stats = plotter.calculate_stats(campaign)
             out_file = (Path(ws) / plotter.PLOT_DIR) / "stats.json"
+            if not out_file.parent.exists():
+                out_file.parent.mkdir()
             print(f"save stats in: {out_file}")
             out_file.write_text(stats.json())
 
