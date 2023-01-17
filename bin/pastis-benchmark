@@ -68,6 +68,19 @@ def iterate_file(file):
         for sub_s in p.iterdir():
             yield sub_s
 
+
+def iterate_seeds(root):
+    root = Path(root)
+    if root.is_file():
+        yield root
+    elif root.is_dir():
+        for item in root.iterdir():
+            if item.is_file():
+                yield item
+            elif item.is_dir():
+                yield from iterate_seeds(item)
+
+
 @click.group()
 def cli():
     pass
@@ -149,7 +162,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
     broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, SeedInjectLoc[injloc], None, [])
 
     # Add all given seeds as initial seed
-    for s in iterate_file(seeds):  # File if one file, or iterate dir if directory
+    for s in iterate_seeds(seeds):  # File if one file, or iterate dir if directory
         broker.add_seed_file(s, initial=True)
 
     ws_root = broker.workspace.root
