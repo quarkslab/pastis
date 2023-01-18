@@ -111,9 +111,9 @@ class CampaignResult(object):
 
     @property
     def slug_name(self) -> str:
-        data = ["AFL++" if any(("AFLPP" in x for x in self.fuzzers_config)) else "",
-                "Hfuzz" if any(("HF" in x for x in self.fuzzers_config)) else "",
-                "TritonDSE" if any(("TT" in x for x in self.fuzzers_config)) else ""]
+        data = ["AFL" if any(("AFLPP" in x for x in self.fuzzers_config)) else "",
+                "HF" if any(("HF" in x for x in self.fuzzers_config)) else "",
+                "TT" if any(("TT" in x for x in self.fuzzers_config)) else ""]
         if self.is_full_duplex:
             return f"PASTIS[{'|'.join(x for x in data if x)}]"
         else:
