@@ -3,10 +3,12 @@ import logging
 from pathlib import Path
 from typing import Union, List, Dict
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import json
 from datetime import timedelta
 from hashlib import md5
 import base64
+from collections import Counter
 
 # third-party imports
 from rich.console import Console
@@ -20,9 +22,9 @@ from tritondse import CoverageStrategy, SmtSolver, BranchSolvingStrategy
 
 class Plotter(object):
 
-    LABEL_SZ = 20
+    LABEL_SZ = 18
     TICK_SZ = 13
-    FONT_SZ = 15
+    FONT_SZ = 18
     LEGEND_SZ = 8
 
     PLOT_DIR = "plots"
@@ -188,6 +190,14 @@ class Plotter(object):
                     for s in syms:
                         if s in str(file):
                             syms[s] += 1
+                for file in (tt_workspace / "worklist").iterdir():
+                    for s in syms:
+                        if s in str(file):
+                            syms[s] += 1
+                for file in (tt_workspace / "crashes").iterdir():
+                    for s in syms:
+                        if s in str(file):
+                            syms[s] += 1
             entry = InputEntry(engine=fuzzer, number=num, unique=0, condition=syms["CC"],
                                symread=syms["SR"], symwrite=syms["SW"], symjump=syms["DYN"])
             entries.append(entry)
@@ -199,12 +209,17 @@ class Plotter(object):
 
         entries = []
 
+        firsts = Counter()
+        for entry in campaign.delta_items:
+            firsts[entry.fuzzer] += len(entry.overall_new_items_covered)
+
         for fuzzer, items in campaign.results:
             cov = campaign.fuzzers_coverage[fuzzer]
             num = len(cov.difference(seed_cov)) if fuzzer != campaign.SEED_FUZZER else cov.unique_covitem_covered
 
             # FIXME: Compute unique & first
-            entry = CoverageEntry(engine=fuzzer, number=num, unique=-1, first=-1, total=cov.unique_covitem_covered)
+            first = firsts[fuzzer]
+            entry = CoverageEntry(engine=fuzzer, number=num, unique=-1, first=first, total=cov.unique_covitem_covered)
             entries.append(entry)
         return entries
 
@@ -292,7 +307,7 @@ class Plotter(object):
 
 
         # InputEntry
-        table = Table(show_header=True, title="COVERAGE", header_style="bold magenta")
+        table = Table(show_header=True, title="INPUT", header_style="bold magenta")
         for name in ["engine", "#input", "#unique", "CC", "SR", "SW", "SDYN"]:
             table.add_column(name)
         for it in stats.input_stats:
@@ -301,7 +316,7 @@ class Plotter(object):
         console.print(table)
 
         # Coverage
-        table = Table(show_header=True, title="INPUTS", header_style="bold magenta")
+        table = Table(show_header=True, title="COVERAGE", header_style="bold magenta")
         for name in ["engine", "number", "unique", "first", "total"]:
             table.add_column(name)
         for it in stats.coverage_stats:
