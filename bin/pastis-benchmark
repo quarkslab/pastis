@@ -154,8 +154,9 @@ def showmap(bins: str):
 @click.option('--spawn/--no-spawn', type=bool, is_flag=True, default=True, help="Either to spawn engines or not")
 @click.option("--allow-remote", type=bool, is_flag=True, default=False, help="Enable remote connection")
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
+@click.option('--skip-cpufreq', is_flag=True, type=bool, default=False, help="Skip CPU frequency scaling check")
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool, debug: bool,
-        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool, allow_remote: bool, probe: Tuple[str]):
+        timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool, allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
@@ -177,7 +178,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
 
     if aflpp:
         # create a workspace directory and launch it
-        if not check_scaling_frequency():
+        if not skip_cpufreq and not check_scaling_frequency():
             logging.error("CPU is not configured on performance (system uses on-demande CPU freq scaling)")
             logging.info("try: echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
             sys.exit(1)
