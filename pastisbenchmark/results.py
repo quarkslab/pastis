@@ -164,7 +164,12 @@ class CampaignResult(object):
         if re.match("^\d{4}-\d{2}-\d{2}", filename):  # start by the date
             date, time, elapsed, fuzzer_id, hash = filename.split("_")
             date = datetime.strptime(f"{date}_{time}", "%Y-%m-%d_%H:%M:%S")
-            elapsed = (datetime.strptime(elapsed, "%H:%M:%S.%f") - ref).total_seconds()
+            spl = elapsed.split(":")
+            if len(spl) == 4:
+                elapsed = int(spl[0][:-1])*(3600*24)
+                elapsed += (datetime.strptime(":".join(spl[1:]), "%H:%M:%S.%f") - ref).total_seconds()
+            else:
+                elapsed = (datetime.strptime(elapsed, "%H:%M:%S.%f") - ref).total_seconds()
             hash = hash.split(".")[0]
             return date, elapsed, fuzzer_id, hash
         else:

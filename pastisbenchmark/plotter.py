@@ -179,9 +179,13 @@ class Plotter(object):
         entries = []
 
         # FIXME: Compute uniquness
+        useless_ctrs = Counter()
 
         for fuzzer, items in campaign.results:
             num = len(items)
+            for item in items:
+                if not len(item.overall_new_items_covered):
+                    useless_ctrs[fuzzer] += 1
             syms = {"CC": 0, "SR": 0, "SW": 0, "DYN": 0}
             if campaign.is_triton(fuzzer):
                 conf = campaign.fuzzers_config[fuzzer]
@@ -198,7 +202,8 @@ class Plotter(object):
                     for s in syms:
                         if s in str(file):
                             syms[s] += 1
-            entry = InputEntry(engine=fuzzer, number=num, unique=0, condition=syms["CC"],
+
+            entry = InputEntry(engine=fuzzer, number=num, unique=-1, useless=useless_ctrs[fuzzer], condition=syms["CC"],
                                symread=syms["SR"], symwrite=syms["SW"], symjump=syms["DYN"])
             entries.append(entry)
         return entries
@@ -260,7 +265,7 @@ class Plotter(object):
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
                     tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
-                    ratio = accs/rejs if rejs else 1
+                    ratio = accs/tots if rejs else 1
 
                     entry = SeedSharingEntry(engine=fuzzer, accepted=accs, rejected=rejs, total=tots, ratio=ratio)
                     entries.append(entry)
@@ -308,16 +313,17 @@ class Plotter(object):
 
         # InputEntry
         table = Table(show_header=True, title="INPUT", header_style="bold magenta")
-        for name in ["engine", "#input", "#unique", "CC", "SR", "SW", "SDYN"]:
+        for name in ["engine", "number", "unique", "useless", "CC", "SR", "SW", "SDYN"]:
             table.add_column(name)
         for it in stats.input_stats:
             fname = self.format_fuzzer_name(campaign, it.engine, False)
-            table.add_row(fname, str(it.number), str(it.unique), str(it.condition), str(it.symread), str(it.symwrite), str(it.symjump))
+            useless = f"{it.useless} ({it.useless / it.number:.2%})"
+            table.add_row(fname, str(it.number), str(it.unique), useless, str(it.condition), str(it.symread), str(it.symwrite), str(it.symjump))
         console.print(table)
 
         # Coverage
         table = Table(show_header=True, title="COVERAGE", header_style="bold magenta")
-        for name in ["engine", "number", "unique", "first", "total"]:
+        for name in ["engine", "edge-cov", "unique", "first", "total"]:
             table.add_column(name)
         for it in stats.coverage_stats:
             fname = self.format_fuzzer_name(campaign, it.engine, False)
@@ -336,11 +342,13 @@ class Plotter(object):
 
         # SeedSharingEntry
         table = Table(show_header=True, title="SEED SHARING", header_style="bold magenta")
-        for name in ["engine", "accepted", "rejected", "total", "ratio"]:
+        for name in ["engine", "accepted", "rejected", "total"]:
             table.add_column(name)
         for it in stats.seed_sharing_stats:
             fname = self.format_fuzzer_name(campaign, it.engine, False)
-            table.add_row(fname, str(it.accepted), str(it.rejected), str(it.total), f"{it.ratio:.2f}")
+            acc = f"{it.accepted} ({it.accepted / it.total:.2%})"
+            rejs = f"{it.rejected} ({it.rejected / it.total:.2%})"
+            table.add_row(fname, acc, rejs, str(it.total))
         console.print(table)
 
         # SmtEntry

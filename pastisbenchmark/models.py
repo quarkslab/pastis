@@ -6,6 +6,7 @@ class InputEntry(BaseModel):
     engine: str
     number: int
     unique: int
+    useless: int
     condition: int
     symread: int
     symwrite: int
