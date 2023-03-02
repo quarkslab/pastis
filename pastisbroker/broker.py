@@ -10,6 +10,7 @@ import datetime
 import random
 
 # Third-party imports
+import psutil
 from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage
 from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
@@ -57,7 +58,8 @@ class PastisBroker(BrokerAgent):
                  check_mode: CheckMode = CheckMode.CHECK_ALL,
                  inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
                  kl_report: PathLike = None,
-                 p_argv: List[str] = None):
+                 p_argv: List[str] = None,
+                 memory_threshold: int = 85):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -110,6 +112,10 @@ class PastisBroker(BrokerAgent):
 
         # Create the stat manager
         self.statmanager = StatManager(self.workspace)
+
+        # Watchdog to monitor RAM usage
+        self.watchdog = None
+        self._threshold = memory_threshold # percent
 
     def load_engine_addon(self, py_module: str) -> bool:
         desc = load_engine_descriptor(py_module)
@@ -168,6 +174,11 @@ class PastisBroker(BrokerAgent):
             logging.warning(f"client '{cli_id}' unknown (send stop)")
             self.send_stop(cli_id)
         return cli
+
+    def kick_client(self, cli_id: bytes) -> None:
+        cli = self.clients.pop(cli_id)  # pop it from client list
+        logging.info(f"kick client: {cli.strid}")
+        self.send_stop(cli_id)
 
     def seed_received(self, cli_id: bytes, typ: SeedType, seed: bytes):
         cli = self.get_client(cli_id)
@@ -506,17 +517,28 @@ class PastisBroker(BrokerAgent):
 
     def run(self, timeout: int = None):
         self.start()
+        last_t = time.time()
 
         # Start infinite loop
         try:
             while True:
-                time.sleep(0.1)
+                time.sleep(1)
+                t = time.time()
 
                 # Check if the campaign have to be stopped
                 if timeout is not None:
-                    if time.time() > (self._start_time + timeout):
+                    if t > (self._start_time + timeout):
                         logging.info("Campaign timeout reached, stop campaign.")
                         self._stop = True
+
+                if t > (last_t + 60):  # only check every minute
+                    last_t = t
+                    if not self._check_memory_usage():
+                        # The machine starts being overloaded
+                        # For security kill triton instance
+                        for cli in list(self.clients.values()):
+                            if cli.engine.SHORT_NAME == "TT":  # is triton
+                                self.kick_client(cli.netid)
 
                 if self._stop:
                     logging.info("broker terminate")
@@ -613,3 +635,11 @@ class PastisBroker(BrokerAgent):
         fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(alert.seed).hexdigest()}-{'CRASH' if alert.validated else 'COVERAGE'}.cov"
         logging.debug(f"Save alert  [{alert.id}] file: {fname}")
         self.workspace.save_alert_seed(alert.id, fname, alert.seed)
+
+    def _check_memory_usage(self) -> bool:
+        mem = psutil.virtual_memory()
+        logging.info(f"RAM usage: {mem.percent:.2f}%")
+        if mem.percent >= self._threshold:
+            logging.warning(f"Threshold reached: {mem.percent}%")
+            return False
+        return True
