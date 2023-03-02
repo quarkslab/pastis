@@ -58,7 +58,8 @@ class PastisBroker(BrokerAgent):
                  check_mode: CheckMode = CheckMode.CHECK_ALL,
                  inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
                  kl_report: PathLike = None,
-                 p_argv: List[str] = None):
+                 p_argv: List[str] = None,
+                 memory_threshold: int = 85):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -114,7 +115,7 @@ class PastisBroker(BrokerAgent):
 
         # Watchdog to monitor RAM usage
         self.watchdog = None
-        self._threshold = 85 # percent
+        self._threshold = memory_threshold # percent
 
     def load_engine_addon(self, py_module: str) -> bool:
         desc = load_engine_descriptor(py_module)
