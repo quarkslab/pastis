@@ -7,11 +7,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="pastis-broker",
-    version="0.2",
+    version="0.2.1",
     description="PASTIS broker that perform the proxy between all fuzzing engines",
     packages=find_packages(),
     setup_requires=[],
-    install_requires=["click", "lief", "coloredlogs", "quokka-project"],
+    install_requires=["click", "lief", "coloredlogs", "quokka-project", "psutil"],
     tests_require=[],
     license="qb",
     author="Quarkslab",
