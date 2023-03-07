@@ -88,7 +88,8 @@ class HonggfuzzDriver:
                              self.workspace,
                              exmode == ExecMode.PERSISTENT,
                              seed_inj == SeedInjectLoc.STDIN,
-                             engine_args)
+                             engine_args,
+                             str(package.dictionary.absolute()) if package.dictionary else None)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
