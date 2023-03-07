@@ -24,6 +24,7 @@ class BinaryPackage(object):
         self._quokka = None
         self._callgraph = None
         self._cmplog = None
+        self._dictionary = None
         self.other_files = []
 
         self._package_file = None
@@ -50,11 +51,18 @@ class BinaryPackage(object):
     def cmplog(self) -> Path:
         return self._cmplog
 
+    @property
+    def dictionary(self) -> Path:
+        return self._dictionary
+
     def is_cmplog(self) -> bool:
         return self._cmplog is not None
 
     def is_quokka(self) -> bool:
         return self._quokka is not None
+
+    def is_dictionary(self) -> bool:
+        return self._dictionary is not None
 
     def is_binary_only(self) -> bool:
         """
@@ -62,7 +70,7 @@ class BinaryPackage(object):
         additional files such as a Quokka database or a cmplog instrumented binary.
         This is used in pastis-broker when sending the 'start' command to agents.
         """
-        return not (self.is_quokka() or self.is_cmplog())
+        return not (self.is_quokka() or self.is_cmplog() or self.is_dictionary())
 
     @property
     def arch(self) -> Arch:
@@ -112,6 +120,11 @@ class BinaryPackage(object):
             p._cmplog = cfile
             cfile.chmod(stat.S_IRWXU)  # make sure the cmplog binary is executable
 
+        # Search for a dictionary file if any
+        cfile = Path(str(bin_f)+".dict")
+        if cfile.exists():
+            p._dictionary = cfile
+
         return p
 
     @staticmethod
@@ -131,7 +144,7 @@ class BinaryPackage(object):
             return None
 
         for file in bin_f.parent.iterdir():
-            if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog]:
+            if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog, p._dictionary]:
                 p.other_files.append(file)
 
     def make_package(self) -> Path:
@@ -148,6 +161,8 @@ class BinaryPackage(object):
             zip.write(self._callgraph, self._callgraph.name)
         if self._cmplog:
             zip.write(self._cmplog, self._cmplog.name)
+        if self._dictionary:
+            zip.write(self._dictionary, self._dictionary.name)
         for file in self.other_files:
             zip.write(file)
         zip.close()
@@ -210,7 +225,7 @@ class BinaryPackage(object):
             if pkg is None:
                 raise ValueError(f"Cannot create a BinaryPackage with {name}")
             for file in extract_dir.iterdir():
-                if file not in [pkg.executable_path, pkg.callgraph, pkg.quokka]:
+                if file not in [pkg.executable_path, pkg.callgraph, pkg.quokka, pkg.dictionary]:
                     pkg.other_files.append(file)
             return pkg
         elif mime in ['application/x-pie-executable', 'application/x-dosexec', 'application/x-mach-binary', 'application/x-executable', 'application/x-sharedlib']:
