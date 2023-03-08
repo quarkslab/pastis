@@ -46,7 +46,7 @@ class AFLPPProcess:
             aflpp_path = os.environ.get(AFLPPProcess.AFLPP_ENV_VAR)
             return Path(aflpp_path) / 'afl-fuzz' if aflpp_path else shutil.which(AFLPPProcess.BINARY)
 
-    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str] = None):
+    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str] = None, dictionary: Optional[str] = None):
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
 
@@ -59,8 +59,8 @@ class AFLPPProcess:
             f"-i {workspace.input_dir}",
             f"-F {workspace.dynamic_input_dir}",
             f"-o {workspace.output_dir}",
-
-            f"-c {cmplog}" if cmplog is not None else ""
+            f"-c {cmplog}" if cmplog is not None else "",
+            f"-x {dictionary}" if dictionary is not None else ""
         ])
 
         # Export environmental variables.
