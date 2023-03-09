@@ -14,7 +14,7 @@ the broker through command line. The command line arguments are the following:
 
     Options:
       -w, --workspace PATH            Workspace directory to store data
-      -k, --kl-report FILE            Klocwork report to use
+      -r, --sast-report FILE          SAST report to use
       -b, --bins DIRECTORY            Directory containing binaries  [required]
       -m, --mode [FULL|NO_TRANSMIT|COVERAGE_ORDERED]
                                       Mode of broking
@@ -31,7 +31,7 @@ the broker through command line. The command line arguments are the following:
   from it. The utility can thus load all corpus and crash files from an existing
   workspace. Other files are essentially not reused.
 
-* ``--kl-report`` Klocwork report to use if any. If a report is provided, clients
+* ``--sast-report`` SAST report to use if any. If a report is provided, clients
   are automatically launched in ``ALERT_ONLY`` mode otherwise they are launched in
   ``CHECK_ALL``.
 

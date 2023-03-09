@@ -58,7 +58,7 @@ class PastisClient(object):
         self.timeout_submitted_count = 0
         self.seed_first = 0
 
-        # klocwork parameters
+        # SAST parameters
         self.alert_covered = set()
         self.alert_covered_first = 0
         self.alert_validated = set()

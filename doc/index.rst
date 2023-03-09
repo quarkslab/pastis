@@ -8,7 +8,7 @@ for all clients.
 
 That project is the main interface with the analyst as all configuration options of a
 campain are set in pastis-broker and propagated to all clients automatically. Indeed,
-it will transmit the appropriate binary, configuration, klocwork report, and initial
+it will transmit the appropriate binary, configuration, SAST report, and initial
 seeds. Similarly all relevant information are meant to be returned to the broker thus
 it centralizes telemetry data. Upon timeout, or test requirement fulfillment and stop
 message will be transmitted to all connected nodes so that they stop their testing
