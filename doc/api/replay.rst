@@ -6,7 +6,7 @@ Replay
 The Python module, provide a very basic replay engine allowing to re-run the
 target with a given input, to check its return code or its output. Using the
 ``subprocess`` module it is being used to analyse inputs *(for checking
-coverage and validating klocwork alerts)*. At the moment the :py:class:`Replay`
+coverage and validating SAST alerts)*. At the moment the :py:class:`Replay`
 search for specific pattern ``rb".*REACHED ID (\d+)"`` to identify PASTIS
 intrinsics covered. The following snippet shows how to re-run the target on
 a given input and checking various properties.
