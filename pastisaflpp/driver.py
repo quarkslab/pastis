@@ -89,7 +89,8 @@ class AFLPPDriver:
                          fuzzmode,
                          seed_inj == SeedInjectLoc.STDIN,
                          engine_args,
-                         str(package.cmplog.absolute()) if package.cmplog else None)
+                         str(package.cmplog.absolute()) if package.cmplog else None,
+                         str(package.dictionary.absolute()) if package.dictionary else None)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
