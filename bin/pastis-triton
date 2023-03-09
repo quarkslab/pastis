@@ -86,7 +86,7 @@ def online(host: str, port: int, probe: Tuple[str]):
 
 @cli.command(context_settings=dict(show_default=True))
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
-@click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
+@click.option('-r', '--sast-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='SAST report to use')
 @click.option('-c', "--count", type=int, default=0, help="Number of execution")
 @click.option('--config', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="Triton configuration file")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
@@ -104,7 +104,7 @@ def online(host: str, port: int, probe: Tuple[str]):
 @click.option("--trace", type=bool, is_flag=True, show_default=True, default=False, help="Show execution trace in debug logging")
 @click.argument('pargvs', nargs=-1)
 def offline(program: str,
-            kl_report: Optional[str],
+            sast_report: Optional[str],
             count: int,
             config: str,
             seed: Tuple[str],
@@ -128,7 +128,7 @@ def offline(program: str,
     the command line option.
 
     :param program: The program to explore
-    :param kl_report: The klocwork report if provided
+    :param sast_report: The SAST report if provided
     :param count: The limit of execution (0 = unlimited)
     :param config: The path the to TritonDSE configuration file (json)
     :param seed: The initial seed to inject
@@ -186,7 +186,7 @@ def offline(program: str,
             pastis.add_probe(probe)
 
     # Load the report if anyone provided
-    report = Path(kl_report).read_text() if kl_report else ""
+    report = Path(sast_report).read_text() if sast_report else ""
 
     if chkmode == CheckMode.ALERT_ONE:
         if target:
