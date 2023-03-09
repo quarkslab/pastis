@@ -59,7 +59,7 @@ message StartMsg {
     }
     string binary_filename = 1;       // name of the binary file
     bytes binary           = 2;       // binary file (ELF) to fuzz
-    string klocwork_report = 3;       // klocwork report (JSON serialized)
+    bytes sast_report      = 3;       // SAST report (if any)
     FuzzingEngine engine   = 4;       // fuzzing engine (when client support multiple of them)
     ExecMode exec_mode     = 5;       // mode of execution
     FuzzMode fuzz_mode     = 6;       // mode of fuzzing
