@@ -126,7 +126,7 @@ class PastisBroker(BrokerAgent):
             return False
 
     def initialize_sast_report(self, report: PathLike):
-        self.sast_report = SASTReport(report)
+        self.sast_report = SASTReport.from_file(report)
         self.workspace.add_sast_report(self.sast_report)
         self.workspace.initialize_alert_corpus(self.sast_report)
 
