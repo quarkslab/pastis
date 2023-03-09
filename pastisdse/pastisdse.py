@@ -1,11 +1,8 @@
 # built-in imports
 from typing import List, Tuple
-from hashlib import md5
 import os
-import stat
 import time
 import logging
-import tempfile
 from pathlib import Path
 import threading
 import platform
@@ -17,16 +14,15 @@ from triton               import MemoryAccess, CPUSIZE
 
 # Pastis & triton imports
 import pastisdse
-from tritondse            import TRITON_VERSION, Config, Program, CleLoader, CoverageStrategy, SymbolicExplorator, \
+from tritondse            import Config, Program, CleLoader, CoverageStrategy, SymbolicExplorator, \
                                  SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, \
                                  Workspace, Seed, CompositeData, SeedFormat, QuokkaProgram
 from tritondse.sanitizers import FormatStringSanitizer, NullDerefSanitizer, UAFSanitizer, IntegerOverflowSanitizer, mk_new_crashing_seed
-from tritondse.types      import Addr, Input, Edge, SymExType, Architecture, Platform
-from libpastis import ClientAgent, BinaryPackage
-from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, State, AlertData, FuzzMode
+from tritondse.types      import Addr, Edge, SymExType, Architecture, Platform
+from libpastis import ClientAgent, BinaryPackage, SASTReport
+from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, AlertData, FuzzMode
 from tritondse.trace      import QBDITrace, TraceException
 from tritondse.worklist import FreshSeedPrioritizerWorklist, WorklistAddressToSet
-from klocwork             import KlocworkReport, KlocworkAlertType, PastisVulnKind
 
 
 class PastisDSE(object):
@@ -47,9 +43,9 @@ class PastisDSE(object):
         self.dse        = None
         self.program    = None
         self._stop      = False
-        self.klreport   = None
-        self._last_kid = None
-        self._last_kid_pc = None
+        self.sast_report= None
+        self._last_id = None
+        self._last_id_pc = None
         self._seed_received = set()
         self._probes = []
         self._chkmode = None
@@ -108,9 +104,9 @@ class PastisDSE(object):
         self.dse = None  # remove DSE object
         self.config = Config(debug=False)
         self.config.workspace = ""  # Reset workspace so that it will computed in start_received
-        self._last_kid_pc = None
-        self._last_kid = None
-        self.klreport = None
+        self._last_id_pc = None
+        self._last_id = None
+        self.sast_report = None
         self._program_slice = None
         self._seed_received = set()
         self.program = None
@@ -165,6 +161,7 @@ class PastisDSE(object):
 
             else: # ONLINE
                 if st == ExplorationStatus.STOPPED:  # if the exploration stopped just return
+                    logging.info("exploration stopped")
                     return False
                 elif st == ExplorationStatus.TERMINATED:
                     self.agent.send_stop_coverage_criteria()
@@ -217,21 +214,21 @@ class PastisDSE(object):
             self.nb_to += 1
 
         # Handle CRASH and ABV_GENERAL
-        if se.seed.status == SeedStatus.CRASH and self._last_kid:
-            alert = self.klreport.get_alert(binding_id=self._last_kid)
-            if alert.code == KlocworkAlertType.ABV_GENERAL:
+        if se.seed.status == SeedStatus.CRASH and self._last_id:
+            alert = self.sast_report.get_alert(self._last_id)
+            if alert.type == "ABV_GENERAL":
                 logging.info(f'A crash occured with an ABV_GENERAL encountered just before.')
-                self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
+                self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.type} validation [SUCCESS]")
                 alert.validated = True
-                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content, self._last_kid_pc))
+                self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content, self._last_id_pc))
 
         # Process all the seed received
         self.try_process_seed_queue()
 
         # Print stats
-        if self.klreport:
-            d, v = self.klreport.get_stats()
-            logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+        if self.sast_report:
+            cov, va, tot = self.sast_report.get_stats()
+            logging.info(f"SAST stats: defaults: [covered:{cov}/{tot}] [validated:{va}/{tot}]")
 
     def try_process_seed_queue(self):
 
@@ -285,7 +282,7 @@ class PastisDSE(object):
                 return False
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
-                       covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str=None):
+                       covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], sast_report: str=None):
         """
         This function is called when the broker says to start the fuzzing session. Here, we receive all information about
         the program to fuzz and the configuration.
@@ -300,7 +297,7 @@ class PastisDSE(object):
         :param seed_inj: The location where to inject input
         :param engine_args: The engine arguments
         :param argv: The program arguments
-        :param kl_report: The Klocwork report
+        :param sast_report: The SAST report
         :return: None
         """
         logging.info(f"[BROKER] [START] bin:{fname} engine:{engine.name} exmode:{exmode.name} cov:{covmode.name} chk:{chkmode.name}")
@@ -397,12 +394,9 @@ class PastisDSE(object):
             self.agent.stop()
             return
 
-        if kl_report:
-            self.klreport = KlocworkReport.from_json(kl_report)
-            if not self.klreport.has_binding():
-                logging.info("Klocwork report not binded (bind it automatically)")
-                self.klreport.auto_bind()
-            logging.info(f"Klocwork report loaded: counted alerts:{len(list(self.klreport.counted_alerts))} (total:{len(self.klreport.alerts)})")
+        if sast_report:
+            self.sast_report = SASTReport.from_json(sast_report)
+            logging.info(f"SAST report loaded: alerts:{len(list(self.sast_report.iter_alerts()))}")
 
         # Set seed scheduler based on whether tracing is enabled.
         if self._tracing_enabled:
@@ -431,7 +425,7 @@ class PastisDSE(object):
            # TODO Buffer overflow
 
         elif chkmode == CheckMode.ALERT_ONLY:
-           dse.callback_manager.register_function_callback('__klocwork_alert_placeholder', self.intrinsic_callback)
+           dse.callback_manager.register_function_callback('__sast_alert_placeholder', self.intrinsic_callback)
 
         elif chkmode == CheckMode.ALERT_ONE:  # targeted approach
             if not isinstance(self.program, QuokkaProgram):
@@ -617,7 +611,7 @@ class PastisDSE(object):
         stat_file = self.dse.workspace.get_metadata_file_path(self.STAT_FILE)
         data = {
             "total_time": time.time() - self._start_time,
-            "emulation_time": self.dse.total_emulation_time,
+            "emulation_time": self.dse.total_emulation_time,  # Note: includes replay time but not solving
             "solving_time": self.dse.seeds_manager.total_solving_time,
             "replay_time": self._replay_acc,
             "seed_accepted": self.seeds_merged,
@@ -662,30 +656,30 @@ class PastisDSE(object):
         :return: None
         """
         alert_id = state.get_argument_value(0)
-        self._last_kid = alert_id
-        self._last_kid_pc = se.previous_pc
+        self._last_id = alert_id
+        self._last_id_pc = se.previous_pc
 
         def status_changed(a, cov, vld):
             return a.covered != cov or a.validated != vld
 
-        if self.klreport:
-            # Retrieve the KlocworkAlert object from the report
+        if self.sast_report:
+            # Retrieve the SASTAlert object from the report
             try:
-                alert = self.klreport.get_alert(binding_id=alert_id)
+                alert = self.sast_report.get_alert(alert_id)
                 cov, vld = alert.covered, alert.validated
             except IndexError:
-                logging.warning(f"Intrinsic id {alert_id} not binded in report (ignored)")
+                logging.warning(f"Intrinsic id {alert_id} not found in report (ignored)")
                 return
 
             if not alert.covered:
-                self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} covered ! ({alert.kind.name})")
+                self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.type} covered !")
                 alert.covered = True  # that might also set validated to true!
 
-            if alert.kind == PastisVulnKind.VULNERABILITY and not alert.validated:  # If of type VULNERABILITY and not yet validated
+            if not alert.validated:  # If of type VULNERABILITY and not yet validated
                 res = self.check_alert_dispatcher(alert.code, se, state, addr)
                 if res:
                     alert.validated = True
-                    self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.code.name} validation [SUCCESS]")
+                    self.dual_log(LogLevel.INFO, f"Alert [{alert.id}] in {alert.file}:{alert.line}: {alert.type} validation [SUCCESS]")
                     if se.seed.is_status_set():
                         logging.warning(f"Status already set ({se.seed.status}) for seed {se.seed.hash} (override with CRASH)")
                     se.seed.status = SeedStatus.CRASH  # Mark the seed as crash, as it validates an alert
@@ -695,39 +689,39 @@ class PastisDSE(object):
             if status_changed(alert, cov, vld):  # If either coverage or validation were improved print stats
                 # Send updates to the broker
                 self.agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, se.seed.content, se.previous_pc))
-                d, v = self.klreport.get_stats()
-                logging.info(f"Klocwork stats: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+                cov, vals, tot = self.sast_report.get_stats()
+                logging.info(f"SAST stats: defaults: [covered:{cov}/{tot}] [validated:{vals}/{tot}]")
 
-                if self.klreport.all_alerts_validated() or (self._chkmode == CheckMode.ALERT_ONE and alert.validated):
+                if self.sast_report.all_alerts_validated() or (self._chkmode == CheckMode.ALERT_ONE and alert.validated):
                     self._do_stop_all_alerts_validated()
 
         else:  # Kind of autonomous mode. Try to check it even it is not bound to a report
             # Retrieve alert type from parameters
-            alert_kind = se.pstate.get_string_argument(1)
+            alert_type = se.pstate.get_string_argument(1)
             try:
-                kind = KlocworkAlertType[alert_kind]
-                if self.check_alert_dispatcher(kind, se, state, addr):
-                    logging.info(f"Alert {alert_id} of type {kind.name} [VALIDATED]")
+                if self.check_alert_dispatcher(alert_type, se, state, addr):
+                    logging.info(f"Alert {alert_id} of type {alert_type} [VALIDATED]")
                 else:
-                    logging.info(f"Alert {alert_id} of type {kind.name} [NOT VALIDATED]")
+                    logging.info(f"Alert {alert_id} of type {alert_type} [NOT VALIDATED]")
             except KeyError:
-                logging.error(f"Alert kind {alert_kind} not recognized")
+                logging.error(f"Alert type {alert_type} not recognized")
 
 
-    def check_alert_dispatcher(self, type: KlocworkAlertType, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
+    def check_alert_dispatcher(self, type: str, se: SymbolicExecutor, state: ProcessState, addr: Addr) -> bool:
         """
         This function is called by intrinsic_callback in order to verify defaults
         and vulnerabilities.
 
+        :param type: Type of the alert as a string
         :param se: The current symbolic executor
         :param state: The current processus state of the execution
         :param addr: The instruction address of the intrinsic call
         :return: True if a vulnerability has been verified
         """
         # BUFFER_OVERFLOW related alerts
-        if type == KlocworkAlertType.SV_STRBO_UNBOUND_COPY:
+        if type == "SV_STRBO_UNBOUND_COPY":
             size = se.pstate.get_argument_value(2)
-            ptr  = se.pstate.get_argument_value(3)
+            ptr = se.pstate.get_argument_value(3)
 
             # Runtime check
             if len(se.pstate.get_memory_string(ptr)) >= size:
@@ -758,7 +752,7 @@ class PastisDSE(object):
         ######################################################################
 
         # BUFFER_OVERFLOW related alerts
-        elif type == KlocworkAlertType.SV_STRBO_BOUND_COPY_OVERFLOW:
+        elif type == "SV_STRBO_BOUND_COPY_OVERFLOW":
             dst_size = se.pstate.get_argument_value(2)
             ptr_inpt = se.pstate.get_argument_value(3)
             max_size = se.pstate.get_argument_value(4)
@@ -793,27 +787,27 @@ class PastisDSE(object):
         ######################################################################
 
         # BUFFER_OVERFLOW related alerts
-        elif type == KlocworkAlertType.ABV_GENERAL:
+        elif type == "ABV_GENERAL":
             logging.warning(f'ABV_GENERAL encounter but can not check the issue. This issue will be handle if the program will crash.')
             return False
 
         ######################################################################
 
         # All INTEGER_OVERFLOW related alerts
-        elif type == KlocworkAlertType.NUM_OVERFLOW:
+        elif type == "NUM_OVERFLOW":
             return IntegerOverflowSanitizer.check(se, state, state.current_instruction)
 
         ######################################################################
 
         # All USE_AFTER_FREE related alerts
-        elif type in [KlocworkAlertType.UFM_DEREF_MIGHT, KlocworkAlertType.UFM_FFM_MUST, KlocworkAlertType.UFM_FFM_MIGHT]:
+        elif type in ["UFM_DEREF_MIGHT", "UFM_FFM_MUST", "UFM_FFM_MIGHT"]:
             ptr = se.pstate.get_argument_value(2)
             return UAFSanitizer.check(se, state, ptr, f'UAF detected at {ptr:#x}')
 
         ######################################################################
 
         # All FORMAT_STRING related alerts
-        elif type in [KlocworkAlertType.SV_TAINTED_FMTSTR, KlocworkAlertType.SV_FMTSTR_GENERIC]:
+        elif type in ["SV_TAINTED_FMTSTR", "SV_FMTSTR_GENERIC"]:
             ptr = se.pstate.get_argument_value(2)
             return FormatStringSanitizer.check(se, state, addr, ptr)
 
@@ -821,13 +815,13 @@ class PastisDSE(object):
 
         # All INVALID_MEMORY related alerts
         # FIXME: NPD_CHECK_MIGHT and NPD_CONST_CALL are not supported by klocwork-alert-inserter
-        elif type in [KlocworkAlertType.NPD_FUNC_MUST, KlocworkAlertType.NPD_FUNC_MIGHT, KlocworkAlertType.NPD_CHECK_MIGHT, KlocworkAlertType.NPD_CONST_CALL]:
+        elif type in ["NPD_FUNC_MUST", "NPD_FUNC_MIGHT", "NPD_CHECK_MIGHT", "NPD_CONST_CALL"]:
             ptr = se.pstate.get_argument_value(2)
             return NullDerefSanitizer.check(se, state, ptr, f'Invalid memory access at {ptr:#x}')
 
         ######################################################################
 
-        elif type == KlocworkAlertType.MISRA_ETYPE_CATEGORY_DIFFERENT_2012:
+        elif type == "MISRA_ETYPE_CATEGORY_DIFFERENT_2012":
             expr = se.pstate.get_argument_symbolic(2).getAst()
 
             # Runtime check
@@ -863,7 +857,7 @@ class PastisDSE(object):
 
         # Write the final CSV in the workspace directory
         out_file = self.dse.workspace.get_metadata_file_path("klocwork_coverage_results.csv")
-        self.klreport.write_csv(out_file)
+        self.sast_report.write_csv(out_file)
 
         # Stop the dse exploration
         self.dse.terminate_exploration()
