@@ -23,5 +23,5 @@ enables restarting an interrupted campaign. The workspace file structure is the 
         hangs/         (hang files)
         logs/          (log files, one file per client)
         broker.log     (log file of the broker)
-        klreport.json  (copy of a klocwork report if provided)
+        sastreport.bin (copy of the SAST report if provided)
         results.csv    (synthetic results of alerts, if a report is provided)
