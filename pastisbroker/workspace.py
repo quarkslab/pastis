@@ -6,7 +6,8 @@ import stat
 from enum import Enum, auto
 
 from libpastis.types import SeedType, PathLike
-from klocwork import KlocworkReport
+from libpastis import SASTReport
+
 
 class WorkspaceStatus(Enum):
     NOT_STARTED = auto()
@@ -23,7 +24,7 @@ class Workspace(object):
     ALERTS_DIR = "alerts_data"
     SEED_DIR = "seeds"
 
-    KL_REPORT_COPY = "klreport.json"
+    SAST_REPORT_COPY = "sast-report.bin"
     CSV_FILE = "results.csv"
     TELEMETRY_FILE = "telemetry.csv"
     CLIENTS_STATS = "clients-stats.json"
@@ -92,8 +93,8 @@ class Workspace(object):
         return self.root / self.CLIENTS_STATS
 
     @property
-    def klocwork_report_file(self) -> Path:
-        return self.root / self.KL_REPORT_COPY
+    def sast_report_file(self) -> Path:
+        return self.root / self.SAST_REPORT_COPY
 
     @property
     def csv_result_file(self) -> Path:
@@ -137,9 +138,9 @@ class Workspace(object):
         dst_file.chmod(stat.S_IRWXU)  # Change target mode to execute.
         return dst_file
 
-    def add_klocwork_report(self, report: KlocworkReport) -> Path:
-        f = self.root / self.KL_REPORT_COPY
-        f.write_text(report.to_json())
+    def add_sast_report(self, report: SASTReport) -> Path:
+        f = self.root / self.SAST_REPORT_COPY
+        report.write(f)
         return f
 
     @property
@@ -147,11 +148,11 @@ class Workspace(object):
         for file in (self.root / self.BINS_DIR).iterdir():
             yield file
 
-    def initialize_alert_corpus(self, report: KlocworkReport) -> None:
+    def initialize_alert_corpus(self, report: SASTReport) -> None:
         """ Create a directory for each alert where to store coverage / vuln corpus """
         p = self.root / self.ALERTS_DIR
         p.mkdir(exist_ok=True)
-        for alert in report.counted_alerts:
+        for alert in report.iter_alerts():
             a_dir = p / str(alert.id)
             a_dir.mkdir(exist_ok=True)
 

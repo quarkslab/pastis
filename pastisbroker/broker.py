@@ -11,10 +11,9 @@ import random
 
 # Third-party imports
 import psutil
-from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage
+from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage, SASTReport
 from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
-from klocwork import KlocworkReport
 import lief
 from tritondse import QuokkaProgram
 
@@ -57,7 +56,7 @@ class PastisBroker(BrokerAgent):
                  broker_mode: BrokingMode,
                  check_mode: CheckMode = CheckMode.CHECK_ALL,
                  inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
-                 kl_report: PathLike = None,
+                 sast_report: PathLike = None,
                  p_argv: List[str] = None,
                  memory_threshold: int = 85):
         super(PastisBroker, self).__init__()
@@ -92,9 +91,9 @@ class PastisBroker(BrokerAgent):
         self._find_binaries(binaries_dir)
 
         # Klocwork informations
-        self.kl_report = None
-        if kl_report:
-            self.initialize_klocwork_report(kl_report)
+        self.sast_report = None
+        if sast_report:
+            self.initialize_sast_report(sast_report)
 
         # Client infos
         self.clients = {}   # bytes -> Client
@@ -126,13 +125,10 @@ class PastisBroker(BrokerAgent):
         else:
             return False
 
-    def initialize_klocwork_report(self, report: PathLike):
-        self.kl_report = KlocworkReport(report)
-        if not self.kl_report.has_binding():
-            logging.warning(f"the klocwork report {report} does not contain bindings (auto-bind it)")
-            self.kl_report.auto_bind()
-        self.workspace.add_klocwork_report(self.kl_report)
-        self.workspace.initialize_alert_corpus(self.kl_report)
+    def initialize_sast_report(self, report: PathLike):
+        self.sast_report = SASTReport.from_file(report)
+        self.workspace.add_sast_report(self.sast_report)
+        self.workspace.initialize_alert_corpus(self.sast_report)
 
     @property
     def running(self) -> bool:
@@ -293,20 +289,17 @@ class PastisBroker(BrokerAgent):
             return
         first_cov, first_val = False, False
 
-        if not self.kl_report:
-            logging.warning("Data received while no Klocwork report is loaded (drop data)")
+        if not self.sast_report:
+            logging.warning("Data received while no SAST report is loaded (drop data)")
             return
 
         alert_data = AlertData.from_json(data)
-        if self.kl_report.has_binding():
-            alert = self.kl_report.get_alert(binding_id=alert_data.id)
-        else:
-            alert = self.kl_report.get_alert(kid=alert_data.id)
+        alert = self.sast_report.alerts[alert_data.id]
 
         if not alert.validated and alert_data.validated:
             logging.info(f"[{client.strid}] First to validate {alert}")
             alert.validated = alert_data.validated
-            self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
+            self.sast_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
             first_val = True
 
             if self.ck_mode == CheckMode.ALERT_ONE:
@@ -317,7 +310,7 @@ class PastisBroker(BrokerAgent):
         if not alert.covered and alert_data.covered:
             logging.info(f"[{client.strid}] First to cover {alert}")
             alert.covered = alert_data.covered
-            self.kl_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
+            self.sast_report.write_csv(self.workspace.csv_result_file)  # Update CSV to keep it updated
             first_cov = True
 
         # Update clients of and stats
@@ -327,11 +320,11 @@ class PastisBroker(BrokerAgent):
         self._save_alert_seed(client, alert_data)  # Also save seed in separate folder
 
         if first_cov or first_val:
-            d, v = self.kl_report.get_stats()
-            logging.info(f"Klocwork results updated: defaults: [cov:{d.checked}/{d.total}] vulns: [check:{v.checked}/{v.total}]")
+            cov, val, tot = self.sast_report.get_stats()
+            logging.info(f"SAST results updated: defaults: [covered:{cov}/{tot}] [validated:{val}/{tot}]")
 
         # If all alerts are validated send a stop to everyone
-        if self.kl_report.all_alerts_validated_or_uncoverable():
+        if self.sast_report.all_alerts_validated():
             self.stop_broker()
 
     def relaunch_clients(self, clients):
@@ -349,11 +342,11 @@ class PastisBroker(BrokerAgent):
         # Call the statmanager to wrap-up values
         self.statmanager.post_execution(list(self.clients.values()), self.workspace)
 
-        if self.kl_report:  # If a klocwork report was loaded
+        if self.sast_report:  # If a SAST report was loaded
             # Write the final CSV in the workspace
-            self.kl_report.write_csv(self.workspace.csv_result_file)
+            self.sast_report.write_csv(self.workspace.csv_result_file)
             # And also re-write the Klocwork report (that also contains resutls)
-            self.kl_report.write(self.workspace.klocwork_report_file)
+            self.sast_report.write(self.workspace.sast_report_file)
 
     def start_client_and_send_corpus(self, client: PastisClient) -> None:
         self.start_client(client)
@@ -451,7 +444,7 @@ class PastisBroker(BrokerAgent):
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
                         engine_args_str,
                         self.inject,
-                        self.kl_report.to_json() if self.kl_report else "")
+                        self.sast_report.to_json() if self.sast_report else "")
 
 
     def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:
@@ -573,7 +566,7 @@ class PastisBroker(BrokerAgent):
                         try:
                             # Instanciate the Quokka Program and monkey patch object
                             quokka_prog = QuokkaProgram(pkg.quokka, pkg.executable_path)
-                            f = quokka_prog.get_function("__klocwork_alert_placeholder")
+                            f = quokka_prog.get_function("__sast_alert_placeholder")
                             self._slicing_ongoing[file.name] = {x: [] for x in quokka_prog.get_caller_instructions(f)}
                         except ValueError:
                             logging.warning(f"can't find placeholder file in {file.name}, thus ignores it.")
