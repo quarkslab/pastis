@@ -5,6 +5,7 @@ import re
 import signal
 import time
 from pathlib import Path
+from typing import Optional
 
 # Local imports
 from .workspace import Workspace
@@ -43,7 +44,7 @@ class HonggfuzzProcess:
         self.__process = None
 
 
-    def start(self, target: str, target_arguments: str, workspace: Workspace, persistent: bool, stdin: bool, engine_args: str):
+    def start(self, target: str, target_arguments: str, workspace: Workspace, persistent: bool, stdin: bool, engine_args: str, dictionary: Optional[str] = None):
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
 
@@ -61,7 +62,8 @@ class HonggfuzzProcess:
             f"--output {workspace.corpus_dir}",
             f"--crashdir {workspace.crash_dir}",
             f"--workspace {workspace.root_dir}",
-            f"--threads {self._threads}" if self._threads else ""
+            f"--threads {self._threads}" if self._threads else "",
+            f"--dict {dictionary}" if dictionary is not None else ""
         ])
 
         # Build fuzzer command line.
