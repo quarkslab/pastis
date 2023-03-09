@@ -62,7 +62,7 @@ def online(host: str, port: int, telemetry_frequency: int):
 
 @cli.command()
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
-@click.option('-k', '--kl-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='Klocwork report to use')
+@click.option('-r', '--sast-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='SAST report to use')
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
 @click.option('-x', '--exmode', type=click.Choice([x.name for x in ExecMode]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name)
 @click.option('-f', '--fuzzmode', type=click.Choice([x.name for x in FuzzMode]), help="Fuzzing mode", default=FuzzMode.INSTRUMENTED.name)
@@ -70,7 +70,7 @@ def online(host: str, port: int, telemetry_frequency: int):
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
 @click.option('--logfile', type=str, default="aflpp-fileagent-broker.log", help='Log file of all messages received by the broker')
 @click.argument('pargvs', nargs=-1)
-def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, fuzzmode, chkmode, seedinj, logfile, pargvs: Tuple[str]):
+def offline(program: str, sast_report: Optional[str], seed: Tuple[str], exmode, fuzzmode, chkmode, seedinj, logfile, pargvs: Tuple[str]):
     global aflpp
 
     # Transform the type of parameters
@@ -94,7 +94,7 @@ def offline(program: str, kl_report: Optional[str], seed: Tuple[str], exmode, fu
         return
 
     # Load the report if anyone provided
-    report = Path(kl_report).read_text() if kl_report else ""
+    report = Path(sast_report).read_text() if sast_report else ""
 
     # Mimick a callback to start_received
     aflpp.start_received(program.name, program.read_bytes(), FuzzingEngineInfo("AFLPP", __version__, None), exmode, fuzzmode, chkmode, CoverageMode.EDGE, seedinj, "", pargvs, report)

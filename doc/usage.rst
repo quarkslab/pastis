@@ -35,7 +35,7 @@ specified on the command line. Options are:
     Usage: pastis-aflpp offline [OPTIONS] PROGRAM [PARGVS]...
 
     Options:
-      -k, --kl-report FILE            Klocwork report to use
+      -r, --sast-report FILE          SAST report to use
       -s, --seed PATH                 Seed or directory of seeds to give to the exploration
       -x, --exmode [SINGLE_EXEC|PERSISTENT] Execution mode
       -chk, --chkmode [CHECK_ALL|ALERT_ONLY] Check mode
@@ -44,6 +44,6 @@ specified on the command line. Options are:
       --help                          Show this message and exit.
 
 The only mandatory argument is the binary itself. One can provide binary argvs
-as argv on the command line. Optional arguments allows providing a klocwork
+as argv on the command line. Optional arguments allows providing a SAST
 report, one or multiple initial seed files and tuning parameters to run the
 fuzzer.
