@@ -59,7 +59,6 @@ class AFLPPProcess:
             f"-i {workspace.input_dir}",
             f"-F {workspace.dynamic_input_dir}",
             f"-o {workspace.output_dir}",
-            f"-s 12345678", # NOTE fix the seeds for experiments
 
             f"-c {cmplog}" if cmplog is not None else ""
         ])
