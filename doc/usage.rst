@@ -45,7 +45,7 @@ on the commande line. The help message is the following:
     Usage: pastis-triton offline [OPTIONS] PROGRAM [PARGVS]...
 
     Options:
-      -k, --kl-report FILE            Klocwork report to use
+      -r, --sast-report FILE          SAST report to use
       -c, --count INTEGER             Number of execution
       --config FILE                   Triton configuration file
       -s, --seed PATH                 Seed or directory of seeds to give to the
@@ -63,7 +63,7 @@ on the commande line. The help message is the following:
 
 Details:
 
-* ``--kl-report`` report klocwork if any
+* ``--sast-report`` SAST report if any
 * ``--count`` limit the number of iterations to perform (number of program execution)
 * ``--config`` tritondse configuration file to use
 * ``--seed`` initial seed file or directory to use as initial corpus

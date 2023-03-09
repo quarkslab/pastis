@@ -5,7 +5,6 @@ Pastis-dse relies on multiple dependencies. That must be installed beforehand.
 The steps to install it are:
 
 * Installing libpastis
-* Installing klocwork module
 * Installing Triton `(documentation) <https://triton.quarkslab.com/documentation/doxygen/index.html#install_sec>`_
 * Installing tritondse
 
