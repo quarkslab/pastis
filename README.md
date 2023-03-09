@@ -13,7 +13,6 @@ Dynamic Symbolic Execution engine of PASTIS
 Le projet utilise:
     - tritondse
     - libpastis
-    - p2_klocwork *(qui fournit les utilities pour manipuler un rapport KL)*
 
 ## TODO
 
@@ -23,15 +22,13 @@ Le projet utilise:
     - le constructeur prend l'agent en paramètre et enregistre ses propres callbacks dessus
     
 - Implémenter la callback ``start_callback`` et donc faire:
-    - traiter tous le contenu du message (programme, config, options, rapport klocwork etc.)
+    - traiter tous le contenu du message (programme, config, options, rapport SAST etc.)
     - traiter en particulier CheckMode (qui va changer les callback qu'on enregistre sur le cbm)
     - lancer le SymbolicExplorator avec les bonnes options de config
  
 - Implémenter la callback ``stop_callback`` qui interrompt l'exécution
     
 - Implémenter le mode cli qui "craft" un start_message et appel la même fonction (+tester)
-
-- Implémenter les hooks sur les intrinsèques klocwork
 
 - Implémenter la callback ``seed_callback`` pour le réception de seed et implémenter l'envoie
 
