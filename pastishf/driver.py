@@ -10,15 +10,9 @@ from typing import List, Union
 
 
 # Pastis & triton imports
-from libpastis import ClientAgent, BinaryPackage
+from libpastis import ClientAgent, BinaryPackage, SASTReport
 from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
                             LogLevel, AlertData, FuzzMode
-
-try:  # Make the klocwork support optional
-    from klocwork import KlocworkReport
-    KLOCWORK_SUPPORTED = True
-except ImportError:
-    KLOCWORK_SUPPORTED = False
 
 # Local imports
 import pastishf
@@ -45,7 +39,7 @@ class HonggfuzzDriver:
         self.__exec_mode = None   # SINGLE_RUN, PERSISTENT
         self.__check_mode = None  # CHECK_ALL, ALERT_ONLY
         self.__seed_inj = None    # STDIN or ARGV
-        self.__report = None      # Klocwork report if supported
+        self.__report = None      # SAST report if provided
 
         # Target data
         self.__package = None
@@ -154,7 +148,7 @@ class HonggfuzzDriver:
 
     def __check_seed_alert(self, filename: Path, is_crash: bool) -> bool:
         p = Path(filename)
-        # Only rerun the seed if in alert only mode and a klocwork report was provided
+        # Only rerun the seed if in alert only mode and a SAST report was provided
         if self.__check_mode == CheckMode.ALERT_ONLY and self.__report:
 
             # Rerun the program with the seed
@@ -166,7 +160,7 @@ class HonggfuzzDriver:
 
             # Iterate all covered alerts
             for id in run.alert_covered:
-                alert = self.__report.get_alert(binding_id=id)
+                alert = self.__report.get_alert(id)
                 if not alert.covered:
                     alert.covered = True
                     logging.info(f"New alert covered {alert} [{alert.id}]")
@@ -175,9 +169,9 @@ class HonggfuzzDriver:
             # Check if the target has crashed and if so tell the broker which one
             if run.has_crashed() or run.is_asan_without_crash():  # Also consider ASAN warning as detection
                 if not run.crashing_id:
-                    self.dual_log(LogLevel.WARNING, f"Crash on {filename.name} but can't link it to a Klocwork alert (maybe bonus !)")
+                    self.dual_log(LogLevel.WARNING, f"Crash on {filename.name} but can't link it to a SAST alert")
                 else:
-                    alert = self.__report.get_alert(binding_id=run.crashing_id)
+                    alert = self.__report.get_alert(run.crashing_id)
                     if not alert.validated:
                         alert.validated = True
                         bugt, aline = run.asan_info()
@@ -231,7 +225,7 @@ class HonggfuzzDriver:
                 logging.error(f'Error retrieving stats!')
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
-                       _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], kl_report: str = None):
+                       _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], sast_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
@@ -253,15 +247,9 @@ class HonggfuzzDriver:
             logging.error("Invalid package received")
             return
 
-        if kl_report:
-            if KLOCWORK_SUPPORTED:
-                logging.info("Loading klocwork report")
-                self.__report = KlocworkReport.from_json(kl_report)
-                if not self.__report.has_binding():
-                    logging.info("Report not binded (auto_bind it)")
-                    self.__report.auto_bind()
-            else:
-                self.dual_log(LogLevel.ERROR, "Klocwork report provided while Klocwork not supported by host")
+        if sast_report:
+            logging.info("Loading SAST report")
+            self.__report = SASTReport.from_json(sast_report)
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
