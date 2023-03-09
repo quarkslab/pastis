@@ -199,7 +199,7 @@ class BrokerAgent(NetworkAgent):
 
     def send_start(self, id: bytes, name: str, program: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, ckmode: CheckMode,
                    covmode: CoverageMode, engine: FuzzingEngineInfo, engine_args: str,
-                   seed_loc: SeedInjectLoc, kl_report: str=None):
+                   seed_loc: SeedInjectLoc, sast_report: bytes = None):
         msg = StartMsg()
         if isinstance(program, str):
             program = Path(program)
@@ -213,8 +213,8 @@ class BrokerAgent(NetworkAgent):
         msg.coverage_mode = covmode.value
         msg.seed_location = seed_loc.value
         msg.engine_args = engine_args
-        if kl_report is not None:
-            msg.klocwork_report = kl_report
+        if sast_report is not None:
+            msg.sast_report = sast_report
         for arg in argv:
             msg.program_argv.append(arg)
         self.send_to(id, msg, msg_type=MessageType.START)
@@ -355,7 +355,7 @@ class FileAgent(ClientAgent):
             ch.setFormatter(logging.Formatter('%(asctime)s - [%(name)s] [%(levelname)s]: %(message)s'))
             self.logger.addHandler(ch)
 
-    def bind(self, port: int = 5555):
+    def bind(self, port: int = 5555, ip: str = "*"):
         raise RuntimeError("FileAgent is not meant to be used as broker")
 
     def connect(self, remote: str = "localhost", port: int = 5555) -> bool:
