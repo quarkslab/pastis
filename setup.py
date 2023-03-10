@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 """Installation script for PASTIS."""
-i
+
 import sys
 from setuptools import setup, find_packages
 
