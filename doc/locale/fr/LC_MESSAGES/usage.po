@@ -1,14 +1,25 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
+<<<<<<< HEAD
 # This file is distributed under the same license as the pastis-dse package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+=======
+# This file is distributed under the same license as the Pastis-AFLPP package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+>>>>>>> pastisaflpp/master
 #
 #, fuzzy
 msgid ""
 msgstr ""
+<<<<<<< HEAD
 "Project-Id-Version: pastis-dse \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 21:59+0100\n"
+=======
+"Project-Id-Version: Pastis-AFLPP \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
+>>>>>>> pastisaflpp/master
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,6 +29,7 @@ msgstr ""
 "Generated-By: Babel 2.9.0\n"
 
 #: ../../usage.rst:4
+<<<<<<< HEAD
 msgid "pastis-triton usage"
 msgstr "Utilisation de pastis-triton"
 
@@ -153,3 +165,62 @@ msgstr ""
 "Le fichier de configuration et le workspace utilisent le formalisme de tritondse. "
 "Il faut donc se référer à la documentation de tritondse pour de plus amples informations "
 " à propos du fichier de configuration et de l'organisation du workspace."
+=======
+msgid "pastis-aflpp usage"
+msgstr "Utilisation de pastis-aflpp"
+
+#: ../../usage.rst:6
+msgid ""
+"The program ``pastis-aflpp`` is the main binary using the pastis-aflpp "
+"library to interact with the broker. It can either be launched locally in"
+" offline mode or with the broker in an online mode."
+msgstr ""
+"Le programme ``pastis-aflpp`` est le programme principal utilisant la"
+" bibliothèque pastis-aflpp pour interagir avec le broker. Il peut être "
+"lancé localement en mode 'offline' ou avec le broker en mode 'online'."
+
+#: ../../usage.rst:11
+msgid "Online mode"
+msgstr "Mode Online"
+
+#: ../../usage.rst:13
+msgid "Launching the ``pastis-aflpp`` in online mode is as simple as:"
+msgstr "Lancer ``pastis-aflpp`` en mode online est aussi simple que:"
+
+#: ../../usage.rst:19
+msgid ""
+"Without further argument the binary the server reached is localhost on "
+"port 5555. Otherwise one can specify ``-h`` and ``-p`` respectively for "
+"the host and port. There is no other parameters as all of them will be "
+"received through the broker."
+msgstr ""
+"Sans autre argument ``pastis-aflpp`` contacte localhost sur le port "
+"5555. Autrement, il est possible de spécifier ``-h`` et ``-p`` pour "
+"respectivement le serveur et le port. Il n'y a aucun autre paramètre "
+"puisqu'ils seront tous reçus via le broker."
+
+#: ../../usage.rst:24
+msgid "Offline mode"
+msgstr "Mode Offline"
+
+#: ../../usage.rst:26
+msgid ""
+"In offline mode, all parameters normally received by the broker have to "
+"be specified on the command line. Options are:"
+msgstr ""
+"En mode offline, tous les paramètres reçus normalement par le broker "
+"doivent être spécifiés sur la ligne de commande. Les options sont:"
+
+#: ../../usage.rst:45
+msgid ""
+"The only mandatory argument is the binary itself. One can provide binary "
+"argvs as argv on the command line. Optional arguments allows providing a "
+"klocwork report, one or multiple initial seed files and tuning parameters"
+" to run the fuzzer."
+msgstr ""
+"Le seul paramètre obligatoire est l'exécutable. Tous les paramètres de "
+"`argv` à fournir au programme peuvent être envoyés en `argv` de ``pastis-"
+"aflpp``. Des arguments optionnels permettent de fournir un "
+"rapport klocwork associé, une ou plusieurs graines initiales et des "
+"paramètres pour régler l'exécution du fuzzer."
+>>>>>>> pastisaflpp/master

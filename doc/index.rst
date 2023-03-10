@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Pastis Triton
 =============
 
@@ -12,6 +13,20 @@ the SAST report, handles the coverage and validation of alertes and ensure
 to send and share all appropriate data with the broker. It shows a concrete
 exemple of using the tritondse library to build an utility ``pastis-triton``
 that satisfy some specific constraints.
+=======
+Pastis-AFLPP documentation
+==========================
+
+**Pastis-AFLPP** is a Python API to run ``AFL++`` via Python. More
+specifically, this module built for the PASTIS project, interact with AFL++
+allowing to inject new input files and to get telemetry about the current
+running state. Built around the inotify module, it also allows getting
+notified when a new corpus or crash file is being generated. In the context
+of PASTIS it is thightly bound to ``libpastis`` for interacting with the
+broker.
+
+
+>>>>>>> pastisaflpp/master
 
 .. toctree::
    :caption: Getting started
@@ -20,6 +35,15 @@ that satisfy some specific constraints.
     Installation <installation>
     Usage <usage>
 
+<<<<<<< HEAD
+=======
+.. toctree::
+    :caption: Python API
+    :maxdepth: 3
+
+    api
+
+>>>>>>> pastisaflpp/master
 
 Indices and tables
 ==================
