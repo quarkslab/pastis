@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 """Installation script for PASTIS."""
-
+i
 import sys
 from setuptools import setup, find_packages
 
@@ -22,6 +22,9 @@ setup(
         "coloredlogs",
         "quokka-project",
         "watchdog",
+        "pydantic",
+        "matplotlib",
+        "joblib"
         # To add
         # "tritondse",
     ],
@@ -36,6 +39,7 @@ setup(
     test_suite="",
     scripts=[
         'bin/pastis-broker',
+        'bin/pastis-benchmark',
         'bin/pastisd',
         'engines/pastis-honggfuzz/bin/pastis-honggfuzz',
         'engines/pastis-triton/bin/pastis-triton',
