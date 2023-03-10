@@ -1,0 +1,36 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2020, Quarkslab
+# This file is distributed under the same license as the pastis-broker
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: pastis-broker \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 14:37+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.0\n"
+
+#: ../../installation.rst:2
+msgid "Broker Installation"
+msgstr "Installation du Broker"
+
+#: ../../installation.rst:4
+msgid ""
+"Pastis-broker relies on ``libpastis`` and ``klocwork`` as PASTIS "
+"dependencies. Apart from that all dependencies can be install through "
+"pip. It is not dependent on neither ``honggfuzz`` nor ``triton``. After "
+"having installed the two aforementioned dependencies, just do:"
+msgstr ""
+"Pastis-broker s'appuie sur ``libpastis`` et ``klocwork`` pour ses traitements "
+"liés à PASTIS. À part cela, toutes les dépendances peuvent être installées via "
+"pip. Il n'est dépendent ni de ``honggfuzz`` ni de ``triton``. Il suffit donc "
+"d'exécuter:"
+
