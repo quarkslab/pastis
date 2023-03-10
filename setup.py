@@ -17,7 +17,7 @@ setup(
         "psutil",
         "aenum",
         "lief",
-        "python-magic"
+        "python-magic",
         "click",
         "coloredlogs",
         "quokka-project",
