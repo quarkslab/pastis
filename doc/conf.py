@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'pastisd'
+project = 'PASTIS'
 copyright = '2021, Quarkslab'
 author = 'Quarkslab'
 
