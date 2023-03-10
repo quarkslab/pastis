@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+import sys
+import logging
+import os
+import coloredlogs
+
+from libpastis import ClientAgent
+from libpastis.types import FuzzingEngine
+
+try:
+    import hfwrapper
+    from hfwrapper import Honggfuzz
+    if os.environ.get("HFUZZ_PATH") is None:
+        raise ImportError("HFUZZ_PATH not set")
+    HONGGFUZZ_AVAILABLE = True
+except ImportError:
+    hfwrapper, Honggfuzz = None, None
+    HONGGFUZZ_AVAILABLE = False
+try:
+    import pastisdse
+    from pastisdse import PastisDSE
+    PASTISDSE_AVAILABLE = True
+except ImportError:
+    pastisdse, PastisDSE = None, None
+    PASTISDSE_AVAILABLE = False
+
+
+PASTIS_MASTER = "pastis.lan"
+PASTIS_PORT = 5555
+
+agent = ClientAgent()
+engine = None
+
+coloredlogs.install(level=logging.DEBUG,
+                    fmt="%(asctime)s %(threadName)s [%(levelname)s] %(message)s",
+                    level_styles={'debug': {'color': 'blue'}, 'info': {}, 'warning': {'color': 'yellow'},
+                                  'error': {'color': 'red'}, 'critical': {'bold': True, 'color': 'red'}},
+                    field_styles={'asctime': {'color': 'white'}, 'levelname': {'color': 'black', 'bold': True}})
+
+
+
+def configure_logging(level, fmt):
+    home = os.environ.get("HOME", "")
+    hldr = logging.FileHandler(home+"/.pastisd.log")
+    hldr.setLevel(level)
+    hldr.setFormatter(logging.Formatter(fmt))
+    logging.root.addHandler(hldr)
+
+
+def start_received(*args):
+    global agent, engine
+    engine = args[2]
+    logging.info(f"Start received for engine: {engine.name}")
+    if engine == FuzzingEngine.HONGGFUZZ:
+        if os.environ.get("HFUZZ_PATH"):
+            engine = Honggfuzz(agent)
+            configure_logging(logging.DEBUG, "%(asctime)s %(levelname)s %(message)s")
+            engine.start_received(*args)
+        else:
+            logging.critical("Can't find Honggfuzzz HFUZZ_DATA not set")
+
+    elif engine == FuzzingEngine.TRITON:
+        engine = PastisDSE(agent)
+        configure_logging(logging.DEBUG, "%(asctime)s %(threadName)s [%(levelname)s] %(message)s")
+        engine.start_received(*args)
+        engine.start()
+    else:
+        assert False
+
+
+def main(host=PASTIS_MASTER):
+    global agent, engine
+    agent.register_start_callback(start_received)
+
+    agent.connect(host, PASTIS_PORT)
+
+    engines = []
+    if HONGGFUZZ_AVAILABLE:
+        engines.append((FuzzingEngine.HONGGFUZZ, hfwrapper.__version__))
+    else:
+        logging.warning("Honggfuzz is not available (cannot import it)")
+    if PASTISDSE_AVAILABLE:
+        engines.append((FuzzingEngine.TRITON, pastisdse.__version__))
+    else:
+        logging.warning("Triton is not available (cannot import it)")
+
+    agent.send_hello(engines)
+
+    try:
+        agent.run()
+    except KeyboardInterrupt:
+        logging.warning("Stop required (KeyboardInterrupt)")
+        if engine:  # If an engine was launched
+            engine.stop()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        main(sys.argv[1])
+    else:
+        main()

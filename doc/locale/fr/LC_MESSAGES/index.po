@@ -1,15 +1,25 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
+<<<<<<< HEAD
 # This file is distributed under the same license as the pastis-broker
 # package.
+=======
+# This file is distributed under the same license as the pastisd package.
+>>>>>>> pastisd/master
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
 #
 #, fuzzy
 msgid ""
 msgstr ""
+<<<<<<< HEAD
 "Project-Id-Version: pastis-broker \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 14:37+0100\n"
+=======
+"Project-Id-Version: pastisd \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 22:22+0100\n"
+>>>>>>> pastisd/master
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,6 +28,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.9.0\n"
 
+<<<<<<< HEAD
 #: ../../index.rst:28
 msgid " Installation"
 msgstr ""
@@ -31,15 +42,31 @@ msgid " Workspace"
 msgstr ""
 
 #: ../../index.rst:28
+=======
+#: ../../index.rst:16
+msgid " Installation"
+msgstr ""
+
+#: ../../index.rst:16
+msgid " Usage"
+msgstr " Utilisation"
+
+#: ../../index.rst:16
+>>>>>>> pastisd/master
 msgid "Getting started"
 msgstr "Documentation"
 
 #: ../../index.rst:2
+<<<<<<< HEAD
 msgid "Pastis Broker"
+=======
+msgid "Pastisd"
+>>>>>>> pastisd/master
 msgstr ""
 
 #: ../../index.rst:4
 msgid ""
+<<<<<<< HEAD
 "Pastis-broker is the head of the infrastructure, acting as an "
 "intermediate between each clients connected. In a general manner it is in"
 " charge of ensuring a maximal sharing of seeds between clients. Ensuring "
@@ -95,6 +122,48 @@ msgid ":ref:`modindex`"
 msgstr ""
 
 #: ../../index.rst:42
+=======
+"Pastisd is an utility meant to be able to run either Honggfuzz either "
+"Triton if they are both installed. It enables the broker to choose which "
+"engine to run on such or such machine. As such, it allows the broker to "
+"equilibrate the Triton and Honggfuzz instances, or applying any other "
+"strategy. Pastis-DSE and HF-wrapper are architectured to be used as "
+"libraries. Thus the ``pastisd`` first checks if one or both are available"
+" and installed and advertize it to the broker *(which then choose which "
+"one to launch)*."
+msgstr ""
+*Pastisd** est un utilitaire conçu pour exécuter soit Honggfuzz soit Triton si les "
+"deux sont installés. Cela permet de déléguer au broker, le choix du moteur à lancer "
+"sur la machine. De cette manière, le broker peux équilibrer les instances de "
+"Triton et de Honggfuzz, ou appliquer n'importe quelle autre stratégie. Pour cela "
+"Pastis-DSE et HF-wrapper sont aussi conçus pour fonctionner comme des bibliothèques. "
+"Au démarrage ``pastisd`` vérifie que l'un est l'autre sont installés puis se connecte "
+"au broker en lui annonçant tous les moteurs qu'il peut exécuter."
+
+#: ../../index.rst:12
+msgid ""
+"``pastisd`` is meant to be run as a daemon. As such, it just wait for a "
+"broker to be available on the specified domain and port. By default "
+"domain is **pastis.lan** and port 5555."
+msgstr ""
+"``pastisd`` est conçu pour être exécuté comme un démon. De cette manière il attend "
+"que le broker soit disponible sur le domaine et le port specifié. Par défaut "
+"le domaine est **pastis.lan** et le port 5555."
+
+#: ../../index.rst:25
+msgid "Indices and tables"
+msgstr "Index et Tableaux"
+
+#: ../../index.rst:27
+msgid ":ref:`genindex`"
+msgstr ""
+
+#: ../../index.rst:28
+msgid ":ref:`modindex`"
+msgstr ""
+
+#: ../../index.rst:29
+>>>>>>> pastisd/master
 msgid ":ref:`search`"
 msgstr ""
 
