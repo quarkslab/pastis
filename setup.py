@@ -21,6 +21,7 @@ setup(
         "click",
         "coloredlogs",
         "quokka-project",
+        "watchdog",
         # To add
         # "tritondse",
     ],
@@ -37,6 +38,7 @@ setup(
         'bin/pastis-broker',
         'bin/pastisd',
         'engines/pastis-honggfuzz/bin/pastis-honggfuzz',
-        'engines/pastis-triton/bin/pastis-triton'
+        'engines/pastis-triton/bin/pastis-triton',
+        'engines/pastis-aflpp/bin/pastis-aflpp'
     ]
 )

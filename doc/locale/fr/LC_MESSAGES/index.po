@@ -1,14 +1,25 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
+<<<<<<< HEAD
 # This file is distributed under the same license as the pastis-dse package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+=======
+# This file is distributed under the same license as the Pastis-AFLPP package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+>>>>>>> pastisaflpp/master
 #
 #, fuzzy
 msgid ""
 msgstr ""
+<<<<<<< HEAD
 "Project-Id-Version: pastis-dse \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 21:59+0100\n"
+=======
+"Project-Id-Version: Pastis-AFLPP \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
+>>>>>>> pastisaflpp/master
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +28,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.9.0\n"
 
+<<<<<<< HEAD
 #: ../../index.rst:16
 msgid " Installation"
 msgstr ""
@@ -67,3 +79,69 @@ msgstr ""
 msgid ":ref:`search`"
 msgstr ""
 
+=======
+#: ../../index.rst:13
+msgid " Installation"
+msgstr ""
+
+#: ../../index.rst:13
+msgid " Usage"
+msgstr "Utilisation"
+
+#: ../../index.rst:13
+msgid "Getting started"
+msgstr "Démarrer"
+
+#: ../../index.rst:20
+msgid "Python API"
+msgstr "API Python"
+
+#: ../../index.rst:2
+msgid "Pastis-AFLPP documentation"
+msgstr "Documentation de Pastis-AFLPP"
+
+#: ../../index.rst:4
+msgid ""
+"**Pastis-AFLPP** is a Python API to run ``afl-fuzz`` via Python. More "
+"specifically, this module built for the PASTIS project, interact with a "
+"custom version of afl-fuzz allowing to inject new input files and to get"
+" telemetry about the current running state. Built around the inotify "
+"module, it also allows getting notified when a new corpus or crash file "
+"is being generated. In the context of PASTIS it is thightly bound to "
+"``libpastis`` for interacting with the broker."
+msgstr ""
+"**Pastis-AFLPP** est une API Python pour exécuter ``afl-fuzz`` en Python. "
+"Plus spécifiquement, ce module conçu pour PASTIS, interagit avec une "
+"version personnalisée de afl-fuzz permettant d'injecter de nouvelles "
+"entrées ou de récuperer de la télémétrie à propos de l'état courant "
+"d'exécution. Grâce au module Python inotify, il est aussi possible d'être "
+"notifié quand un nouveau fichier de corpus ou de crash est créé. Ce "
+"module est fortement corrélé à PASTIS et ``libpastis``  pour interagir "
+"avec le broker."
+
+#: ../../index.rst:28
+msgid "Indices and tables"
+msgstr "Index et Sommaire"
+
+#: ../../index.rst:30
+msgid ":ref:`genindex`"
+msgstr ""
+
+#: ../../index.rst:31
+msgid ":ref:`modindex`"
+msgstr ""
+
+#: ../../index.rst:32
+msgid ":ref:`search`"
+msgstr ""
+
+#~ msgid " API usage"
+#~ msgstr "Utilisation de l'API"
+
+#~ msgid "AFLPP"
+#~ msgstr ""
+
+#~ msgid "Replay"
+#~ msgstr "Rejeu"
+
+>>>>>>> pastisaflpp/master

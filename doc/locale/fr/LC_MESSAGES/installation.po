@@ -1,14 +1,25 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
+<<<<<<< HEAD
 # This file is distributed under the same license as the pastis-dse package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+=======
+# This file is distributed under the same license as the Pastis-AFLPP package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+>>>>>>> pastisaflpp/master
 #
 #, fuzzy
 msgid ""
 msgstr ""
+<<<<<<< HEAD
 "Project-Id-Version: pastis-dse \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 21:59+0100\n"
+=======
+"Project-Id-Version: Pastis-AFLPP \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 09:11+0100\n"
+>>>>>>> pastisaflpp/master
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,6 +29,7 @@ msgstr ""
 "Generated-By: Babel 2.9.0\n"
 
 #: ../../installation.rst:2
+<<<<<<< HEAD
 msgid "Pastis-DSE Installation"
 msgstr "Installation de Pastis-DSE"
 
@@ -63,3 +75,54 @@ msgid ""
 "the PATH."
 msgstr ""
 "Après installation l'utilitaire ``pastis-triton`` devrait être disponible dans le PATH."
+=======
+msgid "Pastis-AFLPP Installation"
+msgstr ""
+
+#: ../../installation.rst:4
+msgid ""
+"Installing ``pastis-aflpp`` works by providing the afl-fuzz binary path "
+"through environment variable. It thus has to be installed before the "
+"Python module."
+msgstr ""
+"L'utilisation de ``pastis-aflpp`` fonctionne en fournissant le chemin "
+"d'installation de afl-fuzz via une variable d'environnement. Ce module "
+"s'installe ensuite comme n'importe quel module Python."
+
+#: ../../installation.rst:8
+msgid "Installing AFL++"
+msgstr "Installation de AFL++"
+
+#: ../../installation.rst:10
+msgid "Compiling the AFL++ is as simple as:"
+msgstr ""
+"Compiler la version de AFL++ est aussi "
+"simple que:"
+
+#: ../../installation.rst:18
+msgid ""
+"The only tricky part is the export of the afl++ directory as "
+"environment variable to make it discoverable by ``pastis-aflpp``. At the "
+"moment the module does not intent to find automatically the afl-fuzz "
+"binary."
+msgstr ""
+"La seule subtilité est l'export du répertoire de afl++ comme "
+"variable d'environnement pour le rendre trouvable par ``pastis-aflpp``. Pour "
+"le moment aucune détection automatique n'est faite pour essayer de trouver"
+" afl-fuzz sans cet export."
+
+#: ../../installation.rst:24
+msgid "Installing Pastis-AFLPP"
+msgstr "Installer Pastis-AFLPP"
+
+#: ../../installation.rst:26
+msgid ""
+"The only external dependency is ``libpastis``. It thus need to be "
+"installed first (see appropriate section). Then getting in the pastis-aflpp"
+" directory and install the module with:"
+msgstr ""
+"La seule dépendance externe est ``libpastis``. Cela requiert de "
+"l'installer en premier (voir section appropriée). Ensuite, en ce mettant "
+"dans le dossier du module, il suffit de faire:"
+
+>>>>>>> pastisaflpp/master
