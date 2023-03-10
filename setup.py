@@ -21,6 +21,8 @@ setup(
         "click",
         "coloredlogs",
         "quokka-project",
+        # To add
+        # "tritondse",
     ],
     tests_require=[],
     license="qb",
@@ -34,6 +36,7 @@ setup(
     scripts=[
         'bin/pastis-broker',
         'bin/pastisd',
-        'engines/pastis-honggfuzz/bin/pastis-honggfuzz'
+        'engines/pastis-honggfuzz/bin/pastis-honggfuzz',
+        'engines/pastis-triton/bin/pastis-triton'
     ]
 )
