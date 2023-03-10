@@ -1,15 +1,25 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 2020, Quarkslab
+<<<<<<< HEAD
 # This file is distributed under the same license as the pastis-broker
 # package.
+=======
+# This file is distributed under the same license as the pastisd package.
+>>>>>>> pastisd/master
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
 #
 #, fuzzy
 msgid ""
 msgstr ""
+<<<<<<< HEAD
 "Project-Id-Version: pastis-broker \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2021-01-21 14:37+0100\n"
+=======
+"Project-Id-Version: pastisd \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-01-21 22:22+0100\n"
+>>>>>>> pastisd/master
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,6 +29,7 @@ msgstr ""
 "Generated-By: Babel 2.9.0\n"
 
 #: ../../usage.rst:4
+<<<<<<< HEAD
 msgid "pastis-broker usage"
 msgstr "Utilisation pastis-broker"
 
@@ -183,3 +194,29 @@ msgstr ""
 "Triton seront chacune lancée avec une stratégie différente (block, arête, chemin). "
 "Similairement, si un client supporte différents moteurs de fuzzing, pastis-broker "
 "équilibrera automatiquement les instances de Honggfuzz et Triton."
+=======
+msgid "pastisd usage"
+msgstr "Utilisation de pastisd"
+
+#: ../../usage.rst:6
+msgid ""
+"The utility ``pastisd`` is solely meant to be used with a broker. It can "
+"be run with:"
+msgstr "L'utilitaire ``pastisd`` est uniquement conçu pour fonctionner avec un broker. "
+"Il peut être exécuté avec:"
+
+#: ../../usage.rst:12
+msgid ""
+"Under these settings the host reached is **pastis.lan:5555**. Otherwise "
+"the host can be specified with:"
+msgstr ""
+"Sous cette configuration, l'hôte contacté est **pastis.lan:5555**. Autrement, "
+"l'hôte peut être spécifié avec:"
+
+#: ../../usage.rst:19
+msgid ""
+"In both cases, to use Honggfuzz the environment variable ``HF_PATH`` "
+"should be exported."
+msgstr "Dans les deux cas, l'utilisation de Honggfuzz requiert d'exporter la variable "
+"d'environment ``HF_PATH``."
+>>>>>>> pastisd/master
