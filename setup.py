@@ -9,7 +9,22 @@ setup(
     name="pastis",
     version="0.2.1",
     description="PASTIS framework for collaborative fuzzing",
-    packages=find_packages(),
+    packages=[
+        "libpastis",
+        "pastisbroker",
+        "pastisbenchmark",
+    ],
+    package_dir={
+        # AFL++
+        "pastisaflpp": "engines/pastisaflpp",
+        "aflppbroker": "engines/broker-addon/aflppbroker",
+        # Honggfuzz
+        "pastishf": "engines/pastishf",
+        "hfbroker": "engines/broker-addon/hfbroker",
+        # Triton
+        "pastisdse": "engines/pastisdse",
+        "pastisttbroker": "engines/broker-addon/pastisttbroker"
+    },
     setup_requires=[],
     install_requires=[
         "protobuf",
