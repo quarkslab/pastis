@@ -444,7 +444,7 @@ class PastisBroker(BrokerAgent):
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
                         engine_args_str,
                         self.inject,
-                        self.sast_report.to_json() if self.sast_report else "")
+                        self.sast_report.to_json() if self.sast_report else b"")
 
 
     def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:

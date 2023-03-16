@@ -11,19 +11,26 @@ setup(
     description="PASTIS framework for collaborative fuzzing",
     packages=[
         "libpastis",
+        "libpastis.proto",
         "pastisbroker",
         "pastisbenchmark",
+        "pastisaflpp",
+        "aflppbroker",
+        "pastishf",
+        "hfbroker",
+        "pastisdse",
+        "pastisttbroker"
     ],
     package_dir={
         # AFL++
-        "pastisaflpp": "engines/pastisaflpp",
-        "aflppbroker": "engines/broker-addon/aflppbroker",
+        "pastisaflpp": "engines/pastis-aflpp/pastisaflpp",
+        "aflppbroker": "engines/pastis-aflpp/broker-addon/aflppbroker",
         # Honggfuzz
-        "pastishf": "engines/pastishf",
-        "hfbroker": "engines/broker-addon/hfbroker",
+        "pastishf": "engines/pastis-honggfuzz/pastishf",
+        "hfbroker": "engines/pastis-honggfuzz/broker-addon/hfbroker",
         # Triton
-        "pastisdse": "engines/pastisdse",
-        "pastisttbroker": "engines/broker-addon/pastisttbroker"
+        "pastisdse": "engines/pastis-triton/pastisdse",
+        "pastisttbroker": "engines/pastis-triton/broker-addon/pastisttbroker"
     },
     setup_requires=[],
     install_requires=[
@@ -39,7 +46,8 @@ setup(
         "watchdog",
         "pydantic",
         "matplotlib",
-        "joblib"
+        "joblib",
+        "rich"
         # To add
         # "tritondse",
     ],
