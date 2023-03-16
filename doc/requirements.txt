@@ -2,3 +2,18 @@ sphinx_rtd_theme
 sphinx
 breathe
 sphinx-intl
+sphinx_fontawesome
+nbsphinx
+ipython
+
+# Dependencies for libpastis
+protobuf
+pyzmq
+psutil
+aenum
+lief
+python-magic
+
+# Dependencies for autodoc
+#pastis
+#tritondse
