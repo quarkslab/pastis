@@ -19,7 +19,7 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 
 # Local imports
 from pastisdse import PastisDSE, __version__
-from tritondse import CoverageStrategy, ProbeInterface, Config
+from tritondse import CoverageStrategy, ProbeInterface, Config, SmtSolver
 from tritondse.probes.basic_trace import BasicDebugTrace
 
 pastis = None
@@ -95,6 +95,7 @@ def online(host: str, port: int, probe: Tuple[str]):
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), help="Check mode", default=CheckMode.CHECK_ALL.name)
 @click.option('-cov', '--covmode', type=click.Choice([x.value for x in CoverageStrategy]), help="Coverage strategy", default=CoverageStrategy.EDGE.value)
 @click.option('-i', '--seedinj', type=click.Choice([x.name for x in list(SeedInjectLoc)]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name)
+@click.option("--solver", type=click.Choice([x.name for x in list(SmtSolver)]), help="SMT solver to use", default=None)
 @click.option('-n', '--name', type=str, default='', help="Name of the executable if program is an archive containing multiple files")
 @click.option('-t', '--target', type=str, help="Target alert address in case of ALERT_ONE checkmode")
 @click.option('-p', '--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
@@ -113,6 +114,7 @@ def offline(program: str,
             chkmode: CheckMode,
             covmode: CoverageStrategy,
             seedinj: SeedInjectLoc,
+            solver: SmtSolver,
             name: str,
             target: str,
             pargvs: Tuple[str],
@@ -179,6 +181,9 @@ def offline(program: str,
 
     if workspace:
         config.workspace = workspace
+
+    if solver:
+        config.smt_solver = solver
 
     for p in list(probe):
         probe = load_probe_module(p)
