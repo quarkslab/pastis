@@ -1,7 +1,35 @@
-.. _pastisaflpp_bin:
+*****
+AFL++
+*****
 
-pastis-aflpp usage
-==================
+.. _aflpp_install:
+
+Installation
+============
+
+Running ``pastis-aflpp`` requires installing AFL++ as it uses ``afl-fuzz`` binary found
+in the PATH or through an environment variable. It thus has to be installed before the Python
+module.
+
+Compiling the AFL++ (with QEMU support) is as simple as:
+
+.. code-block:: bash
+
+    $ git clone https://github.com/AFLplusplus/AFLplusplus.git
+    $ cd AFLplusplus
+    $ make distrib
+    $ cd qemu_mode/
+    $ ./build_qemu_support.sh
+    $ echo "export AFLPP_PATH=$PWD" >> ~/.profile
+
+The only tricky part is the export of the AFL++ directory as environment
+variable to make it discoverable by ``pastis-aflpp``. At the moment the
+module does not intent to find automatically the ``afl-fuzz`` binary.
+
+
+
+Running pastis-aflpp
+====================
 
 The program ``pastis-aflpp`` is the main binary using the pastis-aflpp library
 to interact with the broker. It can either be launched locally in offline

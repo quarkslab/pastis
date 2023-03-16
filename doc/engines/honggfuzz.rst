@@ -1,7 +1,35 @@
-.. _hfwrapper_bin:
+*********
+Honggfuzz
+*********
 
-pastis-honggfuzz usage
-======================
+
+.. _honggfuzz_install:
+
+Installation
+============
+
+The ``pastis-honggfuzz`` driver works by finding the honggfuzz binary path through an
+environment variable. Honggfuzz thus has to be installed beforehand.
+
+.. warning:: PASTIS requires a specific patched version of Honggfuzz to work.
+
+Compiling the Honggfuzz tailored for PASTIS is as simple as:
+
+.. code-block:: bash
+
+    $ sudo apt install binutils-dev libunwind-dev -y
+    $ cd engines/pastis-honggfuzz/patches
+    $ ./make_hf.sh
+    $ echo "export HFUZZ_PATH=$PWD/honggfuzz-5a504b49" >> ~/.profile
+
+The only tricky part is the export of the honggfuzz directory as environment variable to make
+it discoverable by ``pastis-honggfuzz``. At the moment the module does not intent to find automatically
+the honggfuzz binary.
+
+
+
+Running pastis-honggfuzz
+========================
 
 The program ``pastis-honggfuzz`` is the main binary using the pastis-hf library to interact
 with the broker. It can either be launched locally in offline mode or with the broker in an
