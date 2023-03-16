@@ -182,7 +182,7 @@ class NetworkAgent(object):
         elif topic == MessageType.START:
             return [msg.binary_filename, msg.binary, FuzzingEngineInfo.from_pb(msg.engine), ExecMode(msg.exec_mode), FuzzMode(msg.fuzz_mode),
                     CheckMode(msg.check_mode), CoverageMode(msg.coverage_mode), SeedInjectLoc(msg.seed_location),
-                    msg.engine_args, [x for x in msg.program_argv], msg.klocwork_report]
+                    msg.engine_args, [x for x in msg.program_argv], msg.sast_report]
         elif topic == MessageType.DATA:
             return [msg.data]
         else:  # for stop and store_coverage_done nothing to unpack

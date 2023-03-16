@@ -110,7 +110,7 @@ def clean(workspace: str):
         if file.exists():
             shutil.rmtree(file)
 
-    files = [Workspace.KL_REPORT_COPY,
+    files = [Workspace.SAST_REPORT_COPY,
              Workspace.CSV_FILE,
              Workspace.TELEMETRY_FILE,
              Workspace.CLIENTS_STATS,
