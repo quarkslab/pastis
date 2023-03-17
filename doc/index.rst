@@ -81,9 +81,13 @@ PASTIS in action
 
 .. toctree::
     :caption: Python API
-    :maxdepth: 2
+    :maxdepth: 1
 
-    libpastis <api/libpastis>
+    Agents <api/agent>
+    Fuzzer Interface <api/descr>
+    Binary Package <api/package>
+    SAST <api/sast>
+    Types <api/types>
 
 ..
     pastis-aflpp <api/aflpp>
