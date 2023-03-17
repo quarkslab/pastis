@@ -30,7 +30,6 @@ lief.logging.disable()
 class BrokingMode(Enum):
     FULL = 1              # Transmit all seeds to all peers
     NO_TRANSMIT = 2       # Does not transmit seed to peers (for comparing perfs of tools against each other)
-    COVERAGE_ORDERED = 3  # Transmit a seed to a peer if they have the same notion of coverage
 
 
 COLORS = [32, 33, 34, 35, 36, 37, 39, 91, 93, 94, 95, 96]
@@ -201,7 +200,6 @@ class PastisBroker(BrokerAgent):
                 if c.is_new_seed(seed):
                     self.send_seed(c.netid, typ, seed)  # send the seed to the client
                     c.add_peer_seed(seed)  # Add it in its list of seed
-        # TODO: implementing BrokingMode.COVERAGE_ORDERED
 
     def add_seed_file(self, file: PathLike, initial: bool = False) -> None:
         p = Path(file)
@@ -353,7 +351,6 @@ class PastisBroker(BrokerAgent):
         # Iterate all the seed pool and send it to the client
         if self.broker_mode == BrokingMode.FULL:
             self._transmit_pool(client, self._seed_pool)
-            # TODO: Implementing BrokingMode.COVERAGE_ORDERED
         elif self.broker_mode == BrokingMode.NO_TRANSMIT:
             self._transmit_pool(client, self._init_seed_pool)
 
