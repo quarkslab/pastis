@@ -1,5 +1,5 @@
 
-.. figure:: figs/logo_pastis_background.png
+.. figure:: figs/logo_pastis.png
   :width: 550
   :align: center
   :figclass: align-center
@@ -101,14 +101,8 @@ Credits
 
 Sponsors and supporters of the project.
 
-.. figure:: figs/quarkslab_logo.png
+.. figure:: figs/supporters.png
   :width: 200
-  :align: right
+  :align: center
   :alt: Quarkslab Logo
-  :figclass: align-center
-
-.. figure:: figs/dga_logo.png
-  :width: 200
-  :align: right
-  :alt: DGA Logo
   :figclass: align-center
