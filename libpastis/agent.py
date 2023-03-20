@@ -1,12 +1,11 @@
 # built-ins
 import time
-from typing import Callable, Optional, Tuple, List, Union, Dict
+from typing import Callable, Tuple, List, Union
 from enum import Enum
 import logging
 import threading
 from pathlib import Path
 import socket
-import platform
 
 # third-party libs
 import zmq
@@ -23,6 +22,9 @@ Message = Union[InputSeedMsg, StartMsg, StopMsg, HelloMsg, LogMsg, TelemetryMsg,
 
 
 class MessageType(Enum):  # Topics in the ZMQ terminology
+    """
+    Enum encoding the type of the message that can be received.
+    """
     HELLO = 'hello_msg'
     # STATE = 1
     START = 'start_msg'
@@ -44,6 +46,9 @@ class AgentMode(Enum):
 
 
 class NetworkAgent(object):
+    """
+    Base class for network-based PASTIS agents (both clients and servers)
+    """
     def __init__(self):
         self.mode = None
         self.ctx = zmq.Context()
@@ -53,29 +58,59 @@ class NetworkAgent(object):
         self._cbs = {x: [] for x in MessageType}
 
     def register_callback(self, typ: MessageType, callback: Callable) -> None:
+        """
+        Register a callback function on a given message type.
+
+        :param typ: type of the message
+        :param callback: Callback function taking the protobuf object as parameter
+        :return: None
+        """
         self._cbs[typ].append(callback)
 
-    def bind(self, port: int = 5555, ip: str = "*"):
+    def bind(self, port: int = 5555, ip: str = "*") -> None:
+        """
+        Bind on the given IP and port, to listen incoming messages.
+
+        :param port: listen port
+        :param ip: IP, can be "*" to listen on all interfaces
+        :return: None
+        """
         self.socket = self.ctx.socket(zmq.ROUTER)
         self.socket.RCVTIMEO = 500  # 500 milliseconds
         self.socket.bind(f"tcp://{ip}:{port}")
         self.mode = AgentMode.BROKER
 
     def connect(self, remote: str = "localhost", port: int = 5555) -> bool:
+        """
+        Connect to a remote server on the given ``remote`` IP and ``port``.
+
+        :param remote: IP address or DNS
+        :param port: port to connect to
+        :return: Always true
+        """
         self.socket = self.ctx.socket(zmq.DEALER)
         self.socket.RCVTIMEO = 500  # 500 milliseconds
         self.socket.connect(f"tcp://{remote}:{port}")
         self.mode = AgentMode.CLIENT
         return True
 
-    def start(self):
+    def start(self) -> None:
+        """
+        Start the listening thread.
+        """
         self._th = threading.Thread(name="[LIBPASTIS]", target=self._recv_loop, daemon=True)
         self._th.start()
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Run receiving loop in a blocking manner.
+        """
         self._recv_loop()
 
-    def stop(self):
+    def stop(self) -> None:
+        """
+        Stop the listening thread.
+        """
         self._stop = True
         if self._th:
             self._th.join()
@@ -95,7 +130,15 @@ class NetworkAgent(object):
             except zmq.error.Again:
                 pass
 
-    def send_to(self, id: bytes, msg: Message, msg_type: MessageType=None):
+    def send_to(self, id: bytes, msg: Message, msg_type: MessageType = None) -> None:
+        """
+        Send a message to a given client. Only meant to be used when
+        running as a server.
+
+        :param id: bytes id of the client
+        :param msg: protobuf :py:obj:`Message` object
+        :param msg_type: type of the message
+        """
         if self.mode == AgentMode.CLIENT:
             logging.error(f"cannot use sento_to() as {AgentMode.CLIENT.name}")
             return
@@ -105,7 +148,14 @@ class NetworkAgent(object):
         getattr(final_msg, msg_type.value).MergeFrom(msg)
         self.socket.send_multipart([id, final_msg.SerializeToString()])
 
-    def send(self, msg: Message, msg_type: MessageType=None):
+    def send(self, msg: Message, msg_type: MessageType = None) -> None:
+        """
+        Send a message on the socket (thus to the broker). Should
+        only be used as a client (fuzzing agent).
+
+        :param msg: Protobuf message to send
+        :param msg_type: Type of the message
+        """
         if self.mode == AgentMode.BROKER:
             logging.error(f"cannot use sento() as {AgentMode.BROKER.name}")
             return
@@ -117,6 +167,12 @@ class NetworkAgent(object):
 
     @staticmethod
     def msg_to_type(msg: Message) -> MessageType:
+        """
+        Get the :py:obj:`MessageType` from a protobuf object.
+
+        :param msg: Protobuf message
+        :return: message type
+        """
         if isinstance(msg, InputSeedMsg):
             return MessageType.INPUT_SEED
         elif isinstance(msg, HelloMsg):
@@ -191,20 +247,43 @@ class NetworkAgent(object):
 
 class BrokerAgent(NetworkAgent):
 
-    def send_seed(self, id: bytes, typ: SeedType, seed: bytes):
+    def send_seed(self, id: bytes, typ: SeedType, seed: bytes) -> None:
+        """
+        Send the given input to the client `id`.
+
+        :param id: raw id of the client
+        :param typ: Type of the input
+        :param seed: Bytes the of input
+        """
         msg = InputSeedMsg()
         msg.type = typ.value
         msg.seed = seed
         self.send_to(id, msg, msg_type=MessageType.INPUT_SEED)
 
-    def send_start(self, id: bytes, name: str, program: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, ckmode: CheckMode,
-                   covmode: CoverageMode, engine: FuzzingEngineInfo, engine_args: str,
-                   seed_loc: SeedInjectLoc, sast_report: bytes = None):
+    def send_start(self, id: bytes, name: str, package: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode,
+                   ckmode: CheckMode, covmode: CoverageMode, engine: FuzzingEngineInfo, engine_args: str,
+                   seed_loc: SeedInjectLoc, sast_report: bytes = None) -> None:
+        """
+        Send a START message to a fuzzing agent with all the parameters it is meant to run with.
+
+        :param id: raw id of the client
+        :param name: name of the executable file or binary package
+        :param package: filepath of :py:obj:`BinaryPackage` or program executable to send
+        :param argv: argumnets to be provided on command line
+        :param exmode: execution mode
+        :param fuzzmode: fuzzing mode
+        :param ckmode: checking mode
+        :param covmode: coverage metric to use
+        :param engine: descriptor of the fuzzing engine
+        :param engine_args: engine's additional arguments or configuration file
+        :param seed_loc: location where to provide inputs (stdin or argv)
+        :param sast_report: SAST report if applicable
+        """
         msg = StartMsg()
-        if isinstance(program, str):
-            program = Path(program)
+        if isinstance(package, str):
+            package = Path(package)
         msg.binary_filename = name
-        msg.binary = program.read_bytes()
+        msg.binary = package.read_bytes()
         msg.engine.name = engine.name
         msg.engine.version = engine.version
         msg.exec_mode = exmode.value
@@ -219,32 +298,51 @@ class BrokerAgent(NetworkAgent):
             msg.program_argv.append(arg)
         self.send_to(id, msg, msg_type=MessageType.START)
 
-    def send_stop(self, id: bytes):
+    def send_stop(self, id: bytes) -> None:
+        """
+        Send a stop message to the client.
+
+        :param id: raw id of the client
+        """
         msg = StopMsg()
         self.send_to(id, msg, msg_type=MessageType.STOP)
 
-    def register_seed_callback(self, cb: Callable):
+    def register_seed_callback(self, cb: Callable) -> None:
         self.register_callback(MessageType.INPUT_SEED, cb)
 
-    def register_hello_callback(self, cb: Callable):
+    def register_hello_callback(self, cb: Callable) -> None:
         self.register_callback(MessageType.HELLO, cb)
 
-    def register_log_callback(self, cb: Callable):
+    def register_log_callback(self, cb: Callable) -> None:
         self.register_callback(MessageType.LOG, cb)
 
-    def register_telemetry_callback(self, cb: Callable):
+    def register_telemetry_callback(self, cb: Callable) -> None:
         self.register_callback(MessageType.TELEMETRY, cb)
 
-    def register_stop_coverage_callback(self, cb: Callable):
+    def register_stop_coverage_callback(self, cb: Callable) -> None:
         self.register_callback(MessageType.STOP_COVERAGE_DONE, cb)
 
-    def register_data_callback(self, cb: Callable):
+    def register_data_callback(self, cb: Callable) -> None:
         self.register_callback(MessageType.DATA, cb)
 
 
 class ClientAgent(NetworkAgent):
+    """
+    Subclass of NetworkAgent to connect to PASTIS as a fuzzing
+    agent. The class provides helper methods to interact with
+    the broker.
+    """
 
     def send_hello(self, engines: List[FuzzingEngineInfo], arch: Arch = None, platform: Platform = None) -> bool:
+        """
+        Send the hello message to the broker. `engines` parameter is the list of fuzzing engines
+        that "we" as client support. E.g: Pastisd is meant to be an interface for all engines
+        locally, so it will advertise multiple engines.
+
+        :param engines: list of engines, the client is able to launch
+        :param arch: the architecture supported (if None, local one is used)
+        :param platform: the platform supported (if None local one used)
+        """
         msg = HelloMsg()
         arch = get_local_architecture() if arch is None else arch
         if arch is None:
@@ -263,27 +361,81 @@ class ClientAgent(NetworkAgent):
             msg.engines.add(name=eng.name, version=eng.version, pymodule=eng.pymodule)
         self.send(msg, msg_type=MessageType.HELLO)
 
-    def send_log(self, level: LogLevel, message: str):
+    def send_log(self, level: LogLevel, message: str) -> None:
+        """
+        Log message to be sent and printed by the broker. All
+        logs received by the broker are logged in a client specific
+        logfile.
+
+        :param level: level of the log message
+        :param message: message as a string
+        """
         self.send(LogMsg(level=level.value, message=message), MessageType.LOG)
 
-    def debug(self, message: str):
+    def debug(self, message: str) -> None:
+        """
+        Send a debug message to the broker
+
+        :param message: message as a string
+        """
         self.send_log(LogLevel.DEBUG, message)
 
-    def info(self, message: str):
+    def info(self, message: str) -> None:
+        """
+        Send an info (level) message to the broker
+
+        :param message: message to send
+        """
         self.send_log(LogLevel.INFO, message)
 
-    def warning(self, message: str):
+    def warning(self, message: str) -> None:
+        """
+        Send a warning (level) message to the broker.
+
+        :param message: message to send
+        """
         self.send_log(LogLevel.WARNING, message)
 
-    def error(self, message: str):
+    def error(self, message: str) -> None:
+        """
+        Send an error (level) message to the broker.
+
+        :param message: message to send
+        """
         self.send_log(LogLevel.ERROR, message)
 
-    def critical(self, message: str):
+    def critical(self, message: str) -> None:
+        """
+        Send a critical (level) message to the broker.
+
+        :param message: message to send
+        """
         self.send_log(LogLevel.CRITICAL, message)
 
-    def send_telemetry(self, state: State = None, exec_per_sec: int = None, total_exec: int = None, cycle: int = None,
-                       timeout: int = None, coverage_block: int = None, coverage_edge: int = None,
-                       coverage_path: int = None, last_cov_update: int = None):
+    def send_telemetry(self,
+                       state: State = None,
+                       exec_per_sec: int = None,
+                       total_exec: int = None,
+                       cycle: int = None,
+                       timeout: int = None,
+                       coverage_block: int = None,
+                       coverage_edge: int = None,
+                       coverage_path: int = None,
+                       last_cov_update: int = None) -> None:
+        """
+        Send a telemetry message to the broker. These data could be used on the
+        broker side to plot statistics.
+
+        :param state: current state of the fuzzer
+        :param exec_per_sec: number of execution per seconds
+        :param total_exec: total number of executions
+        :param cycle: number of cycles
+        :param timeout: timeout numbers
+        :param coverage_block: coverage count in blocks
+        :param coverage_edge: coverage count in edges
+        :param coverage_path: coverage count in paths
+        :param last_cov_update: last coverage update
+        """
         msg = TelemetryMsg()
         msg.cpu_usage = psutil.cpu_percent()
         msg.mem_usage = psutil.virtual_memory().percent
@@ -307,31 +459,73 @@ class ClientAgent(NetworkAgent):
             msg.last_cov_update = last_cov_update
         self.send(msg, msg_type=MessageType.TELEMETRY)
 
-    def send_stop_coverage_criteria(self):
+    def send_stop_coverage_criteria(self) -> None:
+        """
+        Send a message to the broker indicating, the program has been fully
+        covered in accordance to the coverage criteria (metric).
+        """
         self.send(StopCoverageCriteria(), MessageType.STOP_COVERAGE_DONE)
 
-    def send_seed(self, typ: SeedType, seed: bytes):
+    def send_seed(self, typ: SeedType, seed: bytes) -> None:
+        """
+        Send an input seed to the broker. The ``typ`` indicates
+        the type of the seed, namely, input, crash or hang.
+
+        :param typ: type of the input
+        :param seed: bytes of the input
+        """
         msg = InputSeedMsg()
         msg.type = typ.value
         msg.seed = seed
         self.send(msg, msg_type=MessageType.INPUT_SEED)
 
-    def send_alert_data(self, alert_data: AlertData):
+    def send_alert_data(self, alert_data: AlertData) -> None:
+        """
+        Send information related to the coverage or validation of a specific SAST
+        alert.
+
+        :param alert_data: alert object
+        """
         msg = DataMsg()
         msg.data = alert_data.to_json()
         self.send(msg, msg_type=MessageType.DATA)
 
-    def register_start_callback(self, cb: Callable):
+    def register_start_callback(self, cb: Callable) -> None:
+        """
+        Register a callback that will be called when a start message will
+        be received. The callback should take 11 parameters.
+
+        :param cb: callback function.
+        """
         self.register_callback(MessageType.START, cb)
 
-    def register_stop_callback(self, cb: Callable):
+    def register_stop_callback(self, cb: Callable) -> None:
+        """
+        Register a callback called when the broker send a STOP
+        message. The fuzzing has to stop running and sending data.
+
+        :param cb: callback function
+        """
         self.register_callback(MessageType.STOP, cb)
 
-    def register_seed_callback(self, cb: Callable):
+    def register_seed_callback(self, cb: Callable) -> None:
+        """
+        Register a callback called when an input seed is received from the
+        broker. The callback function take 2 parameters seed type and content.
+
+        :param cb: callback function
+        """
         self.register_callback(MessageType.INPUT_SEED, cb)
 
-    def register_data_callback(self, cb: Callable):
+    def register_data_callback(self, cb: Callable) -> None:
+        """
+        Register callback called when data is received. At the moment
+        data are necessarily AlertData messages.
+
+        :param cb: callback function
+        """
         self.register_callback(MessageType.DATA, cb)
+
 
 
 class FileAgent(ClientAgent):
