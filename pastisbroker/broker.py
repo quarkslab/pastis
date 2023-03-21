@@ -432,7 +432,7 @@ class PastisBroker(BrokerAgent):
 
         self.send_start(client.netid,
                         package.name,
-                        package.executable_path if package.is_binary_only() else package.make_package(),
+                        package.executable_path if package.is_standalone() else package.make_package(),
                         self.argv,
                         exmode,
                         fuzzmod,
