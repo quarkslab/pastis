@@ -3,7 +3,7 @@ from pathlib import Path
 import zipfile
 import tempfile
 import logging
-from typing import Tuple, Optional, List, Union
+from typing import Tuple, Optional, Union
 
 # third-party imports
 import lief
@@ -16,16 +16,26 @@ from libpastis.types import Arch, Platform
 
 
 class BinaryPackage(object):
+    """
+    Binary Package representing a given target to fuzz along with its shared
+    libraries and additional files required (cmplog, dictionnary etc.).
+    This object is received by fuzzing agents as part of the START message.
+    """
 
     EXTENSION_BLACKLIST = ['.gt', '.Quokka', '.quokka', '.cmplog']
+    #: specific extensions that will be ignored for the `other_files`
 
     def __init__(self, main_binary: Path):
+        """
+        :param main_binary: main executable file path
+        """
         self._main_bin = Path(main_binary)
         self._quokka = None
         self._callgraph = None
         self._cmplog = None
         self._dictionary = None
         self.other_files = []
+        #: list of additional files contained in this package
 
         self._package_file = None
         self._arch = None
@@ -33,55 +43,121 @@ class BinaryPackage(object):
 
     @property
     def executable_path(self) -> Path:
+        """
+        Path to the main executable file to fuzz.
+
+        :return: filepath
+        """
         return self._main_bin
 
     @property
     def name(self) -> str:
+        """
+        Name of the executable file
+
+        :return: name as a string
+        """
         return self._main_bin.name
 
     @property
-    def quokka(self) -> Path:
+    def quokka(self) -> Optional[Path]:
+        """
+        Path to the quokka file if provided.
+
+        :return: path of the quokka file
+        """
         return self._quokka
 
     @property
-    def callgraph(self) -> Path:
+    def callgraph(self) -> Optional[Path]:
+        """
+        Path to the callgraph file if provided.
+
+        :return: path of the quokka file
+        """
         return self._callgraph
 
     @property
-    def cmplog(self) -> Path:
+    def cmplog(self) -> Optional[Path]:
+        """
+        Path to the complog executable file if provided.
+
+        :return: path to the complog file
+        """
         return self._cmplog
 
     @property
-    def dictionary(self) -> Path:
+    def dictionary(self) -> Optional[Path]:
+        """
+        Path the to dictionnary file if provided.
+
+        :return: path to the dictionnary file
+        """
         return self._dictionary
 
     def is_cmplog(self) -> bool:
+        """
+        Check if the package contains a cmplog file.
+
+        :return: True if contains cmplog
+        """
         return self._cmplog is not None
 
     def is_quokka(self) -> bool:
+        """
+        Check if the package contains a quokka file.
+
+        :return: True if contains a quokka file
+        """
         return self._quokka is not None
 
     def is_dictionary(self) -> bool:
+        """
+        Check if the package contains a dictionnary.
+
+        :return: True if contains a dictionnary
+        """
         return self._dictionary is not None
 
-    def is_binary_only(self) -> bool:
+    def is_standalone(self) -> bool:
         """
         Indicates that this BinaryPackage only contains the program under test and no
         additional files such as a Quokka database or a cmplog instrumented binary.
         This is used in pastis-broker when sending the 'start' command to agents.
         """
-        return not (self.is_quokka() or self.is_cmplog() or self.is_dictionary())
+        return not (self.is_quokka() or
+                    self.is_cmplog() or
+                    self.is_dictionary() or
+                    bool(self.other_files))
 
     @property
     def arch(self) -> Arch:
+        """
+        Return the architecture of the binary package (main executable target).
+
+        :return: architecture
+        """
         return self._arch
 
     @property
     def platform(self) -> Platform:
+        """
+        Return the platform of the binary package (main exectuable target).
+
+        :return: platform
+        """
         return self._platform
 
     @staticmethod
     def auto(exe_file: Union[Path, str]) -> Optional['BinaryPackage']:
+        """
+        Take a file and try creating a BinaryPackage with it. The `exe_file` is
+        the main executable file. From that the function will look for quokka,
+        cmplog, dictionary files (in the same directory).
+
+        :param exe_file: main target executable file
+        :return: a binary package if `exe_file` if applicable
+        """
         bin_f = Path(exe_file)
 
         # Exclude file if have one of the
@@ -131,10 +207,12 @@ class BinaryPackage(object):
     def auto_directory(exe_file: Union[str, Path]) -> Optional['BinaryPackage']:
         """
         Create a BinaryPackage with all files it can find in the given
-        directory.
+        directory. The difference with :py:meth:`BinaryPackage.auto` is
+        that all additional files in the directory will be added to the
+        package.
 
         :param exe_file: main executable in the directory
-        :return: BinaryPackage
+        :return: BinaryPackage if applicable
         """
         bin_f = Path(exe_file)
 
@@ -148,6 +226,11 @@ class BinaryPackage(object):
                 p.other_files.append(file)
 
     def make_package(self) -> Path:
+        """
+        Pack the BinaryPackage in a zip file.
+
+        :return: Path to a .zip file containing the whole package
+        """
         if self._package_file is not None:
             if self._package_file.exists():
                 return self._package_file
