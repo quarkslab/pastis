@@ -6,7 +6,7 @@ from .pastisdse import PastisDSE
 # Expose triton version
 import tritondse
 
-__version__ = "0.3"
+__version__ = "1.0.0"
 
 TRITON_VERSION = tritondse.TRITON_VERSION
 

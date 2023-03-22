@@ -8,7 +8,7 @@ from .replay import Replay
 from .honggfuzz import HonggfuzzProcess, HonggfuzzNotFound
 from .workspace import Workspace
 
-__version__ = "0.3"
+__version__ = "1.0.0"
 
 # Honggfuzz env variables
 HFUZZ_ENV_VAR = "HFUZZ_WS"

@@ -48,7 +48,7 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
 
     NAME = "HONGGFUZZ"
     SHORT_NAME = "HF"
-    VERSION = "0.3"  # Should be in sync with hfwrapper.__version__
+    VERSION = "1.0.0"  # Should be in sync with hfwrapper.__version__
 
     HF_PERSISTENT_SIG = b"\x01_LIBHFUZZ_PERSISTENT_BINARY_SIGNATURE_\x02\xFF"
 

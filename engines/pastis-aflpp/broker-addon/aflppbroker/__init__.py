@@ -47,7 +47,7 @@ class AFLPPEngineDescriptor(FuzzingEngineDescriptor):
 
     NAME = "AFLPP"
     SHORT_NAME = "AFLPP"
-    VERSION = "0.3"  # Should be in sync with alfpp.__version__
+    VERSION = "1.0.0"  # Should be in sync with alfpp.__version__
 
     config_class = AFLConfigurationInterface
 
