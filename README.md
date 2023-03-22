@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="https://github.com/quarkslab/pastis/raw/main/doc/figs/logo_pastis.png"  width="256" height="256">
+	<img src="https://github.com/quarkslab/pastis/raw/main/doc/figs/logo_pastis.png"  width="100%">
 </p>
 
 The PASTIS project is a fuzzing framework aiming at combining various software testing techniques
@@ -12,7 +12,7 @@ At the moment it supports the following fuzzing engines:
 
 <p align="center" style="font-size:20px">
   <a href="https://quarkslab.github.io/pastis">
-    [Documentation]
+    [Documentation] 
   </a>
 </p>
 
@@ -39,7 +39,7 @@ At the moment it supports the following fuzzing engines:
 
 <p align="center" style="font-size:20px">
   <a href="https://www.youtube.com/watch?v=9uwXciOxtyQ">
-    <img src="https://i.ytimg.com/vi/9uwXciOxtyQ/maxresdefault.jpg" width="70%">
+    <img src="https://i.ytimg.com/vi/9uwXciOxtyQ/maxresdefault.jpg" width="50%">
   </a>
 </p>
 
