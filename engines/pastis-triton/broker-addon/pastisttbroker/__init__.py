@@ -49,7 +49,7 @@ class TritonEngineDescriptor(FuzzingEngineDescriptor):
 
     NAME = "TRITON"
     SHORT_NAME = "TT"
-    VERSION = "0.3"
+    VERSION = "1.0.0"
 
     FUNCTION_BLACKLIST_PREFIX = [
         "__sanitizer",  # all fuzzer related sanitizers

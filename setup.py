@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pastis",
-    version="0.2.1",
+    version="1.0.0",
     description="PASTIS framework for collaborative fuzzing",
     packages=[
         "libpastis",
