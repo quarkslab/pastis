@@ -11,11 +11,15 @@ Project Overview
 The PASTIS project is a fuzzing framework aiming at combining various software testing techniques
 within the same workflow to perform collaborative fuzzing also called ensemble fuzzing.
 
-..
-    The following
-    video gives a very brief overview of challenges and goals PASTIS is trying to achieve;
+.. raw:: html
 
-    TODO: Put video link
+    <iframe width="100%" height="400" src="https://www.youtube.com/embed/9uwXciOxtyQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+
+.. note::
+
+    The video highlight the use-case driven by SAST alerts. However, the
+    main use-case the standard fuzzing for coverage or bug research.
 
 
 Code Components
@@ -47,11 +51,8 @@ PASTIS in action
 
 .. raw:: html
 
-    <video width="700" height="350" controls>
-      <source src="_static/demo.ogv" type="video/mp4">
-    Your browser does not support the video tag.
-    </video>
-    <br/>
+    <iframe width="100%" height="400" src="https://www.youtube.com/embed/YO7ziSPAsxM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
 
 
 
