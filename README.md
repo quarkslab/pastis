@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="https://raw.githubusercontent.com/quarkslab/pastis/doc/figs/logo_pastis.png"  width="256" height="256">
+	<img src="https://github.com/quarkslab/pastis/raw/main/doc/figs/logo_pastis.png"  width="256" height="256">
 </p>
 
 The PASTIS project is a fuzzing framework aiming at combining various software testing techniques
@@ -37,16 +37,11 @@ At the moment it supports the following fuzzing engines:
 
 # Overview
 
-
-<iframe
-  width="560"
-  height="315"
-  src="https://www.youtube.com/embed/9uwXciOxtyQ"
-  title="YouTube video player"
-  frameborder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope;
-  picture-in-picture; web-share" allowfullscreen>
-</iframe>
+<p align="center" style="font-size:20px">
+  <a href="https://www.youtube.com/watch?v=9uwXciOxtyQ">
+    <img src="https://i.ytimg.com/vi/9uwXciOxtyQ/maxresdefault.jpg" width="70%">
+  </a>
+</p>
 
 > **Note**
 > The video highlight the use-case driven by SAST alerts. However, the
