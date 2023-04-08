@@ -15,7 +15,7 @@ setup(
     version="1.0.0",
     description="PASTIS framework for collaborative fuzzing",
     long_description_content_type='text/markdown',
-    long_description=README,
+    long_description="PASTIS framework for collaborative fuzzing",
     packages=[
         "libpastis",
         "libpastis.proto",
