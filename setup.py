@@ -5,10 +5,16 @@
 import sys
 from setuptools import setup, find_packages
 
+with open("README.md") as f:
+    README = f.read()
+
+
 setup(
     name="pastis-framework",
     version="1.0.0",
     description="PASTIS framework for collaborative fuzzing",
+    long_description_content_type='text/markdown',
+    long_description=README,
     packages=[
         "libpastis",
         "libpastis.proto",
@@ -32,6 +38,12 @@ setup(
         "pastisdse": "engines/pastis-triton/pastisdse",
         "pastisttbroker": "engines/pastis-triton/broker-addon/pastisttbroker"
     },
+    url="https://github.com/quarkslab/pastis",
+    project_urls={
+        "Documentation": "https://quarkslab.github.io/pastis/",
+        "Bug Tracker": "https://github.com/quarkslab/pastis/issues",
+        "Source": "https://github.com/quarkslab/pastis"
+    },
     setup_requires=[],
     install_requires=[
         "protobuf",
@@ -51,7 +63,7 @@ setup(
         "tritondse",
     ],
     tests_require=[],
-    license="qb",
+    license="AGPL-3.0",
     author="Quarkslab",
     classifiers=[
         'Topic :: Security',
