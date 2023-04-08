@@ -15,4 +15,4 @@ lief
 python-magic
 
 # Dependencies for autodoc
-pastis
+pastis-framework
