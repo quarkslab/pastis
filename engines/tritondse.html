@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TritonDSE &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="FSM Demo" href="../tutorials/demo-fsm.html" />
+    <link rel="prev" title="Honggfuzz" href="honggfuzz.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"> TritonDSE</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#online">Online</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#offline">Offline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-results">Configuration &amp; Results</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">TritonDSE</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/engines/tritondse.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tritondse">
+<h1>TritonDSE<a class="headerlink" href="#tritondse" title="Permalink to this heading"></a></h1>
+<p>The utility <code class="docutils literal notranslate"><span class="pre">pastis-triton</span></code> enables launching a TritonDSE. It can be launched
+in an alert driven manner in <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> or in independent manner with <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code>.
+Also, it can be run in two modes, <cite>online</cite> to interact with a <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> server or <cite>offline</cite>
+to run locally on its own.</p>
+<section id="online">
+<h2>Online<a class="headerlink" href="#online" title="Permalink to this heading"></a></h2>
+<p>The online mode only requires an IP and a port to run as all subsequent parameters
+will be provided by the broker. The default IP and port are <em>localhost</em> on <em>5555</em>.</p>
+<p>If the broker is running on the same machine <code class="docutils literal notranslate"><span class="pre">pastis-triton</span></code> can be launched with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pastis-triton online
+</pre></div>
+</div>
+<p>If the broker runs on a different machine it can then be launched with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pastis-triton online -h 8.8.8.8 -p 5555
+</pre></div>
+</div>
+<p>The utility will then automatically receive the parameters, the binary to test and
+will start performing its coverage.</p>
+</section>
+<section id="offline">
+<h2>Offline<a class="headerlink" href="#offline" title="Permalink to this heading"></a></h2>
+<p>Running locally, all parameters normally through the network then have to be provided
+on the commande line. The help message is the following:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: pastis-triton offline [OPTIONS] PROGRAM [PARGVS]...
+
+Options:
+  -r, --sast-report FILE          SAST report to use
+  -c, --count INTEGER             Number of execution  [default: 0]
+  --config FILE                   Triton configuration file
+  -s, --seed PATH                 Seed or directory of seeds to give to the
+                                  exploration
+  -x, --exmode [AUTO|SINGLE_EXEC|PERSISTENT]
+                                  Execution mode  [default: SINGLE_EXEC]
+  -fmod, --fuzzmode [AUTO|INSTRUMENTED|BINARY_ONLY]
+                                  Fuzz mode  [default: BINARY_ONLY]
+  -chk, --chkmode [CHECK_ALL|ALERT_ONLY|ALERT_ONE]
+                                  Check mode  [default: CHECK_ALL]
+  -cov, --covmode [block|edge|path|PREFIXED_EDGE]
+                                  Coverage strategy  [default: edge]
+  -i, --seedinj [STDIN|ARGV]      Location where to inject input  [default:
+                                  STDIN]
+  -n, --name TEXT                 Name of the executable if program is an
+                                  archive containing multiple files
+  -t, --target TEXT               Target alert address in case of ALERT_ONE
+                                  checkmode
+  -p, --probe TEXT                Probe to load as a python module (should
+                                  contain a ProbeInterface)
+  -w, --workspace TEXT            Path to TritonDSE workspace
+  --debug                         Enable debug logs
+  --debug-pp                      Enable debugging path predicate
+  --trace                         Show execution trace in debug logging
+</pre></div>
+</div>
+<p>Details:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--sast-report</span></code> SAST report if any</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--count</span></code> limit the number of iterations to perform (number of program execution)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--config</span></code> tritondse configuration file to use</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--seed</span></code> initial seed file or directory to use as initial corpus</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--exmode</span></code> only <code class="docutils literal notranslate"><span class="pre">SINGLE_EXEC</span></code> is supported at the moment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--fuzzmod</span></code> only <code class="docutils literal notranslate"><span class="pre">BINARY_ONLY</span></code> applies for TritonDSE</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--chkmode</span></code> change the running mode</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--covmode</span></code> coverage strategy to apply</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--seedinj</span></code> location where to inject the input file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--name</span></code> name of the executable of the <cite>PROGRAM</cite> provided is an archive</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--target</span></code> target address to try reaching when launched in <cite>ALERT_ONE</cite></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--probe</span></code> External Probe module that should be attached to the exploration</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--workspace</span></code> workspace directory (if not provided in the configuration file)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code> show debug logs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--debug-pp</span></code> Enable debugging the path predicate <strong>(debugging only)</strong></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--trace</span></code> Log the complete execution trace in a file (to be combined with <code class="docutils literal notranslate"><span class="pre">--count</span> <span class="pre">1</span></code>)</p></li>
+</ul>
+</section>
+<section id="configuration-results">
+<h2>Configuration &amp; Results<a class="headerlink" href="#configuration-results" title="Permalink to this heading"></a></h2>
+<p>The project handles PASTIS parameters and translate them in their counterpart
+in tritondse. For instance the running mode <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code> and <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> are
+PASTIS parameters. That parameter will be put in practice by register different
+callbacks. As such, <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> will only register a callback on the intrinsic
+function while <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code> requires registering callbacks on many more events.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The configuration file, and workspace uses the tritondse mechanism. Thus,
+one must refers to tritondse documentation for additional information about the
+configuration file or the workspace organization.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="honggfuzz.html" class="btn btn-neutral float-left" title="Honggfuzz" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../tutorials/demo-fsm.html" class="btn btn-neutral float-right" title="FSM Demo" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

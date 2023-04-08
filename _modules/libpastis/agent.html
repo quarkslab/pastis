@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>libpastis.agent &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">libpastis.agent</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for libpastis.agent</h1><div class="highlight"><pre>
+<span></span><span class="c1"># built-ins</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+
+<span class="c1"># third-party libs</span>
+<span class="kn">import</span> <span class="nn">zmq</span>
+<span class="kn">import</span> <span class="nn">psutil</span>
+
+<span class="c1"># local imports</span>
+<span class="kn">from</span> <span class="nn">libpastis.proto</span> <span class="kn">import</span> <span class="n">InputSeedMsg</span><span class="p">,</span> <span class="n">StartMsg</span><span class="p">,</span> <span class="n">StopMsg</span><span class="p">,</span> <span class="n">HelloMsg</span><span class="p">,</span> <span class="n">LogMsg</span><span class="p">,</span> \
+                            <span class="n">TelemetryMsg</span><span class="p">,</span> <span class="n">StopCoverageCriteria</span><span class="p">,</span> <span class="n">DataMsg</span><span class="p">,</span> <span class="n">EnvelopeMsg</span>
+<span class="kn">from</span> <span class="nn">libpastis.types</span> <span class="kn">import</span> <span class="n">SeedType</span><span class="p">,</span> <span class="n">Arch</span><span class="p">,</span> <span class="n">FuzzingEngineInfo</span><span class="p">,</span> <span class="n">PathLike</span><span class="p">,</span> <span class="n">ExecMode</span><span class="p">,</span> <span class="n">CheckMode</span><span class="p">,</span> <span class="n">CoverageMode</span><span class="p">,</span> <span class="n">SeedInjectLoc</span><span class="p">,</span> \
+                            <span class="n">LogLevel</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">AlertData</span><span class="p">,</span> <span class="n">Platform</span><span class="p">,</span> <span class="n">FuzzMode</span>
+<span class="kn">from</span> <span class="nn">libpastis.utils</span> <span class="kn">import</span> <span class="n">get_local_architecture</span><span class="p">,</span> <span class="n">get_local_platform</span>
+
+<span class="n">Message</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">InputSeedMsg</span><span class="p">,</span> <span class="n">StartMsg</span><span class="p">,</span> <span class="n">StopMsg</span><span class="p">,</span> <span class="n">HelloMsg</span><span class="p">,</span> <span class="n">LogMsg</span><span class="p">,</span> <span class="n">TelemetryMsg</span><span class="p">,</span> <span class="n">StopCoverageCriteria</span><span class="p">,</span> <span class="n">DataMsg</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">MessageType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>  <span class="c1"># Topics in the ZMQ terminology</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enum encoding the type of the message that can be received.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">HELLO</span> <span class="o">=</span> <span class="s1">&#39;hello_msg&#39;</span>
+    <span class="c1"># STATE = 1</span>
+    <span class="n">START</span> <span class="o">=</span> <span class="s1">&#39;start_msg&#39;</span>
+    <span class="n">INPUT_SEED</span> <span class="o">=</span> <span class="s1">&#39;input_msg&#39;</span>
+    <span class="n">TELEMETRY</span> <span class="o">=</span> <span class="s1">&#39;telemetry_msg&#39;</span>
+    <span class="n">LOG</span> <span class="o">=</span> <span class="s1">&#39;log_msg&#39;</span>
+    <span class="n">STOP_COVERAGE_DONE</span> <span class="o">=</span> <span class="s1">&#39;stop_crit_msg&#39;</span>
+    <span class="n">STOP</span> <span class="o">=</span> <span class="s2">&quot;stop_msg&quot;</span>
+    <span class="n">DATA</span> <span class="o">=</span> <span class="s2">&quot;data_msg&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">AgentMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Internal enum identifying whether the agent is running as a broker</span>
+<span class="sd">    or a client.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">BROKER</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">CLIENT</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">class</span> <span class="nc">NetworkAgent</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for network-based PASTIS agents (both clients and servers)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_th</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cbs</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">MessageType</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">register_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typ</span><span class="p">:</span> <span class="n">MessageType</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Register a callback function on a given message type.</span>
+
+<span class="sd">        :param typ: type of the message</span>
+<span class="sd">        :param callback: Callback function taking the protobuf object as parameter</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cbs</span><span class="p">[</span><span class="n">typ</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5555</span><span class="p">,</span> <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Bind on the given IP and port, to listen incoming messages.</span>
+
+<span class="sd">        :param port: listen port</span>
+<span class="sd">        :param ip: IP, can be &quot;*&quot; to listen on all interfaces</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">ROUTER</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">RCVTIMEO</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># 500 milliseconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tcp://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">AgentMode</span><span class="o">.</span><span class="n">BROKER</span>
+
+    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remote</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5555</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connect to a remote server on the given ``remote`` IP and ``port``.</span>
+
+<span class="sd">        :param remote: IP address or DNS</span>
+<span class="sd">        :param port: port to connect to</span>
+<span class="sd">        :return: Always true</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">DEALER</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">RCVTIMEO</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># 500 milliseconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tcp://</span><span class="si">{</span><span class="n">remote</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">AgentMode</span><span class="o">.</span><span class="n">CLIENT</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the listening thread.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_th</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;[LIBPASTIS]&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_recv_loop</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_th</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run receiving loop in a blocking manner.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_recv_loop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop the listening thread.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_th</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_th</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_recv_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1">#flags = 0 if blocking else zmq.DONTWAIT</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="n">AgentMode</span><span class="o">.</span><span class="n">BROKER</span><span class="p">:</span>
+                    <span class="n">uid</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_multipart</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__broker_transfer_to_callback</span><span class="p">(</span><span class="n">uid</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__client_transfer_to_callback</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">Again</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">send_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">:</span> <span class="n">MessageType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a message to a given client. Only meant to be used when</span>
+<span class="sd">        running as a server.</span>
+
+<span class="sd">        :param id: bytes id of the client</span>
+<span class="sd">        :param msg: protobuf :py:obj:`Message` object</span>
+<span class="sd">        :param msg_type: type of the message</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="n">AgentMode</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cannot use sento_to() as </span><span class="si">{</span><span class="n">AgentMode</span><span class="o">.</span><span class="n">CLIENT</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">msg_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msg_to_type</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">final_msg</span> <span class="o">=</span> <span class="n">EnvelopeMsg</span><span class="p">()</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">final_msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">MergeFrom</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">([</span><span class="nb">id</span><span class="p">,</span> <span class="n">final_msg</span><span class="o">.</span><span class="n">SerializeToString</span><span class="p">()])</span>
+
+    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">:</span> <span class="n">MessageType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a message on the socket (thus to the broker). Should</span>
+<span class="sd">        only be used as a client (fuzzing agent).</span>
+
+<span class="sd">        :param msg: Protobuf message to send</span>
+<span class="sd">        :param msg_type: Type of the message</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="n">AgentMode</span><span class="o">.</span><span class="n">BROKER</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cannot use sento() as </span><span class="si">{</span><span class="n">AgentMode</span><span class="o">.</span><span class="n">BROKER</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">msg_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msg_to_type</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">final_msg</span> <span class="o">=</span> <span class="n">EnvelopeMsg</span><span class="p">()</span>
+        <span class="nb">getattr</span><span class="p">(</span><span class="n">final_msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">CopyFrom</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">final_msg</span><span class="o">.</span><span class="n">SerializeToString</span><span class="p">())</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">msg_to_type</span><span class="p">(</span><span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MessageType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the :py:obj:`MessageType` from a protobuf object.</span>
+
+<span class="sd">        :param msg: Protobuf message</span>
+<span class="sd">        :return: message type</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">InputSeedMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">INPUT_SEED</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">HelloMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">HELLO</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">TelemetryMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">TELEMETRY</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">LogMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">LOG</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">StopMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STOP</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">StopCoverageCriteria</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STOP_COVERAGE_DONE</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">StartMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">START</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">DataMsg</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">DATA</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;invalid message type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span><span class="si">}</span><span class="s2"> (cannot find associated topic)&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__broker_transfer_to_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">EnvelopeMsg</span><span class="p">()</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">ParseFromString</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;can&#39;t parse message from </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> (len:</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">message</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">message</span><span class="p">,</span> <span class="n">topic</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unpack_message</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">topic</span> <span class="ow">in</span> <span class="p">[</span><span class="n">MessageType</span><span class="o">.</span><span class="n">START</span><span class="p">]:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid message of type </span><span class="si">{</span><span class="n">topic</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> received&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cbs</span><span class="p">[</span><span class="n">topic</span><span class="p">]:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[broker] message of type </span><span class="si">{</span><span class="n">topic</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (but no callback)&quot;</span><span class="p">)</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_message_args</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cbs</span><span class="p">[</span><span class="n">topic</span><span class="p">]:</span>
+            <span class="n">cb</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__client_transfer_to_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">EnvelopeMsg</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">ParseFromString</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">message</span><span class="p">,</span> <span class="n">topic</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unpack_message</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">topic</span> <span class="ow">in</span> <span class="p">[</span><span class="n">MessageType</span><span class="o">.</span><span class="n">HELLO</span><span class="p">,</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">TELEMETRY</span><span class="p">,</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">LOG</span><span class="p">,</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STOP_COVERAGE_DONE</span><span class="p">]:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid message of type </span><span class="si">{</span><span class="n">topic</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> received&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cbs</span><span class="p">[</span><span class="n">topic</span><span class="p">]:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[agent] message of type </span><span class="si">{</span><span class="n">topic</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (but no callback)&quot;</span><span class="p">)</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_message_args</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cbs</span><span class="p">[</span><span class="n">topic</span><span class="p">]:</span>
+            <span class="n">cb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_unpack_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">EnvelopeMsg</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">MessageType</span><span class="p">,</span> <span class="n">Message</span><span class="p">]:</span>
+        <span class="n">typ</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">WhichOneof</span><span class="p">(</span><span class="s1">&#39;msg&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">typ</span><span class="p">),</span> <span class="n">MessageType</span><span class="p">(</span><span class="n">typ</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_message_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topic</span><span class="p">:</span> <span class="n">MessageType</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">topic</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">INPUT_SEED</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">SeedType</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">type</span><span class="p">),</span> <span class="n">msg</span><span class="o">.</span><span class="n">seed</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">topic</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">LOG</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">LogLevel</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">level</span><span class="p">),</span> <span class="n">msg</span><span class="o">.</span><span class="n">message</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">topic</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">TELEMETRY</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">msg</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">exec_per_sec</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">total_exec</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">cycle</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">coverage_block</span><span class="p">,</span>
+                    <span class="n">msg</span><span class="o">.</span><span class="n">coverage_edge</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">coverage_path</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">last_cov_update</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">topic</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">HELLO</span><span class="p">:</span>
+            <span class="n">engs</span> <span class="o">=</span> <span class="p">[(</span><span class="n">FuzzingEngineInfo</span><span class="o">.</span><span class="n">from_pb</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">msg</span><span class="o">.</span><span class="n">engines</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">engs</span><span class="p">,</span> <span class="n">Arch</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">architecture</span><span class="p">),</span> <span class="n">msg</span><span class="o">.</span><span class="n">cpus</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">memory</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">hostname</span><span class="p">,</span> <span class="n">Platform</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">platform</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">topic</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">START</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">msg</span><span class="o">.</span><span class="n">binary_filename</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">binary</span><span class="p">,</span> <span class="n">FuzzingEngineInfo</span><span class="o">.</span><span class="n">from_pb</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">engine</span><span class="p">),</span> <span class="n">ExecMode</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">exec_mode</span><span class="p">),</span> <span class="n">FuzzMode</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">fuzz_mode</span><span class="p">),</span>
+                    <span class="n">CheckMode</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">check_mode</span><span class="p">),</span> <span class="n">CoverageMode</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">coverage_mode</span><span class="p">),</span> <span class="n">SeedInjectLoc</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">seed_location</span><span class="p">),</span>
+                    <span class="n">msg</span><span class="o">.</span><span class="n">engine_args</span><span class="p">,</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">msg</span><span class="o">.</span><span class="n">program_argv</span><span class="p">],</span> <span class="n">msg</span><span class="o">.</span><span class="n">sast_report</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">topic</span> <span class="o">==</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">DATA</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">msg</span><span class="o">.</span><span class="n">data</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># for stop and store_coverage_done nothing to unpack</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+
+<div class="viewcode-block" id="BrokerAgent"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent">[docs]</a><span class="k">class</span> <span class="nc">BrokerAgent</span><span class="p">(</span><span class="n">NetworkAgent</span><span class="p">):</span>
+
+<div class="viewcode-block" id="BrokerAgent.send_seed"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.send_seed">[docs]</a>    <span class="k">def</span> <span class="nf">send_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">typ</span><span class="p">:</span> <span class="n">SeedType</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send the given input to the client `id`.</span>
+
+<span class="sd">        :param id: raw id of the client</span>
+<span class="sd">        :param typ: Type of the input</span>
+<span class="sd">        :param seed: Bytes the of input</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">InputSeedMsg</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">typ</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_to</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">INPUT_SEED</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.send_start"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.send_start">[docs]</a>    <span class="k">def</span> <span class="nf">send_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">package</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span> <span class="n">argv</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">exmode</span><span class="p">:</span> <span class="n">ExecMode</span><span class="p">,</span> <span class="n">fuzzmode</span><span class="p">:</span> <span class="n">FuzzMode</span><span class="p">,</span>
+                   <span class="n">ckmode</span><span class="p">:</span> <span class="n">CheckMode</span><span class="p">,</span> <span class="n">covmode</span><span class="p">:</span> <span class="n">CoverageMode</span><span class="p">,</span> <span class="n">engine</span><span class="p">:</span> <span class="n">FuzzingEngineInfo</span><span class="p">,</span> <span class="n">engine_args</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                   <span class="n">seed_loc</span><span class="p">:</span> <span class="n">SeedInjectLoc</span><span class="p">,</span> <span class="n">sast_report</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a START message to a fuzzing agent with all the parameters it is meant to run with.</span>
+
+<span class="sd">        :param id: raw id of the client</span>
+<span class="sd">        :param name: name of the executable file or binary package</span>
+<span class="sd">        :param package: filepath of :py:obj:`BinaryPackage` or program executable to send</span>
+<span class="sd">        :param argv: argumnets to be provided on command line</span>
+<span class="sd">        :param exmode: execution mode</span>
+<span class="sd">        :param fuzzmode: fuzzing mode</span>
+<span class="sd">        :param ckmode: checking mode</span>
+<span class="sd">        :param covmode: coverage metric to use</span>
+<span class="sd">        :param engine: descriptor of the fuzzing engine</span>
+<span class="sd">        :param engine_args: engine&#39;s additional arguments or configuration file</span>
+<span class="sd">        :param seed_loc: location where to provide inputs (stdin or argv)</span>
+<span class="sd">        :param sast_report: SAST report if applicable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">StartMsg</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">package</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">package</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">package</span><span class="p">)</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">binary_filename</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">binary</span> <span class="o">=</span> <span class="n">package</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">engine</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">version</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">exec_mode</span> <span class="o">=</span> <span class="n">exmode</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">fuzz_mode</span> <span class="o">=</span> <span class="n">fuzzmode</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">check_mode</span> <span class="o">=</span> <span class="n">ckmode</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">coverage_mode</span> <span class="o">=</span> <span class="n">covmode</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">seed_location</span> <span class="o">=</span> <span class="n">seed_loc</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">engine_args</span> <span class="o">=</span> <span class="n">engine_args</span>
+        <span class="k">if</span> <span class="n">sast_report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">sast_report</span> <span class="o">=</span> <span class="n">sast_report</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">argv</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">program_argv</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_to</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">START</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.send_stop"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.send_stop">[docs]</a>    <span class="k">def</span> <span class="nf">send_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a stop message to the client.</span>
+
+<span class="sd">        :param id: raw id of the client</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">StopMsg</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_to</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">STOP</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.register_seed_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.register_seed_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_seed_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">INPUT_SEED</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.register_hello_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.register_hello_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_hello_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">HELLO</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.register_log_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.register_log_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_log_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">LOG</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.register_telemetry_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.register_telemetry_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_telemetry_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">TELEMETRY</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.register_stop_coverage_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.register_stop_coverage_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_stop_coverage_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">STOP_COVERAGE_DONE</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BrokerAgent.register_data_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.BrokerAgent.register_data_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_data_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">DATA</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ClientAgent"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent">[docs]</a><span class="k">class</span> <span class="nc">ClientAgent</span><span class="p">(</span><span class="n">NetworkAgent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Subclass of NetworkAgent to connect to PASTIS as a fuzzing</span>
+<span class="sd">    agent. The class provides helper methods to interact with</span>
+<span class="sd">    the broker.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ClientAgent.send_hello"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.send_hello">[docs]</a>    <span class="k">def</span> <span class="nf">send_hello</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FuzzingEngineInfo</span><span class="p">],</span> <span class="n">arch</span><span class="p">:</span> <span class="n">Arch</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">platform</span><span class="p">:</span> <span class="n">Platform</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send the hello message to the broker. `engines` parameter is the list of fuzzing engines</span>
+<span class="sd">        that &quot;we&quot; as client support. E.g: Pastisd is meant to be an interface for all engines</span>
+<span class="sd">        locally, so it will advertise multiple engines.</span>
+
+<span class="sd">        :param engines: list of engines, the client is able to launch</span>
+<span class="sd">        :param arch: the architecture supported (if None, local one is used)</span>
+<span class="sd">        :param platform: the platform supported (if None local one used)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">HelloMsg</span><span class="p">()</span>
+        <span class="n">arch</span> <span class="o">=</span> <span class="n">get_local_architecture</span><span class="p">()</span> <span class="k">if</span> <span class="n">arch</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">arch</span>
+        <span class="k">if</span> <span class="n">arch</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;current architecture: </span><span class="si">{</span><span class="n">platform</span><span class="o">.</span><span class="n">machine</span><span class="p">()</span><span class="si">}</span><span class="s2"> is not supported&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">plfm</span> <span class="o">=</span> <span class="n">get_local_platform</span><span class="p">()</span> <span class="k">if</span> <span class="n">platform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">platform</span>
+        <span class="k">if</span> <span class="n">plfm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;current platform is not supported&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">architecture</span> <span class="o">=</span> <span class="n">arch</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">cpus</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">memory</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span><span class="o">.</span><span class="n">total</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">hostname</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">platform</span> <span class="o">=</span> <span class="n">plfm</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">for</span> <span class="n">eng</span> <span class="ow">in</span> <span class="n">engines</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">engines</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">eng</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="n">eng</span><span class="o">.</span><span class="n">version</span><span class="p">,</span> <span class="n">pymodule</span><span class="o">=</span><span class="n">eng</span><span class="o">.</span><span class="n">pymodule</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">HELLO</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.send_log"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.send_log">[docs]</a>    <span class="k">def</span> <span class="nf">send_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">LogLevel</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log message to be sent and printed by the broker. All</span>
+<span class="sd">        logs received by the broker are logged in a client specific</span>
+<span class="sd">        logfile.</span>
+
+<span class="sd">        :param level: level of the log message</span>
+<span class="sd">        :param message: message as a string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">LogMsg</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">),</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">LOG</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.debug"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.debug">[docs]</a>    <span class="k">def</span> <span class="nf">debug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a debug message to the broker</span>
+
+<span class="sd">        :param message: message as a string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_log</span><span class="p">(</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.info"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.info">[docs]</a>    <span class="k">def</span> <span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send an info (level) message to the broker</span>
+
+<span class="sd">        :param message: message to send</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_log</span><span class="p">(</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.warning"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.warning">[docs]</a>    <span class="k">def</span> <span class="nf">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a warning (level) message to the broker.</span>
+
+<span class="sd">        :param message: message to send</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_log</span><span class="p">(</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.error"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.error">[docs]</a>    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send an error (level) message to the broker.</span>
+
+<span class="sd">        :param message: message to send</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_log</span><span class="p">(</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">ERROR</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.critical"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.critical">[docs]</a>    <span class="k">def</span> <span class="nf">critical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a critical (level) message to the broker.</span>
+
+<span class="sd">        :param message: message to send</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_log</span><span class="p">(</span><span class="n">LogLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.send_telemetry"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.send_telemetry">[docs]</a>    <span class="k">def</span> <span class="nf">send_telemetry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                       <span class="n">state</span><span class="p">:</span> <span class="n">State</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">exec_per_sec</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">total_exec</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">cycle</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">coverage_block</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">coverage_edge</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">coverage_path</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">last_cov_update</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a telemetry message to the broker. These data could be used on the</span>
+<span class="sd">        broker side to plot statistics.</span>
+
+<span class="sd">        :param state: current state of the fuzzer</span>
+<span class="sd">        :param exec_per_sec: number of execution per seconds</span>
+<span class="sd">        :param total_exec: total number of executions</span>
+<span class="sd">        :param cycle: number of cycles</span>
+<span class="sd">        :param timeout: timeout numbers</span>
+<span class="sd">        :param coverage_block: coverage count in blocks</span>
+<span class="sd">        :param coverage_edge: coverage count in edges</span>
+<span class="sd">        :param coverage_path: coverage count in paths</span>
+<span class="sd">        :param last_cov_update: last coverage update</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">TelemetryMsg</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">cpu_usage</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">mem_usage</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span><span class="o">.</span><span class="n">percent</span>
+        <span class="k">if</span> <span class="n">state</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">exec_per_sec</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">exec_per_sec</span> <span class="o">=</span> <span class="n">exec_per_sec</span>
+        <span class="k">if</span> <span class="n">total_exec</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">total_exec</span> <span class="o">=</span> <span class="n">total_exec</span>
+        <span class="k">if</span> <span class="n">cycle</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">cycle</span> <span class="o">=</span> <span class="n">cycle</span>
+        <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span>
+        <span class="k">if</span> <span class="n">coverage_block</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">coverage_block</span> <span class="o">=</span> <span class="n">coverage_block</span>
+        <span class="k">if</span> <span class="n">coverage_edge</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">coverage_edge</span> <span class="o">=</span> <span class="n">coverage_edge</span>
+        <span class="k">if</span> <span class="n">coverage_path</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">coverage_path</span> <span class="o">=</span> <span class="n">coverage_path</span>
+        <span class="k">if</span> <span class="n">last_cov_update</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">last_cov_update</span> <span class="o">=</span> <span class="n">last_cov_update</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">TELEMETRY</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.send_stop_coverage_criteria"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.send_stop_coverage_criteria">[docs]</a>    <span class="k">def</span> <span class="nf">send_stop_coverage_criteria</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a message to the broker indicating, the program has been fully</span>
+<span class="sd">        covered in accordance to the coverage criteria (metric).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">StopCoverageCriteria</span><span class="p">(),</span> <span class="n">MessageType</span><span class="o">.</span><span class="n">STOP_COVERAGE_DONE</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.send_seed"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.send_seed">[docs]</a>    <span class="k">def</span> <span class="nf">send_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">typ</span><span class="p">:</span> <span class="n">SeedType</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send an input seed to the broker. The ``typ`` indicates</span>
+<span class="sd">        the type of the seed, namely, input, crash or hang.</span>
+
+<span class="sd">        :param typ: type of the input</span>
+<span class="sd">        :param seed: bytes of the input</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">InputSeedMsg</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">typ</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">INPUT_SEED</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.send_alert_data"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.send_alert_data">[docs]</a>    <span class="k">def</span> <span class="nf">send_alert_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alert_data</span><span class="p">:</span> <span class="n">AlertData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send information related to the coverage or validation of a specific SAST</span>
+<span class="sd">        alert.</span>
+
+<span class="sd">        :param alert_data: alert object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">DataMsg</span><span class="p">()</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">alert_data</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">msg_type</span><span class="o">=</span><span class="n">MessageType</span><span class="o">.</span><span class="n">DATA</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.register_start_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.register_start_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_start_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Register a callback that will be called when a start message will</span>
+<span class="sd">        be received. The callback should take 11 parameters.</span>
+
+<span class="sd">        :param cb: callback function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">START</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.register_stop_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.register_stop_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_stop_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Register a callback called when the broker send a STOP</span>
+<span class="sd">        message. The fuzzing has to stop running and sending data.</span>
+
+<span class="sd">        :param cb: callback function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">STOP</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.register_seed_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.register_seed_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_seed_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Register a callback called when an input seed is received from the</span>
+<span class="sd">        broker. The callback function take 2 parameters seed type and content.</span>
+
+<span class="sd">        :param cb: callback function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">INPUT_SEED</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ClientAgent.register_data_callback"><a class="viewcode-back" href="../../api/agent.html#libpastis.ClientAgent.register_data_callback">[docs]</a>    <span class="k">def</span> <span class="nf">register_data_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Register callback called when data is received. At the moment</span>
+<span class="sd">        data are necessarily AlertData messages.</span>
+
+<span class="sd">        :param cb: callback function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_callback</span><span class="p">(</span><span class="n">MessageType</span><span class="o">.</span><span class="n">DATA</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span></div></div>
+
+
+
+<span class="k">class</span> <span class="nc">FileAgent</span><span class="p">(</span><span class="n">ClientAgent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Mock agent that will mimick all APIs function of a network agent</span>
+<span class="sd">    but which will never receive any incoming messages. All messages</span>
+<span class="sd">    sent are logged to a file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FileAgent</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span>    <span class="c1"># Remove network related attributes</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;FileAgent&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Remove root handler to make sur it is not printed on output</span>
+
+        <span class="c1"># create file handler</span>
+        <span class="k">if</span> <span class="n">log_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ch</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">log_file</span><span class="p">)</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">level</span><span class="p">)</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - [</span><span class="si">%(name)s</span><span class="s1">] [</span><span class="si">%(levelname)s</span><span class="s1">]: </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5555</span><span class="p">,</span> <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;*&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;FileAgent is not meant to be used as broker&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remote</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;localhost&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5555</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Do nothing</span>
+
+    <span class="k">def</span> <span class="nf">_recv_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">send_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">:</span> <span class="n">MessageType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;FileAgent is not meant to be used as broker&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">Message</span><span class="p">,</span> <span class="n">msg_type</span><span class="p">:</span> <span class="n">MessageType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="n">AgentMode</span><span class="o">.</span><span class="n">BROKER</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cannot use sento() as </span><span class="si">{</span><span class="n">AgentMode</span><span class="o">.</span><span class="n">BROKER</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">msg_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">msg_to_type</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">InputSeedMsg</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">SeedType</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">type</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">seed</span><span class="p">[:</span><span class="mi">20</span><span class="p">]</span><span class="si">}</span><span class="s2">..&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">HelloMsg</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">Platform</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">platform</span><span class="p">)</span><span class="si">}</span><span class="s2">(</span><span class="si">{</span><span class="n">Arch</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">architecture</span><span class="p">)</span><span class="si">}</span><span class="s2">) CPU:</span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">cpus</span><span class="si">}</span><span class="s2"> engines:</span><span class="si">{</span><span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">msg</span><span class="o">.</span><span class="n">engines</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">TelemetryMsg</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">State</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">state</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> exec/s: </span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">exec_per_sec</span><span class="si">}</span><span class="s2"> total:</span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">total_exec</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">LogMsg</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">LogLevel</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">level</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">DataMsg</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Data: </span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">data</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">StopCoverageCriteria</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;invalid message type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span><span class="si">}</span><span class="s2"> as client&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;send </span><span class="si">{</span><span class="n">msg_type</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

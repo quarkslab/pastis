@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Types &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="SAST" href="sast.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sast.html">SAST</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Types</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.AlertData"><code class="docutils literal notranslate"><span class="pre">AlertData</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.AlertData.address"><code class="docutils literal notranslate"><span class="pre">AlertData.address</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.AlertData.covered"><code class="docutils literal notranslate"><span class="pre">AlertData.covered</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.AlertData.from_json"><code class="docutils literal notranslate"><span class="pre">AlertData.from_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.AlertData.seed"><code class="docutils literal notranslate"><span class="pre">AlertData.seed</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.AlertData.to_json"><code class="docutils literal notranslate"><span class="pre">AlertData.to_json()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.AlertData.validated"><code class="docutils literal notranslate"><span class="pre">AlertData.validated</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.Arch"><code class="docutils literal notranslate"><span class="pre">Arch</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Arch.AARCH64"><code class="docutils literal notranslate"><span class="pre">Arch.AARCH64</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Arch.ARMV7"><code class="docutils literal notranslate"><span class="pre">Arch.ARMV7</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Arch.X86"><code class="docutils literal notranslate"><span class="pre">Arch.X86</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Arch.X86_64"><code class="docutils literal notranslate"><span class="pre">Arch.X86_64</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.CheckMode"><code class="docutils literal notranslate"><span class="pre">CheckMode</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CheckMode.ALERT_ONE"><code class="docutils literal notranslate"><span class="pre">CheckMode.ALERT_ONE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CheckMode.ALERT_ONLY"><code class="docutils literal notranslate"><span class="pre">CheckMode.ALERT_ONLY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CheckMode.CHECK_ALL"><code class="docutils literal notranslate"><span class="pre">CheckMode.CHECK_ALL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.CoverageMode"><code class="docutils literal notranslate"><span class="pre">CoverageMode</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.AUTO"><code class="docutils literal notranslate"><span class="pre">CoverageMode.AUTO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.BLOCK"><code class="docutils literal notranslate"><span class="pre">CoverageMode.BLOCK</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.EDGE"><code class="docutils literal notranslate"><span class="pre">CoverageMode.EDGE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.PATH"><code class="docutils literal notranslate"><span class="pre">CoverageMode.PATH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.STATE"><code class="docutils literal notranslate"><span class="pre">CoverageMode.STATE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.capitalize"><code class="docutils literal notranslate"><span class="pre">CoverageMode.capitalize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.casefold"><code class="docutils literal notranslate"><span class="pre">CoverageMode.casefold()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.center"><code class="docutils literal notranslate"><span class="pre">CoverageMode.center()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.count"><code class="docutils literal notranslate"><span class="pre">CoverageMode.count()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.encode"><code class="docutils literal notranslate"><span class="pre">CoverageMode.encode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.endswith"><code class="docutils literal notranslate"><span class="pre">CoverageMode.endswith()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.expandtabs"><code class="docutils literal notranslate"><span class="pre">CoverageMode.expandtabs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.find"><code class="docutils literal notranslate"><span class="pre">CoverageMode.find()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.format"><code class="docutils literal notranslate"><span class="pre">CoverageMode.format()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.format_map"><code class="docutils literal notranslate"><span class="pre">CoverageMode.format_map()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.index"><code class="docutils literal notranslate"><span class="pre">CoverageMode.index()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isalnum"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isalnum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isalpha"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isalpha()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isascii"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isascii()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isdecimal"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isdecimal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isdigit"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isdigit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isidentifier"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isidentifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.islower"><code class="docutils literal notranslate"><span class="pre">CoverageMode.islower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isnumeric"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isnumeric()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isprintable"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isprintable()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isspace"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isspace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.istitle"><code class="docutils literal notranslate"><span class="pre">CoverageMode.istitle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.isupper"><code class="docutils literal notranslate"><span class="pre">CoverageMode.isupper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.join"><code class="docutils literal notranslate"><span class="pre">CoverageMode.join()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.ljust"><code class="docutils literal notranslate"><span class="pre">CoverageMode.ljust()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.lower"><code class="docutils literal notranslate"><span class="pre">CoverageMode.lower()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.lstrip"><code class="docutils literal notranslate"><span class="pre">CoverageMode.lstrip()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.maketrans"><code class="docutils literal notranslate"><span class="pre">CoverageMode.maketrans()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.partition"><code class="docutils literal notranslate"><span class="pre">CoverageMode.partition()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.removeprefix"><code class="docutils literal notranslate"><span class="pre">CoverageMode.removeprefix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.removesuffix"><code class="docutils literal notranslate"><span class="pre">CoverageMode.removesuffix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.replace"><code class="docutils literal notranslate"><span class="pre">CoverageMode.replace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.rfind"><code class="docutils literal notranslate"><span class="pre">CoverageMode.rfind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.rindex"><code class="docutils literal notranslate"><span class="pre">CoverageMode.rindex()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.rjust"><code class="docutils literal notranslate"><span class="pre">CoverageMode.rjust()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.rpartition"><code class="docutils literal notranslate"><span class="pre">CoverageMode.rpartition()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.rsplit"><code class="docutils literal notranslate"><span class="pre">CoverageMode.rsplit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.rstrip"><code class="docutils literal notranslate"><span class="pre">CoverageMode.rstrip()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.split"><code class="docutils literal notranslate"><span class="pre">CoverageMode.split()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.splitlines"><code class="docutils literal notranslate"><span class="pre">CoverageMode.splitlines()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.startswith"><code class="docutils literal notranslate"><span class="pre">CoverageMode.startswith()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.strip"><code class="docutils literal notranslate"><span class="pre">CoverageMode.strip()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.swapcase"><code class="docutils literal notranslate"><span class="pre">CoverageMode.swapcase()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.title"><code class="docutils literal notranslate"><span class="pre">CoverageMode.title()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.translate"><code class="docutils literal notranslate"><span class="pre">CoverageMode.translate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.upper"><code class="docutils literal notranslate"><span class="pre">CoverageMode.upper()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.CoverageMode.zfill"><code class="docutils literal notranslate"><span class="pre">CoverageMode.zfill()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.ExecMode"><code class="docutils literal notranslate"><span class="pre">ExecMode</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.ExecMode.AUTO"><code class="docutils literal notranslate"><span class="pre">ExecMode.AUTO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.ExecMode.PERSISTENT"><code class="docutils literal notranslate"><span class="pre">ExecMode.PERSISTENT</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.ExecMode.SINGLE_EXEC"><code class="docutils literal notranslate"><span class="pre">ExecMode.SINGLE_EXEC</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.FuzzMode"><code class="docutils literal notranslate"><span class="pre">FuzzMode</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.FuzzMode.AUTO"><code class="docutils literal notranslate"><span class="pre">FuzzMode.AUTO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.FuzzMode.BINARY_ONLY"><code class="docutils literal notranslate"><span class="pre">FuzzMode.BINARY_ONLY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.FuzzMode.INSTRUMENTED"><code class="docutils literal notranslate"><span class="pre">FuzzMode.INSTRUMENTED</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.FuzzingEngineInfo"><code class="docutils literal notranslate"><span class="pre">FuzzingEngineInfo</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.FuzzingEngineInfo.from_pb"><code class="docutils literal notranslate"><span class="pre">FuzzingEngineInfo.from_pb()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.FuzzingEngineInfo.pymodule"><code class="docutils literal notranslate"><span class="pre">FuzzingEngineInfo.pymodule</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.FuzzingEngineInfo.version"><code class="docutils literal notranslate"><span class="pre">FuzzingEngineInfo.version</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.LogLevel"><code class="docutils literal notranslate"><span class="pre">LogLevel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.LogLevel.CRITICAL"><code class="docutils literal notranslate"><span class="pre">LogLevel.CRITICAL</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.LogLevel.DEBUG"><code class="docutils literal notranslate"><span class="pre">LogLevel.DEBUG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.LogLevel.ERROR"><code class="docutils literal notranslate"><span class="pre">LogLevel.ERROR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.LogLevel.INFO"><code class="docutils literal notranslate"><span class="pre">LogLevel.INFO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.LogLevel.WARNING"><code class="docutils literal notranslate"><span class="pre">LogLevel.WARNING</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.Platform"><code class="docutils literal notranslate"><span class="pre">Platform</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Platform.ANDROID"><code class="docutils literal notranslate"><span class="pre">Platform.ANDROID</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Platform.ANY"><code class="docutils literal notranslate"><span class="pre">Platform.ANY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Platform.IOS"><code class="docutils literal notranslate"><span class="pre">Platform.IOS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Platform.LINUX"><code class="docutils literal notranslate"><span class="pre">Platform.LINUX</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Platform.MACOS"><code class="docutils literal notranslate"><span class="pre">Platform.MACOS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.Platform.WINDOWS"><code class="docutils literal notranslate"><span class="pre">Platform.WINDOWS</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.SeedInjectLoc"><code class="docutils literal notranslate"><span class="pre">SeedInjectLoc</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.SeedInjectLoc.ARGV"><code class="docutils literal notranslate"><span class="pre">SeedInjectLoc.ARGV</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.SeedInjectLoc.STDIN"><code class="docutils literal notranslate"><span class="pre">SeedInjectLoc.STDIN</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.SeedType"><code class="docutils literal notranslate"><span class="pre">SeedType</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.SeedType.CRASH"><code class="docutils literal notranslate"><span class="pre">SeedType.CRASH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.SeedType.HANG"><code class="docutils literal notranslate"><span class="pre">SeedType.HANG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.SeedType.INPUT"><code class="docutils literal notranslate"><span class="pre">SeedType.INPUT</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#libpastis.types.State"><code class="docutils literal notranslate"><span class="pre">State</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.State.IDLE"><code class="docutils literal notranslate"><span class="pre">State.IDLE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libpastis.types.State.RUNNING"><code class="docutils literal notranslate"><span class="pre">State.RUNNING</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Types</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/types.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-libpastis.types">
+<span id="types"></span><span id="label-types"></span><h1>Types<a class="headerlink" href="#module-libpastis.types" title="Permalink to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.AlertData">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">AlertData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">covered</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">validated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.11)"><span class="pre">bytes</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#AlertData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.AlertData" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>AlertData is data message that can be sent from fuzzing agents to
+the broker to indicates that an alert has been covered or validated.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.AlertData.address">
+<span class="sig-name descname"><span class="pre">address</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></em><a class="headerlink" href="#libpastis.types.AlertData.address" title="Permalink to this definition"></a></dt>
+<dd><p>Input that reached or validated the alert</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.AlertData.covered">
+<span class="sig-name descname"><span class="pre">covered</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></em><a class="headerlink" href="#libpastis.types.AlertData.covered" title="Permalink to this definition"></a></dt>
+<dd><p>Id of the alert</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.AlertData.from_json">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.types.AlertData" title="libpastis.types.AlertData"><span class="pre">AlertData</span></a></span></span><a class="reference internal" href="../_modules/libpastis/types.html#AlertData.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.AlertData.from_json" title="Permalink to this definition"></a></dt>
+<dd><p>Convert an AlertData in json to an instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – json serialized alert</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>AlertData object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.AlertData.seed">
+<span class="sig-name descname"><span class="pre">seed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.11)"><span class="pre">bytes</span></a></em><a class="headerlink" href="#libpastis.types.AlertData.seed" title="Permalink to this definition"></a></dt>
+<dd><p>True if the alert has been validated</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.AlertData.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/libpastis/types.html#AlertData.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.AlertData.to_json" title="Permalink to this definition"></a></dt>
+<dd><p>Serialize the alert to JSON.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>json serialized alert</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.AlertData.validated">
+<span class="sig-name descname"><span class="pre">validated</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></em><a class="headerlink" href="#libpastis.types.AlertData.validated" title="Permalink to this definition"></a></dt>
+<dd><p>True if the alert has been covered</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.Arch">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">Arch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#Arch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.Arch" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Architecture representation</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Arch.AARCH64">
+<span class="sig-name descname"><span class="pre">AARCH64</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#libpastis.types.Arch.AARCH64" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Arch.ARMV7">
+<span class="sig-name descname"><span class="pre">ARMV7</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.Arch.ARMV7" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Arch.X86">
+<span class="sig-name descname"><span class="pre">X86</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.Arch.X86" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Arch.X86_64">
+<span class="sig-name descname"><span class="pre">X86_64</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.Arch.X86_64" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.CheckMode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">CheckMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#CheckMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.CheckMode" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>CheckMode is used to indicates a fuzzer how to run depdending on
+the context. <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code> is the normal bug, vulnerability discovery
+mode. Then <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> indicates the fuzzer to focus on SAST alerts.
+Then <code class="docutils literal notranslate"><span class="pre">ALERT_ONE</span></code> indicates the fuzzer to focus on a single alert which
+id should be provided through the configuration file.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CheckMode.ALERT_ONE">
+<span class="sig-name descname"><span class="pre">ALERT_ONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.CheckMode.ALERT_ONE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CheckMode.ALERT_ONLY">
+<span class="sig-name descname"><span class="pre">ALERT_ONLY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.CheckMode.ALERT_ONLY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CheckMode.CHECK_ALL">
+<span class="sig-name descname"><span class="pre">CHECK_ALL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.CheckMode.CHECK_ALL" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">CoverageMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#CoverageMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.CoverageMode" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Coverage metrics to use. Some fuzzing engines do support multiple coverage
+metrics, thus the enum indicates the one to use.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.AUTO">
+<span class="sig-name descname"><span class="pre">AUTO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'auto'</span></em><a class="headerlink" href="#libpastis.types.CoverageMode.AUTO" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.BLOCK">
+<span class="sig-name descname"><span class="pre">BLOCK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'block'</span></em><a class="headerlink" href="#libpastis.types.CoverageMode.BLOCK" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.EDGE">
+<span class="sig-name descname"><span class="pre">EDGE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'edge'</span></em><a class="headerlink" href="#libpastis.types.CoverageMode.EDGE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.PATH">
+<span class="sig-name descname"><span class="pre">PATH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'path'</span></em><a class="headerlink" href="#libpastis.types.CoverageMode.PATH" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.STATE">
+<span class="sig-name descname"><span class="pre">STATE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'state'</span></em><a class="headerlink" href="#libpastis.types.CoverageMode.STATE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.capitalize">
+<span class="sig-name descname"><span class="pre">capitalize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.capitalize" title="Permalink to this definition"></a></dt>
+<dd><p>Return a capitalized version of the string.</p>
+<p>More specifically, make the first character have upper case and the rest lower
+case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.casefold">
+<span class="sig-name descname"><span class="pre">casefold</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.casefold" title="Permalink to this definition"></a></dt>
+<dd><p>Return a version of the string suitable for caseless comparisons.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.center">
+<span class="sig-name descname"><span class="pre">center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.center" title="Permalink to this definition"></a></dt>
+<dd><p>Return a centered string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.count" title="Permalink to this definition"></a></dt>
+<dd><p>Return the number of non-overlapping occurrences of substring sub in
+string S[start:end].  Optional arguments start and end are
+interpreted as in slice notation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'utf-8'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'strict'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.encode" title="Permalink to this definition"></a></dt>
+<dd><p>Encode the string using the codec registered for encoding.</p>
+<dl class="simple">
+<dt>encoding</dt><dd><p>The encoding in which to encode the string.</p>
+</dd>
+<dt>errors</dt><dd><p>The error handling scheme to use for encoding errors.
+The default is ‘strict’ meaning that encoding errors raise a
+UnicodeEncodeError.  Other possible values are ‘ignore’, ‘replace’ and
+‘xmlcharrefreplace’ as well as any other name registered with
+codecs.register_error that can handle UnicodeEncodeErrors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.endswith">
+<span class="sig-name descname"><span class="pre">endswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.endswith" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if S ends with the specified suffix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+suffix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.expandtabs">
+<span class="sig-name descname"><span class="pre">expandtabs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tabsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.expandtabs" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy where all tab characters are expanded using spaces.</p>
+<p>If tabsize is not given, a tab size of 8 characters is assumed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.find">
+<span class="sig-name descname"><span class="pre">find</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.find" title="Permalink to this definition"></a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.format">
+<span class="sig-name descname"><span class="pre">format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.format" title="Permalink to this definition"></a></dt>
+<dd><p>Return a formatted version of S, using substitutions from args and kwargs.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.format_map">
+<span class="sig-name descname"><span class="pre">format_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.format_map" title="Permalink to this definition"></a></dt>
+<dd><p>Return a formatted version of S, using substitutions from mapping.
+The substitutions are identified by braces (‘{’ and ‘}’).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.index" title="Permalink to this definition"></a></dt>
+<dd><p>Return the lowest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isalnum">
+<span class="sig-name descname"><span class="pre">isalnum</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isalnum" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is an alpha-numeric string, False otherwise.</p>
+<p>A string is alpha-numeric if all characters in the string are alpha-numeric and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isalpha">
+<span class="sig-name descname"><span class="pre">isalpha</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isalpha" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is an alphabetic string, False otherwise.</p>
+<p>A string is alphabetic if all characters in the string are alphabetic and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isascii">
+<span class="sig-name descname"><span class="pre">isascii</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isascii" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if all characters in the string are ASCII, False otherwise.</p>
+<p>ASCII characters have code points in the range U+0000-U+007F.
+Empty string is ASCII too.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isdecimal">
+<span class="sig-name descname"><span class="pre">isdecimal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isdecimal" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a decimal string, False otherwise.</p>
+<p>A string is a decimal string if all characters in the string are decimal and
+there is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isdigit">
+<span class="sig-name descname"><span class="pre">isdigit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isdigit" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a digit string, False otherwise.</p>
+<p>A string is a digit string if all characters in the string are digits and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isidentifier">
+<span class="sig-name descname"><span class="pre">isidentifier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isidentifier" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a valid Python identifier, False otherwise.</p>
+<p>Call keyword.iskeyword(s) to test whether string s is a reserved identifier,
+such as “def” or “class”.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.islower">
+<span class="sig-name descname"><span class="pre">islower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.islower" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a lowercase string, False otherwise.</p>
+<p>A string is lowercase if all cased characters in the string are lowercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isnumeric">
+<span class="sig-name descname"><span class="pre">isnumeric</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isnumeric" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a numeric string, False otherwise.</p>
+<p>A string is numeric if all characters in the string are numeric and there is at
+least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isprintable">
+<span class="sig-name descname"><span class="pre">isprintable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isprintable" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is printable, False otherwise.</p>
+<p>A string is printable if all of its characters are considered printable in
+repr() or if it is empty.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isspace">
+<span class="sig-name descname"><span class="pre">isspace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isspace" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a whitespace string, False otherwise.</p>
+<p>A string is whitespace if all characters in the string are whitespace and there
+is at least one character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.istitle">
+<span class="sig-name descname"><span class="pre">istitle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.istitle" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is a title-cased string, False otherwise.</p>
+<p>In a title-cased string, upper- and title-case characters may only
+follow uncased characters and lowercase characters only cased ones.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.isupper">
+<span class="sig-name descname"><span class="pre">isupper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.isupper" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if the string is an uppercase string, False otherwise.</p>
+<p>A string is uppercase if all cased characters in the string are uppercase and
+there is at least one cased character in the string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.join">
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.join" title="Permalink to this definition"></a></dt>
+<dd><p>Concatenate any number of strings.</p>
+<p>The string whose method is called is inserted in between each given string.
+The result is returned as a new string.</p>
+<p>Example: ‘.’.join([‘ab’, ‘pq’, ‘rs’]) -&gt; ‘ab.pq.rs’</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.ljust">
+<span class="sig-name descname"><span class="pre">ljust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.ljust" title="Permalink to this definition"></a></dt>
+<dd><p>Return a left-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.lower">
+<span class="sig-name descname"><span class="pre">lower</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.lower" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy of the string converted to lowercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.lstrip">
+<span class="sig-name descname"><span class="pre">lstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.lstrip" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy of the string with leading whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.maketrans">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">maketrans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.maketrans" title="Permalink to this definition"></a></dt>
+<dd><p>Return a translation table usable for str.translate().</p>
+<p>If there is only one argument, it must be a dictionary mapping Unicode
+ordinals (integers) or characters to Unicode ordinals, strings or None.
+Character keys will be then converted to ordinals.
+If there are two arguments, they must be strings of equal length, and
+in the resulting dictionary, each character in x will be mapped to the
+character at the same position in y. If there is a third argument, it
+must be a string, whose characters will be mapped to None in the result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.partition">
+<span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.partition" title="Permalink to this definition"></a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string.  If the separator is found,
+returns a 3-tuple containing the part before the separator, the separator
+itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing the original string
+and two empty strings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.removeprefix">
+<span class="sig-name descname"><span class="pre">removeprefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.removeprefix" title="Permalink to this definition"></a></dt>
+<dd><p>Return a str with the given prefix string removed if present.</p>
+<p>If the string starts with the prefix string, return string[len(prefix):].
+Otherwise, return a copy of the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.removesuffix">
+<span class="sig-name descname"><span class="pre">removesuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suffix</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.removesuffix" title="Permalink to this definition"></a></dt>
+<dd><p>Return a str with the given suffix string removed if present.</p>
+<p>If the string ends with the suffix string and that suffix is not empty,
+return string[:-len(suffix)]. Otherwise, return a copy of the original
+string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.replace">
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.replace" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy with all occurrences of substring old replaced by new.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>count</dt><dd><p>Maximum number of occurrences to replace.
+-1 (the default value) means replace all occurrences.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>If the optional argument count is given, only the first count occurrences are
+replaced.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.rfind">
+<span class="sig-name descname"><span class="pre">rfind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.rfind" title="Permalink to this definition"></a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Return -1 on failure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.rindex">
+<span class="sig-name descname"><span class="pre">rindex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.rindex" title="Permalink to this definition"></a></dt>
+<dd><p>Return the highest index in S where substring sub is found,
+such that sub is contained within S[start:end].  Optional
+arguments start and end are interpreted as in slice notation.</p>
+<p>Raises ValueError when the substring is not found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.rjust">
+<span class="sig-name descname"><span class="pre">rjust</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillchar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span> <span class="pre">'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.rjust" title="Permalink to this definition"></a></dt>
+<dd><p>Return a right-justified string of length width.</p>
+<p>Padding is done using the specified fill character (default is a space).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.rpartition">
+<span class="sig-name descname"><span class="pre">rpartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.rpartition" title="Permalink to this definition"></a></dt>
+<dd><p>Partition the string into three parts using the given separator.</p>
+<p>This will search for the separator in the string, starting at the end. If
+the separator is found, returns a 3-tuple containing the part before the
+separator, the separator itself, and the part after it.</p>
+<p>If the separator is not found, returns a 3-tuple containing two empty strings
+and the original string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.rsplit">
+<span class="sig-name descname"><span class="pre">rsplit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.rsplit" title="Permalink to this definition"></a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including \n \r \t \f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Splitting starts at the end of the string and works to the front.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.rstrip">
+<span class="sig-name descname"><span class="pre">rstrip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.rstrip" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy of the string with trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.split">
+<span class="sig-name descname"><span class="pre">split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsplit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.split" title="Permalink to this definition"></a></dt>
+<dd><p>Return a list of the substrings in the string, using sep as the separator string.</p>
+<blockquote>
+<div><dl>
+<dt>sep</dt><dd><p>The separator used to split the string.</p>
+<p>When set to None (the default value), will split on any whitespace
+character (including \n \r \t \f and spaces) and will discard
+empty strings from the result.</p>
+</dd>
+<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+-1 (the default value) means no limit.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Note, str.split() is mainly useful for data that has been intentionally
+delimited.  With natural text that includes punctuation, consider using
+the regular expression module.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.splitlines">
+<span class="sig-name descname"><span class="pre">splitlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keepends</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.splitlines" title="Permalink to this definition"></a></dt>
+<dd><p>Return a list of the lines in the string, breaking at line boundaries.</p>
+<p>Line breaks are not included in the resulting list unless keepends is given and
+true.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.startswith">
+<span class="sig-name descname"><span class="pre">startswith</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#libpastis.types.CoverageMode.startswith" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if S starts with the specified prefix, False otherwise.
+With optional start, test S beginning at that position.
+With optional end, stop comparing S at that position.
+prefix can also be a tuple of strings to try.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.strip">
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chars</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.strip" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy of the string with leading and trailing whitespace removed.</p>
+<p>If chars is given and not None, remove characters in chars instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.swapcase">
+<span class="sig-name descname"><span class="pre">swapcase</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.swapcase" title="Permalink to this definition"></a></dt>
+<dd><p>Convert uppercase characters to lowercase and lowercase characters to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.title">
+<span class="sig-name descname"><span class="pre">title</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.title" title="Permalink to this definition"></a></dt>
+<dd><p>Return a version of the string where each word is titlecased.</p>
+<p>More specifically, words start with uppercased characters and all remaining
+cased characters have lower case.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.translate">
+<span class="sig-name descname"><span class="pre">translate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">table</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.translate" title="Permalink to this definition"></a></dt>
+<dd><p>Replace each character in the string using the given translation table.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>table</dt><dd><p>Translation table, which must be a mapping of Unicode ordinals to
+Unicode ordinals, strings, or None.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The table must implement lookup/indexing via __getitem__, for instance a
+dictionary or list.  If this operation raises LookupError, the character is
+left untouched.  Characters mapped to None are deleted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.upper">
+<span class="sig-name descname"><span class="pre">upper</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.upper" title="Permalink to this definition"></a></dt>
+<dd><p>Return a copy of the string converted to uppercase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.CoverageMode.zfill">
+<span class="sig-name descname"><span class="pre">zfill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#libpastis.types.CoverageMode.zfill" title="Permalink to this definition"></a></dt>
+<dd><p>Pad a numeric string with zeros on the left, to fill a field of the given width.</p>
+<p>The string is never truncated.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.ExecMode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">ExecMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#ExecMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.ExecMode" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Execution mode for fuzzing engine. With <code class="docutils literal notranslate"><span class="pre">AUTO</span></code>
+the fuzzer will automatically select, <code class="docutils literal notranslate"><span class="pre">SINGLE_EXEC</span></code>
+is the normal fuzzing mode where the process stops
+at each iteration while <code class="docutils literal notranslate"><span class="pre">PERSISTENT</span></code> indicate the
+fuzzer to run in persistent mode.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.ExecMode.AUTO">
+<span class="sig-name descname"><span class="pre">AUTO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.ExecMode.AUTO" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.ExecMode.PERSISTENT">
+<span class="sig-name descname"><span class="pre">PERSISTENT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.ExecMode.PERSISTENT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.ExecMode.SINGLE_EXEC">
+<span class="sig-name descname"><span class="pre">SINGLE_EXEC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.ExecMode.SINGLE_EXEC" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.FuzzMode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">FuzzMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#FuzzMode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.FuzzMode" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Fuzzing mode, indicates the fuzzer whether the target
+is instrumented or not.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.FuzzMode.AUTO">
+<span class="sig-name descname"><span class="pre">AUTO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.FuzzMode.AUTO" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.FuzzMode.BINARY_ONLY">
+<span class="sig-name descname"><span class="pre">BINARY_ONLY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.FuzzMode.BINARY_ONLY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.FuzzMode.INSTRUMENTED">
+<span class="sig-name descname"><span class="pre">INSTRUMENTED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.FuzzMode.INSTRUMENTED" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.FuzzingEngineInfo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">FuzzingEngineInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">version</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pymodule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#FuzzingEngineInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.FuzzingEngineInfo" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Class to represent a fuzzing engine metadata.
+It contains its name, version and the Python module
+where to load the descriptor and configuration object.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="libpastis.types.FuzzingEngineInfo.from_pb">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_pb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pb</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.types.FuzzingEngineInfo" title="libpastis.types.FuzzingEngineInfo"><span class="pre">FuzzingEngineInfo</span></a></span></span><a class="reference internal" href="../_modules/libpastis/types.html#FuzzingEngineInfo.from_pb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.FuzzingEngineInfo.from_pb" title="Permalink to this definition"></a></dt>
+<dd><p>Parse a protobuf object into a FuzzingEngineInfo object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>pb</strong> – protobuf object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.FuzzingEngineInfo.pymodule">
+<span class="sig-name descname"><span class="pre">pymodule</span></span><a class="headerlink" href="#libpastis.types.FuzzingEngineInfo.pymodule" title="Permalink to this definition"></a></dt>
+<dd><p>Version of the engine</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.FuzzingEngineInfo.version">
+<span class="sig-name descname"><span class="pre">version</span></span><a class="headerlink" href="#libpastis.types.FuzzingEngineInfo.version" title="Permalink to this definition"></a></dt>
+<dd><p>Name of the engine</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.LogLevel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">LogLevel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#LogLevel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.LogLevel" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Enum representing the Log level, for fuzzers to send message logs
+to the broker.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.LogLevel.CRITICAL">
+<span class="sig-name descname"><span class="pre">CRITICAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#libpastis.types.LogLevel.CRITICAL" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.LogLevel.DEBUG">
+<span class="sig-name descname"><span class="pre">DEBUG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></em><a class="headerlink" href="#libpastis.types.LogLevel.DEBUG" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.LogLevel.ERROR">
+<span class="sig-name descname"><span class="pre">ERROR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#libpastis.types.LogLevel.ERROR" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.LogLevel.INFO">
+<span class="sig-name descname"><span class="pre">INFO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></em><a class="headerlink" href="#libpastis.types.LogLevel.INFO" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.LogLevel.WARNING">
+<span class="sig-name descname"><span class="pre">WARNING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.LogLevel.WARNING" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.Platform">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">Platform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#Platform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.Platform" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Enum representing the platform.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Platform.ANDROID">
+<span class="sig-name descname"><span class="pre">ANDROID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#libpastis.types.Platform.ANDROID" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Platform.ANY">
+<span class="sig-name descname"><span class="pre">ANY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.Platform.ANY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Platform.IOS">
+<span class="sig-name descname"><span class="pre">IOS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#libpastis.types.Platform.IOS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Platform.LINUX">
+<span class="sig-name descname"><span class="pre">LINUX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.Platform.LINUX" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Platform.MACOS">
+<span class="sig-name descname"><span class="pre">MACOS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#libpastis.types.Platform.MACOS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.Platform.WINDOWS">
+<span class="sig-name descname"><span class="pre">WINDOWS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.Platform.WINDOWS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.SeedInjectLoc">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">SeedInjectLoc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#SeedInjectLoc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.SeedInjectLoc" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Indicates the location where to inject inputs. It can either be
+on STDIN or ARGV.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.SeedInjectLoc.ARGV">
+<span class="sig-name descname"><span class="pre">ARGV</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.SeedInjectLoc.ARGV" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.SeedInjectLoc.STDIN">
+<span class="sig-name descname"><span class="pre">STDIN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.SeedInjectLoc.STDIN" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.SeedType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">SeedType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#SeedType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.SeedType" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Type of an input. They can be plain input,
+crash input or hanging input.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.SeedType.CRASH">
+<span class="sig-name descname"><span class="pre">CRASH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.SeedType.CRASH" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.SeedType.HANG">
+<span class="sig-name descname"><span class="pre">HANG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#libpastis.types.SeedType.HANG" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.SeedType.INPUT">
+<span class="sig-name descname"><span class="pre">INPUT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.SeedType.INPUT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libpastis.types.State">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libpastis.types.</span></span><span class="sig-name descname"><span class="pre">State</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value=&lt;no_arg&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary=None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libpastis/types.html#State"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.types.State" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>Running type of a fuzzing engine. It
+can be either running or idle.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.State.IDLE">
+<span class="sig-name descname"><span class="pre">IDLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#libpastis.types.State.IDLE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="libpastis.types.State.RUNNING">
+<span class="sig-name descname"><span class="pre">RUNNING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#libpastis.types.State.RUNNING" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sast.html" class="btn btn-neutral float-left" title="SAST" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

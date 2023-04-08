@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>libpastis.sast &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">libpastis.sast</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for libpastis.sast</h1><div class="highlight"><pre>
+<span></span><span class="c1"># built-in imports</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+
+<div class="viewcode-block" id="SASTAlert"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTAlert">[docs]</a><span class="k">class</span> <span class="nc">SASTAlert</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class representing an alert in a somewhat abstract SAST tool. Its</span>
+<span class="sd">    used to perform alert driven testing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Static alert data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="c1">#: Unique ID of the alert</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="c1">#: Type of the alert BoF, UaF (in the convention of the SAST)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1">#: Additional parameters of the alert (list)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">taxonomy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="c1">#: Taxonomy of the alert (e.g: CWE, CVE, MISRA checker, ..)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">severity</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="c1">#: Severity of the alert (e.g: Review, Error, Critical ..)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="c1">#: Source file impacted</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">line</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="c1">#: line of code (in the file)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">function</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="c1">#: Function impacted</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw_line</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="c1">#: Raw alert extract taken from the report (in its own format)</span>
+
+        <span class="c1"># Analysis results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">covered</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1">#: Coverage: True if the alert has been covered (path leading there)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validated</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1">#: Validation: True if the alert has been validated (as a true positive by a checker)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uncoverable</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1">#: Reachability: True if the alert cannot be reached by any paths</span>
+
+<div class="viewcode-block" id="SASTAlert.from_json"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTAlert.from_json">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;SASTAlert&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a SASTAlert object from the JSON data provided.</span>
+
+<span class="sd">        :param data: JSON data of the alert</span>
+<span class="sd">        :return: SASTAlert instance, initialized with the JSON</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alert</span> <span class="o">=</span> <span class="n">SASTAlert</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="s2">&quot;taxonomy&quot;</span><span class="p">,</span> <span class="s2">&quot;severity&quot;</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span> <span class="s2">&quot;raw_line&quot;</span><span class="p">,</span>
+                     <span class="s2">&quot;covered&quot;</span><span class="p">,</span> <span class="s2">&quot;validated&quot;</span><span class="p">,</span> <span class="s2">&quot;uncoverable&quot;</span><span class="p">]:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">alert</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">alert</span></div>
+
+
+<div class="viewcode-block" id="SASTAlert.to_dict"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTAlert.to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Export the alert attribute to a valid JSON dictionnary</span>
+<span class="sd">        that can be written to file.</span>
+
+<span class="sd">        :return: JSON dict of the alert serialized</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="s2">&quot;taxonomy&quot;</span><span class="p">,</span> <span class="s2">&quot;severity&quot;</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="s2">&quot;line&quot;</span><span class="p">,</span> <span class="s2">&quot;function&quot;</span><span class="p">,</span>
+                                              <span class="s2">&quot;raw_line&quot;</span><span class="p">,</span> <span class="s2">&quot;covered&quot;</span><span class="p">,</span> <span class="s2">&quot;validated&quot;</span><span class="p">,</span> <span class="s2">&quot;uncoverable&quot;</span><span class="p">]}</span></div>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;Alert id:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">function</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">line</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">)&gt;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SASTReport"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport">[docs]</a><span class="k">class</span> <span class="nc">SASTReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SAST report. Manages a list of SAST alerts taken from a report.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alerts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SASTAlert</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1">#: Dictionnary of alerts indexed by their ID</span>
+
+
+<div class="viewcode-block" id="SASTReport.iter_alerts"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.iter_alerts">[docs]</a>    <span class="k">def</span> <span class="nf">iter_alerts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">SASTAlert</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Iterate all the alerts of the report.</span>
+<span class="sd">        :return: list of alerts</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alerts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.all_alerts_validated"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.all_alerts_validated">[docs]</a>    <span class="k">def</span> <span class="nf">all_alerts_validated</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if all alerts have been validated (and thus covered)</span>
+
+<span class="sd">        :return: True if all alerts are covered and vulns validated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">alert</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_alerts</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">alert</span><span class="o">.</span><span class="n">covered</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.add_alert"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.add_alert">[docs]</a>    <span class="k">def</span> <span class="nf">add_alert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alert</span><span class="p">:</span> <span class="n">SASTAlert</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an alert in the report. This function is solely</span>
+<span class="sd">        meant to be used by the report parser</span>
+
+<span class="sd">        :param alert: Alert object to add in the report</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alerts</span><span class="p">[</span><span class="n">alert</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">alert</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.from_file"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.from_file">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;SASTReport&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse the given file into a SAST report object.</span>
+
+<span class="sd">        :param file: path to report</span>
+<span class="sd">        :return: SASTReport object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file</span><span class="p">)</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">SASTReport</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.from_json"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.from_json">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;SASTReport&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse the given string into a SAST report object.</span>
+
+<span class="sd">        :param data: serialized report in JSON</span>
+<span class="sd">        :return: SASTReport object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">SASTReport</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">SASTAlert</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">add_alert</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">report</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.to_json"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Export the current state of the alerts within a JSON dictionnary.</span>
+
+<span class="sd">        :return: JSON serialized report</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">alerts</span><span class="o">.</span><span class="n">values</span><span class="p">()],</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.write"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out_file</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Export the current state of the alerts within a JSON dictionary.</span>
+
+<span class="sd">        :param out_file: Output file path</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">to_json</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="SASTReport.get_stats"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.get_stats">[docs]</a>    <span class="k">def</span> <span class="nf">get_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get stats about the report. The results is a triple</span>
+<span class="sd">        with the number of alerts covered, validated and total.</span>
+
+<span class="sd">        :return: triple of covered, validated, totoal number of alerts</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">covered</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">validated</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">alert</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">alerts</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">covered</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">alert</span><span class="o">.</span><span class="n">covered</span><span class="p">)</span>
+            <span class="n">validated</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">alert</span><span class="o">.</span><span class="n">validated</span><span class="p">)</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">covered</span><span class="p">,</span> <span class="n">validated</span><span class="p">,</span> <span class="n">total</span></div>
+
+<div class="viewcode-block" id="SASTReport.write_csv"><a class="viewcode-back" href="../../api/sast.html#libpastis.sast.SASTReport.write_csv">[docs]</a>    <span class="k">def</span> <span class="nf">write_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write the report as a csv into the given file.</span>
+
+<span class="sd">        :param file: CSV file to write</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">csvfile</span><span class="p">:</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">csvfile</span><span class="p">,</span> <span class="n">fieldnames</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;covered&#39;</span><span class="p">,</span> <span class="s1">&#39;validated&#39;</span><span class="p">])</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_alerts</span><span class="p">():</span>
+                <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">({</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                                 <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">type</span><span class="p">,</span>
+                                 <span class="s1">&#39;covered&#39;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">covered</span><span class="p">,</span>
+                                 <span class="s1">&#39;validated&#39;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">validated</span><span class="p">})</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

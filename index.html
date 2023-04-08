@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Overview &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Project Overview</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <figure class="align-center">
+<a class="reference internal image-reference" href="_images/logo_pastis.png"><img alt="_images/logo_pastis.png" src="_images/logo_pastis.png" style="width: 550px;" /></a>
+</figure>
+<section id="project-overview">
+<h1>Project Overview<a class="headerlink" href="#project-overview" title="Permalink to this heading"></a></h1>
+<p>The PASTIS project is a fuzzing framework aiming at combining various software testing techniques
+within the same workflow to perform collaborative fuzzing also called ensemble fuzzing.</p>
+<iframe width="100%" height="400" src="https://www.youtube.com/embed/9uwXciOxtyQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The video highlight the use-case driven by SAST alerts. However, the
+main use-case the standard fuzzing for coverage or bug research.</p>
+</div>
+</section>
+<section id="code-components">
+<h1>Code Components<a class="headerlink" href="#code-components" title="Permalink to this heading"></a></h1>
+<p>The codebase is articulated around 3 main components, which, combined together
+forms the whole PASTIS infrastructure.</p>
+<p><strong>libpastis</strong>: Pure python library designed perform all network communications
+in the context of PASTIS. Its API mostly expose two classes <code class="xref py py-class docutils literal notranslate"><span class="pre">ClientAgent</span></code>
+and <code class="xref py py-class docutils literal notranslate"><span class="pre">BrokerAgent</span></code> that enable acting as a client or a broker respectively.
+It also exposes common types between components.</p>
+<p><strong>broker</strong>: head of the infrastructure, acting as an intermediate between each
+engines connected. It is in charge of ensuring a maximal sharing of
+seeds between clients. Ensuring this sharing enable theoretically to have the same coverage
+for all clients. That project is the main interface with the analyst as all configuration options of a
+campain are set in pastis-broker and propagated to all clients automatically.</p>
+<p><strong>engines</strong>: They are fuzzing agents, testing the target. They connect to
+the broker to receive the fuzzing configuration and initial corpus. Then,
+these agents send back to the broker the test-cases produced and absorb
+new ones received from the broker.</p>
+<section id="pastis-in-action">
+<h2>PASTIS in action<a class="headerlink" href="#pastis-in-action" title="Permalink to this heading"></a></h2>
+<iframe width="100%" height="400" src="https://www.youtube.com/embed/YO7ziSPAsxM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html"> Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#linux">Linux</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#other-plateforms">Other Plateforms</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="campaign.html"> Running PASTIS</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="campaign.html#broker">Broker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="campaign.html#fuzzers">Fuzzers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="campaign.html#analysing-results">Analysing Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adding-fuzzer.html"> Adding a Fuzzer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adding-fuzzer.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adding-fuzzer.html#python-driver">Python Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adding-fuzzer.html#broker-addon">Broker Addon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adding-fuzzer.html#examples">Examples</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="engines/aflpp.html"> AFL++</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="engines/aflpp.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engines/aflpp.html#running-pastis-aflpp">Running pastis-aflpp</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="engines/aflpp.html#online-mode">Online mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="engines/aflpp.html#offline-mode">Offline mode</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="engines/honggfuzz.html"> Honggfuzz</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="engines/honggfuzz.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engines/honggfuzz.html#running-pastis-honggfuzz">Running pastis-honggfuzz</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="engines/honggfuzz.html#online-mode">Online mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="engines/honggfuzz.html#offline-mode">Offline mode</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="engines/tritondse.html"> TritonDSE</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="engines/tritondse.html#online">Online</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engines/tritondse.html#offline">Offline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engines/tritondse.html#configuration-results">Configuration &amp; Results</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/demo-fsm.html"> Demo FSM</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/demo-fsm.html#preparing-the-target">Preparing the target</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/demo-fsm.html#running-the-broker">Running the Broker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/demo-fsm.html#running-afl">Running AFL++</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/demo-fsm.html#running-tritondse">Running TritonDSE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/demo-fsm.html#post-campaign">Post campaign</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/types.html">Types</a></li>
+</ul>
+</div>
+</section>
+</section>
+<section id="credits">
+<h1>Credits<a class="headerlink" href="#credits" title="Permalink to this heading"></a></h1>
+<p>Sponsors and supporters of the project.</p>
+<figure class="align-center">
+<a class="reference internal image-reference" href="_images/supporters.png"><img alt="Quarkslab Logo" src="_images/supporters.png" style="width: 200px;" /></a>
+</figure>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

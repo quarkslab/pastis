@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>libpastis.types &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">libpastis.types</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for libpastis.types</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">aenum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">extend_enum</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
+<span class="kn">import</span> <span class="nn">base64</span>
+
+<span class="n">PathLike</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span>
+<span class="c1">#: Union of a string or Path object</span>
+
+<div class="viewcode-block" id="State"><a class="viewcode-back" href="../../api/types.html#libpastis.types.State">[docs]</a><span class="k">class</span> <span class="nc">State</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Running type of a fuzzing engine. It</span>
+<span class="sd">    can be either running or idle.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">RUNNING</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">IDLE</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="Platform"><a class="viewcode-back" href="../../api/types.html#libpastis.types.Platform">[docs]</a><span class="k">class</span> <span class="nc">Platform</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enum representing the platform.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ANY</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">LINUX</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">WINDOWS</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">MACOS</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">ANDROID</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">IOS</span> <span class="o">=</span> <span class="mi">5</span></div>
+
+
+<div class="viewcode-block" id="SeedType"><a class="viewcode-back" href="../../api/types.html#libpastis.types.SeedType">[docs]</a><span class="k">class</span> <span class="nc">SeedType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Type of an input. They can be plain input,</span>
+<span class="sd">    crash input or hanging input.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">INPUT</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">CRASH</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">HANG</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="ExecMode"><a class="viewcode-back" href="../../api/types.html#libpastis.types.ExecMode">[docs]</a><span class="k">class</span> <span class="nc">ExecMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Execution mode for fuzzing engine. With ``AUTO``</span>
+<span class="sd">    the fuzzer will automatically select, ``SINGLE_EXEC``</span>
+<span class="sd">    is the normal fuzzing mode where the process stops</span>
+<span class="sd">    at each iteration while ``PERSISTENT`` indicate the</span>
+<span class="sd">    fuzzer to run in persistent mode.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">AUTO</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">SINGLE_EXEC</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">PERSISTENT</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="FuzzMode"><a class="viewcode-back" href="../../api/types.html#libpastis.types.FuzzMode">[docs]</a><span class="k">class</span> <span class="nc">FuzzMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fuzzing mode, indicates the fuzzer whether the target</span>
+<span class="sd">    is instrumented or not.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">AUTO</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">INSTRUMENTED</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">BINARY_ONLY</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="CheckMode"><a class="viewcode-back" href="../../api/types.html#libpastis.types.CheckMode">[docs]</a><span class="k">class</span> <span class="nc">CheckMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    CheckMode is used to indicates a fuzzer how to run depdending on</span>
+<span class="sd">    the context. ``CHECK_ALL`` is the normal bug, vulnerability discovery</span>
+<span class="sd">    mode. Then ``ALERT_ONLY`` indicates the fuzzer to focus on SAST alerts.</span>
+<span class="sd">    Then ``ALERT_ONE`` indicates the fuzzer to focus on a single alert which</span>
+<span class="sd">    id should be provided through the configuration file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">CHECK_ALL</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ALERT_ONLY</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">ALERT_ONE</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+<div class="viewcode-block" id="CoverageMode"><a class="viewcode-back" href="../../api/types.html#libpastis.types.CoverageMode">[docs]</a><span class="k">class</span> <span class="nc">CoverageMode</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Coverage metrics to use. Some fuzzing engines do support multiple coverage</span>
+<span class="sd">    metrics, thus the enum indicates the one to use.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">AUTO</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span>
+    <span class="n">BLOCK</span> <span class="o">=</span> <span class="s2">&quot;block&quot;</span>
+    <span class="n">EDGE</span> <span class="o">=</span> <span class="s2">&quot;edge&quot;</span>
+    <span class="n">PATH</span> <span class="o">=</span> <span class="s2">&quot;path&quot;</span>
+    <span class="n">STATE</span> <span class="o">=</span> <span class="s2">&quot;state&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_missing_</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;CoverageMode&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Method used to dynmically creating an entry &quot;&quot;&quot;</span>
+        <span class="n">enum_name</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">enum_name</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__members__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">__members__</span><span class="p">[</span><span class="n">enum_name</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">extend_enum</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">enum_name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SeedInjectLoc"><a class="viewcode-back" href="../../api/types.html#libpastis.types.SeedInjectLoc">[docs]</a><span class="k">class</span> <span class="nc">SeedInjectLoc</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Indicates the location where to inject inputs. It can either be</span>
+<span class="sd">    on STDIN or ARGV.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">STDIN</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ARGV</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="Arch"><a class="viewcode-back" href="../../api/types.html#libpastis.types.Arch">[docs]</a><span class="k">class</span> <span class="nc">Arch</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Architecture representation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">X86</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">X86_64</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">ARMV7</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">AARCH64</span> <span class="o">=</span> <span class="mi">3</span></div>
+
+
+<div class="viewcode-block" id="LogLevel"><a class="viewcode-back" href="../../api/types.html#libpastis.types.LogLevel">[docs]</a><span class="k">class</span> <span class="nc">LogLevel</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enum representing the Log level, for fuzzers to send message logs</span>
+<span class="sd">    to the broker.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">INFO</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">WARNING</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">ERROR</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">CRITICAL</span> <span class="o">=</span> <span class="mi">4</span></div>
+
+
+<div class="viewcode-block" id="AlertData"><a class="viewcode-back" href="../../api/types.html#libpastis.types.AlertData">[docs]</a><span class="k">class</span> <span class="nc">AlertData</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    AlertData is data message that can be sent from fuzzing agents to</span>
+<span class="sd">    the broker to indicates that an alert has been covered or validated.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">covered</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">validated</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">id</span>
+        <span class="c1">#: Id of the alert</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">covered</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">covered</span>
+        <span class="c1">#: True if the alert has been covered</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">validated</span>
+        <span class="c1">#: True if the alert has been validated</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="c1">#: Input that reached or validated the alert</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">address</span>
+        <span class="c1">#: memory address of the alert</span>
+
+
+<div class="viewcode-block" id="AlertData.from_json"><a class="viewcode-back" href="../../api/types.html#libpastis.types.AlertData.from_json">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;AlertData&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert an AlertData in json to an instance.</span>
+
+<span class="sd">        :param data: json serialized alert</span>
+<span class="sd">        :return: AlertData object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">AlertData</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;covered&#39;</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;validated&#39;</span><span class="p">],</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;seed&#39;</span><span class="p">]),</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;address&#39;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="AlertData.to_json"><a class="viewcode-back" href="../../api/types.html#libpastis.types.AlertData.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serialize the alert to JSON.</span>
+
+<span class="sd">        :return: json serialized alert</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                           <span class="s1">&#39;covered&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">covered</span><span class="p">,</span>
+                           <span class="s1">&#39;validated&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">validated</span><span class="p">,</span>
+                           <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span>
+                           <span class="s1">&#39;address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">})</span></div></div>
+
+
+<div class="viewcode-block" id="FuzzingEngineInfo"><a class="viewcode-back" href="../../api/types.html#libpastis.types.FuzzingEngineInfo">[docs]</a><span class="k">class</span> <span class="nc">FuzzingEngineInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to represent a fuzzing engine metadata.</span>
+<span class="sd">    It contains its name, version and the Python module</span>
+<span class="sd">    where to load the descriptor and configuration object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">version</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">pymodule</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c1">#: Name of the engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="c1">#: Version of the engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pymodule</span> <span class="o">=</span> <span class="n">pymodule</span>
+        <span class="c1">#: Name of the python module</span>
+
+<div class="viewcode-block" id="FuzzingEngineInfo.from_pb"><a class="viewcode-back" href="../../api/types.html#libpastis.types.FuzzingEngineInfo.from_pb">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_pb</span><span class="p">(</span><span class="n">pb</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;FuzzingEngineInfo&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse a protobuf object into a FuzzingEngineInfo object.</span>
+
+<span class="sd">        :param pb: protobuf object</span>
+<span class="sd">        :return: object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">FuzzingEngineInfo</span><span class="p">(</span><span class="n">pb</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pb</span><span class="o">.</span><span class="n">version</span><span class="p">,</span> <span class="n">pb</span><span class="o">.</span><span class="n">pymodule</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

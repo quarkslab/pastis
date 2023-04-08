@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adding a Fuzzer &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="AFL++" href="engines/aflpp.html" />
+    <link rel="prev" title="Running PASTIS" href="campaign.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"> Adding a Fuzzer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-driver">Python Driver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#broker-addon">Broker Addon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Adding a Fuzzer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/adding-fuzzer.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adding-a-fuzzer">
+<h1>Adding a Fuzzer<a class="headerlink" href="#adding-a-fuzzer" title="Permalink to this heading"></a></h1>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this heading"></a></h2>
+<p>In order to be integrated in PASTIS a fuzzer should support:</p>
+<ul class="simple">
+<li><p><strong>receiving new inputs</strong> while running</p></li>
+<li><p>providing input/crashes it generates <em>(preferably as soon as they are produced)</em></p></li>
+<li><p>providing some telemetry that could be sent to the broker <em>(current coverage, execution per/sec etc..)</em></p></li>
+</ul>
+<p>If the fuzzer does not support such features it first it needs to be modified in order to be compliant.
+As a matter of example, Honggfuzz does not support such feature and has been modified
+to periodically reading a specific folder for new input files.</p>
+</section>
+<section id="python-driver">
+<h2>Python Driver<a class="headerlink" href="#python-driver" title="Permalink to this heading"></a></h2>
+<p>Once the fuzzer is ready and satisfies PASTIS constraints, it can be wrapped in a Python driver
+that will act as an interface between the fuzzer and the broker. For that, all the required objects
+and types have been defined in <code class="docutils literal notranslate"><span class="pre">libpastis</span></code>. It notably provides a <code class="xref py py-class docutils literal notranslate"><span class="pre">ClientAgent</span></code> object
+(<a class="reference internal" href="api/agent.html#label-agent-api"><span class="std std-ref">Agent</span></a>) class that one can inherit from in order to interact with the broker. The whole purpose
+of a driver is to send data generated by the fuzzer to the broker and to react to some messages it
+receives from the broker.</p>
+<p>A client can send to following message to the broker:</p>
+<ul class="simple">
+<li><p><strong>Hello</strong>: Indicating its own architecture, number of CPUs, memory, platform and the engines it supports</p></li>
+<li><p><strong>Seed</strong>: To seed an input or a crash it has generated</p></li>
+<li><p><strong>Data</strong>: To seed alert related information to the broker <em>(alert covered or validated)</em></p></li>
+<li><p><strong>Log</strong>: Logs that seem’s relevant to be sent to the broker</p></li>
+<li><p><strong>Telemetry</strong>: Periodic data about the current state of the fuzzing (exec per/sec, coverage, iterations …)</p></li>
+</ul>
+<p>Conversely it will receive messages, materialized by callbacks that will be called and that the driver should
+implement. The messages are the following:</p>
+<ul class="simple">
+<li><p><strong>Start</strong>: Message to start a fuzzing campain. It contains the program, all the runtime configuration parameters
+that should be used. When receive such callbacks the driver should:
+* check that a campaign is not already running
+* perform all the initializations
+* start the underlying fuzzer with the program and appropriate parameters</p></li>
+<li><p><strong>Seed</strong>: Receive a seed from the broker. The driver should forward it to the fuzzer. It can also apply
+any pre-processing that it considers useful.</p></li>
+<li><p><strong>Stop</strong>: Should stop the campaign</p></li>
+</ul>
+<p>The following snippet show how to instanciate a very simple client agent.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">libpastis.agent</span> <span class="kn">import</span> <span class="n">ClientAgent</span>
+<span class="kn">from</span> <span class="nn">libpastis.types</span> <span class="kn">import</span> <span class="n">SeedType</span><span class="p">,</span> <span class="n">FuzzingEngine</span><span class="p">,</span> <span class="n">ExecMode</span><span class="p">,</span> <span class="n">CoverageMode</span><span class="p">,</span> <span class="n">SeedInjectLoc</span><span class="p">,</span> <span class="n">CheckMode</span><span class="p">,</span> <span class="n">LogLevel</span><span class="p">,</span> <span class="n">State</span>
+
+<span class="k">def</span> <span class="nf">start_received</span><span class="p">(</span><span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">binary</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">engine</span><span class="p">:</span> <span class="n">FuzzingEngine</span><span class="p">,</span> <span class="n">exmode</span><span class="p">:</span> <span class="n">ExecMode</span><span class="p">,</span> <span class="n">chkmode</span><span class="p">:</span> <span class="n">CheckMode</span><span class="p">,</span>
+                   <span class="n">covmode</span><span class="p">:</span> <span class="n">CoverageMode</span><span class="p">,</span> <span class="n">seed_inj</span><span class="p">:</span> <span class="n">SeedInjectLoc</span><span class="p">,</span>
+                   <span class="n">engine_args</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">argv</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">kl_report</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">pass</span> <span class="c1"># commencer la campagne</span>
+
+<span class="k">def</span> <span class="nf">seed_received</span><span class="p">(</span><span class="n">typ</span><span class="p">:</span> <span class="n">SeedType</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">):</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[SEED] </span><span class="si">{</span><span class="w"> </span><span class="n">seed</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="w"> </span><span class="n">typ</span><span class="si">}</span><span class="s2"> )&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">stop_received</span><span class="p">():</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[STOP]&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">ClientAgent</span><span class="p">()</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span> <span class="c1"># default is localhost:5555</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">register_start_callback</span><span class="p">(</span><span class="n">start_received</span><span class="p">)</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">register_seed_callback</span><span class="p">(</span><span class="n">seed_received</span><span class="p">)</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">register_stop_callback</span><span class="p">(</span><span class="n">stop_received</span><span class="p">)</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">start</span><span class="p">()</span> <span class="c1"># start reception thread</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">send_hello</span><span class="p">([(</span><span class="n">FuzzingEngine</span><span class="o">.</span><span class="n">TRITON</span><span class="p">,</span> <span class="s2">&quot;v0.8&quot;</span><span class="p">)])</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>We recommand inheriting <code class="docutils literal notranslate"><span class="pre">ClientAgent</span></code> rather than using it a a standalone object.</p>
+</div>
+</section>
+<section id="broker-addon">
+<h2>Broker Addon<a class="headerlink" href="#broker-addon" title="Permalink to this heading"></a></h2>
+<p>The broker is designed to be independent from the fuzzing engine with which it interacts.
+Nonetheless, the broker needs to know which program variant to send the fuzzing engine.
+Thus, the fuzzing engine should provide a <code class="docutils literal notranslate"><span class="pre">FuzzingEngineDescriptor</span></code> providing basic
+information about the engine and a <code class="docutils literal notranslate"><span class="pre">accept_file(file)</span></code> method to know whether the file
+is suitable for the engine. The broker is then design with an “addon” mecanism allowing
+to provide the broker a <code class="docutils literal notranslate"><span class="pre">FuzzingEngineDescriptor</span></code> object. The following figure summarizes
+the handshake process between a client and the broker.</p>
+<figure class="align-center">
+<a class="reference internal image-reference" href="_images/adding-fuzzer-overview.png"><img alt="Loading of a Fuzzing Engine descriptor" src="_images/adding-fuzzer-overview.png" style="width: 880.0px; height: 327.0px;" /></a>
+</figure>
+<p>As shown on the figure when a fuzzer do connect on the broker it should advertize one or multiple
+fuzzing engine that it supports with <code class="docutils literal notranslate"><span class="pre">FuzzingEngineInfo</span></code> <em>(all that is encapsulated in the HelloMsg)</em>.
+That object also indicates the name
+of the python module to side-load on the broker in order to obtain the <code class="docutils literal notranslate"><span class="pre">FuzzingEngineDescriptor</span></code>
+associated with the engine. The python module should contains a class inheriting <code class="docutils literal notranslate"><span class="pre">FuzzingEngineDescriptor</span></code>
+that describe the engine. <em>(The broker will automatically find the subclass object within the module).</em></p>
+<p>You fuzzing driver should thus provide this module to be installed on the broker <em>(either as a
+separate python module or directly within the main driver code)</em>. The object is is documented
+in the API: <a class="reference internal" href="api/descr.html#label-engine-desc"><span class="std std-ref">Fuzzer Interface</span></a>.</p>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h2>
+<p>There is nothing like examples. Thus one can see existing drivers to see how they are
+implemented and how they work. They can be used as a basis for other fuzzing engines.</p>
+<ul class="simple">
+<li><p>tiny test clients: <a class="reference external" href="https://github.com/quarkslab/pastis/blob/main/tests/test_client.py">test_client.py</a></p></li>
+<li><p>Honggfuzz driver: <a class="reference external" href="https://github.com/quarkslab/pastis/blob/main/engines/pastis-honggfuzz/pastishf/driver.py">driver.py</a></p></li>
+<li><p>TritonDSE driver: <a class="reference external" href="https://github.com/quarkslab/pastis/blob/main/engines/pastis-triton/pastisdse/pastisdse.py">pastisdse.py</a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="campaign.html" class="btn btn-neutral float-left" title="Running PASTIS" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="engines/aflpp.html" class="btn btn-neutral float-right" title="AFL++" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

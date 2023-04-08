@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Honggfuzz &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="TritonDSE" href="tritondse.html" />
+    <link rel="prev" title="AFL++" href="aflpp.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="aflpp.html"> AFL++</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"> Honggfuzz</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-pastis-honggfuzz">Running pastis-honggfuzz</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#online-mode">Online mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#offline-mode">Offline mode</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Honggfuzz</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/engines/honggfuzz.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="honggfuzz">
+<h1>Honggfuzz<a class="headerlink" href="#honggfuzz" title="Permalink to this heading"></a></h1>
+<section id="installation">
+<span id="honggfuzz-install"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">pastis-honggfuzz</span></code> driver works by finding the honggfuzz binary path through an
+environment variable. Honggfuzz thus has to be installed beforehand.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>PASTIS requires a specific patched version of Honggfuzz to work.</p>
+</div>
+<p>Compiling the Honggfuzz tailored for PASTIS is as simple as:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>binutils-dev<span class="w"> </span>libunwind-dev<span class="w"> </span>-y
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>engines/pastis-honggfuzz/patches
+$<span class="w"> </span>./make_hf.sh
+$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;export HFUZZ_PATH=</span><span class="nv">$PWD</span><span class="s2">/honggfuzz-5a504b49&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.profile
+</pre></div>
+</div>
+<p>The only tricky part is the export of the honggfuzz directory as environment variable to make
+it discoverable by <code class="docutils literal notranslate"><span class="pre">pastis-honggfuzz</span></code>. At the moment the module does not intent to find automatically
+the honggfuzz binary.</p>
+</section>
+<section id="running-pastis-honggfuzz">
+<h2>Running pastis-honggfuzz<a class="headerlink" href="#running-pastis-honggfuzz" title="Permalink to this heading"></a></h2>
+<p>The program <code class="docutils literal notranslate"><span class="pre">pastis-honggfuzz</span></code> is the main binary using the pastis-hf library to interact
+with the broker. It can either be launched locally in offline mode or with the broker in an
+online mode.</p>
+<section id="online-mode">
+<h3>Online mode<a class="headerlink" href="#online-mode" title="Permalink to this heading"></a></h3>
+<p>Launching the <code class="docutils literal notranslate"><span class="pre">pastis-honggfuzz</span></code> in online mode is as simple as:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pastis-honggfuzz<span class="w"> </span>online
+</pre></div>
+</div>
+<p>Without further argument the binary the server reached is localhost on port 5555.
+Otherwise one can specify <code class="docutils literal notranslate"><span class="pre">-h</span></code> and <code class="docutils literal notranslate"><span class="pre">-p</span></code> respectively for the host and port.
+There is no other parameters as all of them will be received through the broker.</p>
+</section>
+<section id="offline-mode">
+<h3>Offline mode<a class="headerlink" href="#offline-mode" title="Permalink to this heading"></a></h3>
+<p>In offline mode, all parameters normally received by the broker have to be specified
+on the command line. Options are:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pastis-honggfuzz<span class="w"> </span>offline<span class="w"> </span>--help
+Usage:<span class="w"> </span>pastis-honggfuzz<span class="w"> </span>offline<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROGRAM<span class="w"> </span><span class="o">[</span>PARGVS<span class="o">]</span>...
+
+Options:
+<span class="w">  </span>-r,<span class="w"> </span>--sast-report<span class="w"> </span>FILE<span class="w">            </span>SAST<span class="w"> </span>report<span class="w"> </span>to<span class="w"> </span>use
+<span class="w">  </span>-s,<span class="w"> </span>--seed<span class="w"> </span>PATH<span class="w">                 </span>Seed<span class="w"> </span>or<span class="w"> </span>directory<span class="w"> </span>of<span class="w"> </span>seeds<span class="w"> </span>to<span class="w"> </span>give<span class="w"> </span>to<span class="w"> </span>the<span class="w"> </span>exploration
+<span class="w">  </span>-x,<span class="w"> </span>--exmode<span class="w"> </span><span class="o">[</span>SINGLE_EXEC<span class="p">|</span>PERSISTENT<span class="o">]</span><span class="w"> </span>Execution<span class="w"> </span>mode
+<span class="w">  </span>-chk,<span class="w"> </span>--chkmode<span class="w"> </span><span class="o">[</span>CHECK_ALL<span class="p">|</span>ALERT_ONLY<span class="o">]</span><span class="w"> </span>Check<span class="w"> </span>mode
+<span class="w">  </span>-i,<span class="w"> </span>--seedinj<span class="w"> </span><span class="o">[</span>STDIN<span class="p">|</span>ARGV<span class="o">]</span><span class="w">      </span>Location<span class="w"> </span>where<span class="w"> </span>to<span class="w"> </span>inject<span class="w"> </span>input
+<span class="w">  </span>--logfile<span class="w"> </span>TEXT<span class="w">                  </span>Log<span class="w"> </span>file<span class="w"> </span>of<span class="w"> </span>all<span class="w"> </span>messages<span class="w"> </span>received<span class="w"> </span>by<span class="w"> </span>the<span class="w"> </span>broker
+<span class="w">  </span>--help<span class="w">                          </span>Show<span class="w"> </span>this<span class="w"> </span>message<span class="w"> </span>and<span class="w"> </span>exit.
+</pre></div>
+</div>
+<p>The only mandatory argument is the binary itself. One can provide binary argvs as argv on the
+command line. Optional arguments allows providing a SAST report, one or multiple initial
+seed files and tuning parameters to run the fuzzer.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="aflpp.html" class="btn btn-neutral float-left" title="AFL++" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tritondse.html" class="btn btn-neutral float-right" title="TritonDSE" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

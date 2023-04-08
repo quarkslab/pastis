@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>libpastis.enginedesc &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">libpastis.enginedesc</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for libpastis.enginedesc</h1><div class="highlight"><pre>
+<span></span><span class="c1"># builtin imports</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="c1"># Local imports</span>
+<span class="kn">from</span> <span class="nn">libpastis.types</span> <span class="kn">import</span> <span class="n">CoverageMode</span><span class="p">,</span> <span class="n">ExecMode</span><span class="p">,</span> <span class="n">FuzzMode</span>
+
+
+<div class="viewcode-block" id="EngineConfiguration"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration">[docs]</a><span class="k">class</span> <span class="nc">EngineConfiguration</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic interface to represent an engine configuration file</span>
+<span class="sd">    on broker side. A fuzzing engine have to provide such object</span>
+<span class="sd">    so that the broker can load them and forwarding them to clients.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EngineConfiguration.new"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration.new">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">new</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s1">&#39;EngineConfiguration&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Static method that should return a fresh configuration object.</span>
+
+<span class="sd">        :return: Configuration object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="EngineConfiguration.from_file"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration.from_file">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;EngineConfiguration&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a configuration object from file.</span>
+
+<span class="sd">        :param filepath: Path to the configuration</span>
+<span class="sd">        :return: Configuration object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="EngineConfiguration.from_str"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration.from_str">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_str</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;EngineConfiguration&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse a string to a configuration object.</span>
+
+<span class="sd">        :param s: configuration as string</span>
+<span class="sd">        :return: configuration object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="EngineConfiguration.to_str"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration.to_str">[docs]</a>    <span class="k">def</span> <span class="nf">to_str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serialize configuration object to string.</span>
+
+<span class="sd">        :return: serialize configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="EngineConfiguration.get_coverage_mode"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration.get_coverage_mode">[docs]</a>    <span class="k">def</span> <span class="nf">get_coverage_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CoverageMode</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Should return the coverage mode defined in the configuration.</span>
+<span class="sd">        For greybox fuzzer like AFL++, Honggfuzz one can return :py:obj:`CoverageMode.AUTO`.</span>
+<span class="sd">        If the engine support different coverage metric it should return</span>
+<span class="sd">        the one selected.</span>
+
+<span class="sd">        :return: coverage mode used</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="EngineConfiguration.set_target"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.EngineConfiguration.set_target">[docs]</a>    <span class="k">def</span> <span class="nf">set_target</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a specific target (address, index etc), that should be targeted by</span>
+<span class="sd">        the fuzzing engine. This will be used when running in a targeted way.</span>
+
+<span class="sd">        :param target: identifier of the target</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div></div>
+
+
+<div class="viewcode-block" id="FuzzingEngineDescriptor"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.FuzzingEngineDescriptor">[docs]</a><span class="k">class</span> <span class="nc">FuzzingEngineDescriptor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract class describing a fuzzer engine. This object is used on</span>
+<span class="sd">    broker side, to identify the name and version of a fuzzer and to</span>
+<span class="sd">    know whether or not it accept a specific executable file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">NAME</span> <span class="o">=</span> <span class="s2">&quot;abstract-engine&quot;</span>
+    <span class="c1">#: Name of the fuzzing Engine</span>
+    <span class="n">SHORT_NAME</span> <span class="o">=</span> <span class="s2">&quot;AE&quot;</span>
+    <span class="c1">#: Short name of the fuzzing engine</span>
+    <span class="n">VERSION</span> <span class="o">=</span> <span class="s2">&quot;1.0&quot;</span>
+    <span class="c1">#: Version of the engine</span>
+
+    <span class="n">config_class</span> <span class="o">=</span> <span class="n">EngineConfiguration</span>
+    <span class="c1">#: Configuration class associated with the engine</span>
+
+<div class="viewcode-block" id="FuzzingEngineDescriptor.accept_file"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.FuzzingEngineDescriptor.accept_file">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept_file</span><span class="p">(</span><span class="n">binary_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExecMode</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FuzzMode</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function called by the broker with all executable files detected in its directory.</span>
+<span class="sd">        As an fuzzer developer, you have to implement this function to indicate whether</span>
+<span class="sd">        a file is accepted as a target or not.</span>
+
+<span class="sd">        :param binary_file: file path to an executable file</span>
+<span class="sd">        :return: True if supported, and two optional attributes indicating the ExecMode and FuzzMode</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="FuzzingEngineDescriptor.supported_coverage_strategies"><a class="viewcode-back" href="../../api/descr.html#libpastis.enginedesc.FuzzingEngineDescriptor.supported_coverage_strategies">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">supported_coverage_strategies</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">CoverageMode</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        List of coverage metrics supported by the fuzzer. If it only</span>
+<span class="sd">        support a single one, it should be :py:obj:`CoverageMode.AUTO`.</span>
+
+<span class="sd">        :return: list of coverage modes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

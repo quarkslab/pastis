@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Running PASTIS &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Adding a Fuzzer" href="adding-fuzzer.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html"> Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"> Running PASTIS</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#broker">Broker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fuzzers">Fuzzers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pastisd">pastisd</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#analysing-results">Analysing Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Running PASTIS</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/campaign.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="running-pastis">
+<h1>Running PASTIS<a class="headerlink" href="#running-pastis" title="Permalink to this heading"></a></h1>
+<p>Before running PASTIS, the target must be harnessed, and all variants compiled for
+each engines. In order one should launch:</p>
+<ul class="simple">
+<li><p>the broker with all parameters of the campaign</p></li>
+<li><p>the fuzzing engines (with no specific order)</p></li>
+</ul>
+<section id="broker">
+<h2>Broker<a class="headerlink" href="#broker" title="Permalink to this heading"></a></h2>
+<p>The broker can be launched with <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> binary. Command line arguments are
+the following:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: pastis-broker [OPTIONS] [PARGVS]...
+
+Options:
+  --version                       Show the version and exit.
+  -w, --workspace PATH            Workspace directory to store data
+  -r, --sast-report FILE          SAST report to use
+  -b, --bins DIRECTORY            Directory containing binaries  [required]
+  -m, --mode [FULL|NO_TRANSMIT]   Mode of broking
+  -c, --chkmode [CHECK_ALL|ALERT_ONLY|ALERT_ONE]
+                                  Check mode (all or alert driven)
+  -i, --injloc [STDIN|ARGV]       Seed injection location
+  -e, --engine TEXT               Fuzzing engine module to load (python
+                                  module)
+  --tt-config PATH                Triton configuration file
+  --hf-config PATH                Honggfuzz configuration file
+  -s, --seed PATH                 Initial seed or directory of seeds to give
+                                  as initial corpus
+  -t, --timeout INTEGER           Timeout of the campaign. Time after which
+                                  stopping the campaign
+  -p, --port INTEGER              Port to bind to
+  --mem-threshold INTEGER         RAM consumption limit
+  --help                          Show this message and exit.
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--workspace</span></code> defines the directory where all runtime data will be stored.
+If it does not exists it is created, otherwise information are partially loaded
+from it. The utility can thus load all corpus and crash files from an existing
+workspace. Other files are essentially not reused.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--sast-report</span></code> SAST report to use if any. If a report is provided, clients
+are automatically launched in <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> mode otherwise they are launched in
+<code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--bins</span></code> is the only mandatory parameter as it indicates an executable binary or
+a directory containing various variant of the same binary. Indeed, <code class="docutils literal notranslate"><span class="pre">honggfuzz</span></code>
+requires the binary to be compiled with instrumentation while <code class="docutils literal notranslate"><span class="pre">tritondse</span></code> need not.
+Similarly, depending on clients architecture the appropriate variant in the right
+architecture can be provided. <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> automatically detects the various
+variant in a given directory which simplifies the broker usage as it will automatically
+provide the appropriate variant depending on client’s capabilities.</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>At the moment solely ELF Linux binaries are supported. Supporting other
+platforms would require extra engineering effort.</p>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--mode</span></code> defines the “broking” behavior for <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code>. Possible values are:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">FULL</span></code>: transmit all seeds to other clients. Performs the maximal sharing between peers</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NO_TRANSMIT</span></code>: receive data from clients but does not forward to one-another seeds</p></li>
+</ul>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">--chkmode</span></code>: Indicate engines, the mode they are meant to run.</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code>: normal exploration and global vulnerability discovery</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code>: only perform security checks on alerts taken from the SAST report.
+Also enables reporting when an alert is covered or validated</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALERT_ONE</span></code>: Directed exploration toward a single alert (TritonDSE only)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--injloc</span></code>: Whether the input is given on <code class="docutils literal notranslate"><span class="pre">STDIN</span></code> or via <code class="docutils literal notranslate"><span class="pre">ARGV</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--engine</span></code>: Name of a broker-addon to load, that describes an engine capabilities.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--seed</span></code> allows specifying a file or a directory of files containing the initial corpus
+for the campain.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tt-config</span></code> Triton specific parameters to be sent as configuration to any Triton clients
+The file is a JSON file as defined in <code class="docutils literal notranslate"><span class="pre">tritondse</span></code>. If the parameter is a directory all files
+contained inside will be considered as different configuration files. That enables launching
+different Triton instances with different parameters. In this case <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> will
+launch a triton instance in each configuration and will loop if there is more.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--hf-config</span></code> Honggfuzz specific parameters to be sent to <code class="docutils literal notranslate"><span class="pre">hf-wrapper</span></code>. The file is text
+file that will be transmitted as-is to honggfuzz command line. The parameter can also be a
+directory with various configuration files.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--timeout</span></code> fuzzing campaign timeout</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--port</span></code> Network port on which to listen on</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--mem-threshold</span></code>: Memory watchdog in percent, that will kill Triton instances if the limit
+is reached</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Without configuration specific files, pastis-broker will automatically equilibrate
+the coverage modes for clients. For instance three instances of TritonDSE will each be launched
+with different coverage criteria (block, edge, path). Similarly, if a client support different
+fuzzing engines pastis-broker will automatically balances honggfuzz instances and Triton instances.</p>
+</div>
+</section>
+<section id="fuzzers">
+<h2>Fuzzers<a class="headerlink" href="#fuzzers" title="Permalink to this heading"></a></h2>
+<p>Engines can be launched with theirs appropriate binary:</p>
+<ul class="simple">
+<li><p>AFL++: <code class="docutils literal notranslate"><span class="pre">pastis-aflpp</span> <span class="pre">online</span> <span class="pre">[IP]</span> <span class="pre">[PORT]</span></code></p></li>
+<li><p>Honggfuzz: <code class="docutils literal notranslate"><span class="pre">pastis-honggfuzz</span> <span class="pre">online</span> <span class="pre">[IP]</span> <span class="pre">[PORT]</span></code></p></li>
+<li><p>TritonDSE: <code class="docutils literal notranslate"><span class="pre">pastis-triton</span> <span class="pre">online</span> <span class="pre">[IP]</span> <span class="pre">[PORT]</span></code></p></li>
+</ul>
+<p>If no IP or port is provided, they will automatically connect to <em>localhost:5555</em>.</p>
+<section id="pastisd">
+<h3>pastisd<a class="headerlink" href="#pastisd" title="Permalink to this heading"></a></h3>
+<p>The binary <code class="docutils literal notranslate"><span class="pre">pastisd</span></code> is meant to be used as a daemon. It will check the availability of all
+fuzzers and will connect to the broker announcing all available engines. It is thus the broker
+that will automatically decide which fuzzer to launch. The <code class="docutils literal notranslate"><span class="pre">pastisd</span></code> daemon will receive
+the <code class="docutils literal notranslate"><span class="pre">start</span></code> message from the broker containing the fuzzer to launch and will do it.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ pastisd IP
+</pre></div>
+</div>
+<p>If no IP, is provided it will automatically connect to <strong>pastis.lan:5555</strong>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This program is under maintainance, please favor launching
+each fuzzers explicitely.</p>
+</div>
+</section>
+</section>
+<section id="analysing-results">
+<h2>Analysing Results<a class="headerlink" href="#analysing-results" title="Permalink to this heading"></a></h2>
+<p>Corpus, crashes, clients logs and telemetry are stored in the broker workspace.
+It thus aggregate all data related to a campaign. If a SAST report have been
+provided it also provides for each alertes data returned by clients, inputs triggered
+the crash of the alert etc. In this mode <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> also export a final CSV
+indicating which alerts have been covered or triggered. The workspace folder also
+enables restarting an interrupted campaign. The workspace file structure is the following:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>workspace/
+    alerts_data/   (alert related data if a report was provided)
+    binaries/      (binaries used, copied from --bins argument)
+    corpus/        (corpus files)
+    crashes/       (crash files)
+    hangs/         (hang files)
+    logs/          (log files, one file per client)
+    broker.log     (log file of the broker)
+    sastreport.bin (copy of the SAST report if provided)
+    results.csv    (synthetic results of alerts, if a report is provided)
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="adding-fuzzer.html" class="btn btn-neutral float-right" title="Adding a Fuzzer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

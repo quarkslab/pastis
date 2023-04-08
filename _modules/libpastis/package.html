@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>libpastis.package &mdash; PASTIS 0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            PASTIS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html"> Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../campaign.html"> Running PASTIS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../adding-fuzzer.html"> Adding a Fuzzer</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Fuzzing Engines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/aflpp.html"> AFL++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/honggfuzz.html"> Honggfuzz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../engines/tritondse.html"> TritonDSE</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/demo-fsm.html"> Demo FSM</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/agent.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/descr.html">Fuzzer Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/package.html">Binary Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/sast.html">SAST</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/types.html">Types</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PASTIS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">libpastis.package</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for libpastis.package</h1><div class="highlight"><pre>
+<span></span><span class="c1"># built-in imports</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="c1"># third-party imports</span>
+<span class="kn">import</span> <span class="nn">lief</span>
+<span class="kn">import</span> <span class="nn">magic</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">stat</span>
+
+<span class="c1"># local imports</span>
+<span class="kn">from</span> <span class="nn">libpastis.types</span> <span class="kn">import</span> <span class="n">Arch</span><span class="p">,</span> <span class="n">Platform</span>
+
+
+<div class="viewcode-block" id="BinaryPackage"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage">[docs]</a><span class="k">class</span> <span class="nc">BinaryPackage</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Binary Package representing a given target to fuzz along with its shared</span>
+<span class="sd">    libraries and additional files required (cmplog, dictionnary etc.).</span>
+<span class="sd">    This object is received by fuzzing agents as part of the START message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">EXTENSION_BLACKLIST</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;.gt&#39;</span><span class="p">,</span> <span class="s1">&#39;.Quokka&#39;</span><span class="p">,</span> <span class="s1">&#39;.quokka&#39;</span><span class="p">,</span> <span class="s1">&#39;.cmplog&#39;</span><span class="p">]</span>
+    <span class="c1">#: specific extensions that will be ignored for the `other_files`</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">main_binary</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param main_binary: main executable file path</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_main_bin</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">main_binary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_callgraph</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">other_files</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1">#: list of additional files contained in this package</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_package_file</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arch</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_platform</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">executable_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Path to the main executable file to fuzz.</span>
+
+<span class="sd">        :return: filepath</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_main_bin</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Name of the executable file</span>
+
+<span class="sd">        :return: name as a string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_main_bin</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">quokka</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Path to the quokka file if provided.</span>
+
+<span class="sd">        :return: path of the quokka file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">callgraph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Path to the callgraph file if provided.</span>
+
+<span class="sd">        :return: path of the quokka file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callgraph</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">cmplog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Path to the complog executable file if provided.</span>
+
+<span class="sd">        :return: path to the complog file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dictionary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Path the to dictionnary file if provided.</span>
+
+<span class="sd">        :return: path to the dictionnary file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span>
+
+<div class="viewcode-block" id="BinaryPackage.is_cmplog"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_cmplog">[docs]</a>    <span class="k">def</span> <span class="nf">is_cmplog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the package contains a cmplog file.</span>
+
+<span class="sd">        :return: True if contains cmplog</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="BinaryPackage.is_quokka"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_quokka">[docs]</a>    <span class="k">def</span> <span class="nf">is_quokka</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the package contains a quokka file.</span>
+
+<span class="sd">        :return: True if contains a quokka file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="BinaryPackage.is_dictionary"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_dictionary">[docs]</a>    <span class="k">def</span> <span class="nf">is_dictionary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the package contains a dictionnary.</span>
+
+<span class="sd">        :return: True if contains a dictionnary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="BinaryPackage.is_standalone"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_standalone">[docs]</a>    <span class="k">def</span> <span class="nf">is_standalone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Indicates that this BinaryPackage only contains the program under test and no</span>
+<span class="sd">        additional files such as a Quokka database or a cmplog instrumented binary.</span>
+<span class="sd">        This is used in pastis-broker when sending the &#39;start&#39; command to agents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_quokka</span><span class="p">()</span> <span class="ow">or</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_cmplog</span><span class="p">()</span> <span class="ow">or</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_dictionary</span><span class="p">()</span> <span class="ow">or</span>
+                    <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">other_files</span><span class="p">))</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">arch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Arch</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the architecture of the binary package (main executable target).</span>
+
+<span class="sd">        :return: architecture</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arch</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">platform</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Platform</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the platform of the binary package (main exectuable target).</span>
+
+<span class="sd">        :return: platform</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_platform</span>
+
+<div class="viewcode-block" id="BinaryPackage.auto"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.auto">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">auto</span><span class="p">(</span><span class="n">exe_file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;BinaryPackage&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Take a file and try creating a BinaryPackage with it. The `exe_file` is</span>
+<span class="sd">        the main executable file. From that the function will look for quokka,</span>
+<span class="sd">        cmplog, dictionary files (in the same directory).</span>
+
+<span class="sd">        :param exe_file: main target executable file</span>
+<span class="sd">        :return: a binary package if `exe_file` if applicable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bin_f</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">exe_file</span><span class="p">)</span>
+
+        <span class="c1"># Exclude file if have one of the</span>
+        <span class="k">if</span> <span class="n">bin_f</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">in</span> <span class="n">BinaryPackage</span><span class="o">.</span><span class="n">EXTENSION_BLACKLIST</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># If do not exists</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">bin_f</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Make sure its an executable</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">BinaryPackage</span><span class="o">.</span><span class="n">_read_binary_infos</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">bin_f</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">S_IRWXU</span><span class="p">)</span>  <span class="c1"># make sure the binary is executable</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">BinaryPackage</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">_platform</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_arch</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="c1"># Search for a Quokka file</span>
+        <span class="n">qfile1</span><span class="p">,</span> <span class="n">qfile2</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;.Quokka&quot;</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;.quokka&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">qfile1</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">_quokka</span> <span class="o">=</span> <span class="n">qfile1</span>
+        <span class="k">elif</span> <span class="n">qfile2</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">_quokka</span> <span class="o">=</span> <span class="n">qfile2</span>
+
+        <span class="c1"># Search for a graph file (containing callgraph)</span>
+        <span class="n">cfile</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;.gt&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cfile</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">_callgraph</span> <span class="o">=</span> <span class="n">cfile</span>
+
+        <span class="c1"># Search for a cmplog file if any</span>
+        <span class="n">cfile</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;.cmplog&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cfile</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">_cmplog</span> <span class="o">=</span> <span class="n">cfile</span>
+            <span class="n">cfile</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">S_IRWXU</span><span class="p">)</span>  <span class="c1"># make sure the cmplog binary is executable</span>
+
+        <span class="c1"># Search for a dictionary file if any</span>
+        <span class="n">cfile</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;.dict&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cfile</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">_dictionary</span> <span class="o">=</span> <span class="n">cfile</span>
+
+        <span class="k">return</span> <span class="n">p</span></div>
+
+<div class="viewcode-block" id="BinaryPackage.auto_directory"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.auto_directory">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">auto_directory</span><span class="p">(</span><span class="n">exe_file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;BinaryPackage&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a BinaryPackage with all files it can find in the given</span>
+<span class="sd">        directory. The difference with :py:meth:`BinaryPackage.auto` is</span>
+<span class="sd">        that all additional files in the directory will be added to the</span>
+<span class="sd">        package.</span>
+
+<span class="sd">        :param exe_file: main executable in the directory</span>
+<span class="sd">        :return: BinaryPackage if applicable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bin_f</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">exe_file</span><span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">BinaryPackage</span><span class="o">.</span><span class="n">auto</span><span class="p">(</span><span class="n">bin_f</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">bin_f</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">file</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">_main_bin</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_callgraph</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_quokka</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_cmplog</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">]:</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">other_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BinaryPackage.make_package"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.make_package">[docs]</a>    <span class="k">def</span> <span class="nf">make_package</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Pack the BinaryPackage in a zip file.</span>
+
+<span class="sd">        :return: Path to a .zip file containing the whole package</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_package_file</span>
+        <span class="c1"># Recreate a package</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.zip&quot;</span><span class="p">)</span>
+        <span class="nb">zip</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+        <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_main_bin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_main_bin</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span><span class="p">:</span>
+            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callgraph</span><span class="p">:</span>
+            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_callgraph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callgraph</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span><span class="p">:</span>
+            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">:</span>
+            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_files</span><span class="p">:</span>
+            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="nb">zip</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_read_binary_infos</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Platform</span><span class="p">,</span> <span class="n">Arch</span><span class="p">]]:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">lief</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">lief</span><span class="o">.</span><span class="n">ELF</span><span class="o">.</span><span class="n">Binary</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;binary </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2"> not supported (only ELF at the moment)&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Determine the architecture of the binary</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span><span class="n">lief</span><span class="o">.</span><span class="n">ELF</span><span class="o">.</span><span class="n">ARCH</span><span class="o">.</span><span class="n">x86_64</span><span class="p">:</span> <span class="n">Arch</span><span class="o">.</span><span class="n">X86_64</span><span class="p">,</span>
+                   <span class="n">lief</span><span class="o">.</span><span class="n">ELF</span><span class="o">.</span><span class="n">ARCH</span><span class="o">.</span><span class="n">i386</span><span class="p">:</span> <span class="n">Arch</span><span class="o">.</span><span class="n">X86</span><span class="p">,</span>
+                   <span class="n">lief</span><span class="o">.</span><span class="n">ELF</span><span class="o">.</span><span class="n">ARCH</span><span class="o">.</span><span class="n">ARM</span><span class="p">:</span> <span class="n">Arch</span><span class="o">.</span><span class="n">ARMV7</span><span class="p">,</span>
+                   <span class="n">lief</span><span class="o">.</span><span class="n">ELF</span><span class="o">.</span><span class="n">ARCH</span><span class="o">.</span><span class="n">AARCH64</span><span class="p">:</span> <span class="n">Arch</span><span class="o">.</span><span class="n">AARCH64</span><span class="p">}</span>
+        <span class="n">arch</span> <span class="o">=</span> <span class="n">mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">machine_type</span><span class="p">)</span>
+
+        <span class="c1"># Determine the platform from its format</span>
+        <span class="n">mapping_elf</span> <span class="o">=</span> <span class="p">{</span><span class="n">lief</span><span class="o">.</span><span class="n">EXE_FORMATS</span><span class="o">.</span><span class="n">ELF</span><span class="p">:</span> <span class="n">Platform</span><span class="o">.</span><span class="n">LINUX</span><span class="p">,</span>
+                       <span class="n">lief</span><span class="o">.</span><span class="n">EXE_FORMATS</span><span class="o">.</span><span class="n">PE</span><span class="p">:</span> <span class="n">Platform</span><span class="o">.</span><span class="n">WINDOWS</span><span class="p">,</span>
+                       <span class="n">lief</span><span class="o">.</span><span class="n">EXE_FORMATS</span><span class="o">.</span><span class="n">MACHO</span><span class="p">:</span> <span class="n">Platform</span><span class="o">.</span><span class="n">MACOS</span><span class="p">}</span>
+        <span class="c1"># FIXME: differentiating between ELF (Linux, Android ..) and MACHO (MacOS, iOS..)</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="n">mapping_elf</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">format</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">arch</span> <span class="ow">and</span> <span class="n">fmt</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fmt</span><span class="p">,</span> <span class="n">arch</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="BinaryPackage.from_binary"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.from_binary">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_binary</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">binary</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">extract_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;BinaryPackage&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert the binary blob received as a BinaryPackage object. If its an archive,</span>
+<span class="sd">        extract it and return the list of files. Files are extracted in /tmp. If</span>
+<span class="sd">        directly an executable save it to a file and return its path. Also ensure</span>
+<span class="sd">        the executable file is indeed executable in terms of permissions.</span>
+
+<span class="sd">        :param name: name of executable, or executable name in archive</span>
+<span class="sd">        :param binary: content</span>
+<span class="sd">        :param extract_dir: Path: directory where files should be extracted</span>
+<span class="sd">        :return: list of file paths</span>
+
+<span class="sd">        :raise FileNotFoundError: if the mime type of the binary is not recognized</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mime</span> <span class="o">=</span> <span class="n">magic</span><span class="o">.</span><span class="n">from_buffer</span><span class="p">(</span><span class="n">binary</span><span class="p">,</span> <span class="n">mime</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mime</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;application/x-tar&#39;</span><span class="p">,</span> <span class="s1">&#39;application/zip&#39;</span><span class="p">]:</span>
+            <span class="nb">map</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;application/x-tar&#39;</span><span class="p">:</span> <span class="s1">&#39;.tar.gz&#39;</span><span class="p">,</span> <span class="s1">&#39;application/zip&#39;</span><span class="p">:</span> <span class="s1">&#39;.zip&#39;</span><span class="p">}</span>
+            <span class="n">tmp_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="nb">map</span><span class="p">[</span><span class="n">mime</span><span class="p">]))</span>
+            <span class="n">tmp_file</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">binary</span><span class="p">)</span>          <span class="c1"># write the archive in a file</span>
+
+            <span class="c1"># Extract the archive in the right directory</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">unpack_archive</span><span class="p">(</span><span class="n">tmp_file</span><span class="o">.</span><span class="n">as_posix</span><span class="p">(),</span> <span class="n">extract_dir</span><span class="p">)</span>  <span class="c1"># unpack it in dst directory</span>
+            <span class="c1"># Create the package object</span>
+            <span class="n">pkg</span> <span class="o">=</span> <span class="n">BinaryPackage</span><span class="o">.</span><span class="n">auto</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">extract_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">pkg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot create a BinaryPackage with </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">extract_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">file</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">pkg</span><span class="o">.</span><span class="n">executable_path</span><span class="p">,</span> <span class="n">pkg</span><span class="o">.</span><span class="n">callgraph</span><span class="p">,</span> <span class="n">pkg</span><span class="o">.</span><span class="n">quokka</span><span class="p">,</span> <span class="n">pkg</span><span class="o">.</span><span class="n">dictionary</span><span class="p">]:</span>
+                    <span class="n">pkg</span><span class="o">.</span><span class="n">other_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">pkg</span>
+        <span class="k">elif</span> <span class="n">mime</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;application/x-pie-executable&#39;</span><span class="p">,</span> <span class="s1">&#39;application/x-dosexec&#39;</span><span class="p">,</span> <span class="s1">&#39;application/x-mach-binary&#39;</span><span class="p">,</span> <span class="s1">&#39;application/x-executable&#39;</span><span class="p">,</span> <span class="s1">&#39;application/x-sharedlib&#39;</span><span class="p">]:</span>
+            <span class="n">program_path</span> <span class="o">=</span> <span class="n">extract_dir</span> <span class="o">/</span> <span class="n">name</span>
+            <span class="n">program_path</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">binary</span><span class="p">)</span>
+            <span class="n">program_path</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">S_IRWXU</span><span class="p">)</span>  <span class="c1"># set the binary executable</span>
+            <span class="k">return</span> <span class="n">BinaryPackage</span><span class="p">(</span><span class="n">program_path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mimetype not recognized </span><span class="si">{</span><span class="n">mime</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Quarkslab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
