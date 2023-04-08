@@ -21,7 +21,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: artifact
-          path: ./wheels/qsynthesis*.whl
+          path: ./wheels/pastis*.whl
 
   build_sdist:
     runs-on: ubuntu-latest

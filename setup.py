@@ -47,7 +47,7 @@ setup(
         "pydantic",
         "matplotlib",
         "joblib",
-        "rich"
+        "rich",
         "tritondse",
     ],
     tests_require=[],
