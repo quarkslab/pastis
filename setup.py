@@ -2,8 +2,7 @@
 # coding: utf-8
 """Installation script for PASTIS."""
 
-import sys
-from setuptools import setup, find_packages
+from setuptools import setup
 
 with open("README.md") as f:
     lines = f.readlines()
@@ -14,8 +13,8 @@ setup(
     name="pastis-framework",
     version="1.0.0",
     description="PASTIS framework for collaborative fuzzing",
+    long_description="# PASTIS framework for collaborative fuzzing\n\n TODO",
     long_description_content_type='text/markdown',
-    long_description="PASTIS framework for collaborative fuzzing",
     packages=[
         "libpastis",
         "libpastis.proto",
