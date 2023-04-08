@@ -6,7 +6,8 @@ import sys
 from setuptools import setup, find_packages
 
 with open("README.md") as f:
-    README = f.read()
+    lines = f.readlines()
+    README = "\n".join(lines[4:7]+lines[51:])
 
 
 setup(
