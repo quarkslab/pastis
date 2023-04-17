@@ -82,7 +82,6 @@ class PastisClient(object):
     def strid(self):
         return f"CLI-{self.id}-{self._engine.SHORT_NAME if self._engine else 'N/A'}"
 
-
     def is_new_seed(self, seed: bytes) -> bool:
         """
         Return true if the seed has never been sent to a client

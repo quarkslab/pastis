@@ -159,17 +159,26 @@ def showmap(bins: str):
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 @click.option('--skip-cpufreq', is_flag=True, type=bool, default=False, help="Skip CPU frequency scaling check")
 @click.option('--start-quorum', type=int, default=0, help="Number of client connection to receive before triggering startup", show_default=True)
+@click.option('--proxy', type=str, default="", help="Run the broker as a proxy to another broker")
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool,
         debug: bool, timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool,
-        allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool, start_quorum: int):
+        allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool, start_quorum: int, proxy: str):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
     broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, SeedInjectLoc[injloc], None, [], start_quorum=start_quorum)
 
+    if proxy:  # proxy format should be:  IP:port@py_module
+        url, py_module = proxy.split("@")
+        proxy_ip, proxy_port = url.split(":")
+        broker.set_proxy(proxy_ip, int(proxy_port), py_module)
+
     # Add all given seeds as initial seed
-    for s in iterate_seeds(seeds):  # File if one file, or iterate dir if directory
-        broker.add_seed_file(s, initial=True)
+    if seeds is None:
+        logging.warning("no initial corpus provided")
+    else:
+        for s in iterate_seeds(seeds):  # File if one file, or iterate dir if directory
+            broker.add_seed_file(s, initial=True)
 
     ws_root = broker.workspace.root
 
@@ -211,6 +220,9 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
     if triton:
         # Look for configuration files, add them to the broker and launch as many triton instances
         tt_confs = ws_root / "triton_confs"
+        if not tt_confs.exists():  # if folder is empty
+            logging.info(f"{tt_confs} not found fall back current workdir")
+            tt_confs = Path("triton_confs")
         broker.load_engine_addon("pastisttbroker")
         if tt_confs.exists():
             for i, conf in enumerate(sorted(tt_confs.iterdir())):
@@ -232,7 +244,6 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
     ip = "*" if allow_remote else "127.0.0.1"
     broker.bind(port, ip)
     broker.run(timeout)
-
 
 
 @cli.command(context_settings=dict(show_default=True))

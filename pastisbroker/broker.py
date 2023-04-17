@@ -11,7 +11,7 @@ import random
 
 # Third-party imports
 import psutil
-from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage, SASTReport
+from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage, SASTReport, ClientAgent
 from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
 import lief
@@ -45,7 +45,6 @@ class Bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-
 
 
 class PastisBroker(BrokerAgent):
@@ -119,8 +118,10 @@ class PastisBroker(BrokerAgent):
         # startup quorum
         self._startup_quorum = start_quorum
         self._current_quorum = 0
-        self._pending_startup_clients = []
 
+        # Proxy feature
+        self._proxy = None
+        self._proxy_cli = None
 
     def load_engine_addon(self, py_module: str) -> bool:
         desc = load_engine_descriptor(py_module)
@@ -140,15 +141,15 @@ class PastisBroker(BrokerAgent):
     def running(self) -> bool:
         return self._running
 
-    def iter_other_clients(self, client: PastisClient) -> Generator[PastisClient, None, None]:
+    def iter_other_clients(self, cli_id: bytes) -> Generator[PastisClient, None, None]:
         """
         Generator of all clients but the one given in parameter
 
-        :param client: PastisClient client to ignore
+        :param cli_id: netid of the client to ignore
         :return: Generator of PastisClient object
         """
         for c in self.clients.values():
-            if c.netid != client.netid:
+            if c.netid != cli_id:
                 yield c
 
     def new_uid(self) -> int:
@@ -203,10 +204,16 @@ class PastisBroker(BrokerAgent):
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
-            for c in self.iter_other_clients(cli):
-                if c.is_new_seed(seed):
-                    self.send_seed(c.netid, typ, seed)  # send the seed to the client
-                    c.add_peer_seed(seed)  # Add it in its list of seed
+            self.send_seed_to_all_others(cli.netid, typ, seed)
+
+        if self.is_proxied:  # Forward it to the proxy
+            self._proxy.send_seed(typ, seed)
+
+    def send_seed_to_all_others(self, origin_id: bytes, typ: SeedType, seed: bytes) -> None:
+        for c in self.iter_other_clients(origin_id):
+            if c.is_new_seed(seed):
+                self.send_seed(c.netid, typ, seed)  # send the seed to the client
+                c.add_peer_seed(seed)  # Add it in its list of seed
 
     def add_seed_file(self, file: PathLike, initial: bool = False) -> None:
         p = Path(file)
@@ -236,24 +243,20 @@ class PastisBroker(BrokerAgent):
             if eng.name not in self.engines:
                 self.load_engine_addon(eng.pymodule)
 
-
-        if self.running: # A client is coming in the middle of a session
+        if self.running:  # A client is coming in the middle of a session
             if self._startup_quorum:
                 self._current_quorum += 1
                 if self._current_quorum >= self._startup_quorum:
-                    while self._pending_startup_clients:
-                        logging.info(f"client number quorum ({self._current_quorum}/{self._startup_quorum}) reached, start all of them")
-                        # Start all clients that were on-hold
-                        cli = self._pending_startup_clients.pop(0)
-                        self.start_client_and_send_corpus(cli)
-                    # Start the client that just connected
-                    self.start_client_and_send_corpus(client)
+                    logging.info(
+                        f"client number quorum ({self._current_quorum}/{self._startup_quorum}) reached, start all of them")
+                    self.start_pending_clients()  # start all pending clients (including the one triggering this func)
                 else:
                     # Put the client on-hold to wait for quorum
                     logging.info(f"client {client.strid} on-hold, wait quorum ({self._current_quorum}/{self._startup_quorum})")
-                    self._pending_startup_clients.append(client)
             else:  # there is no quorum so start immediately
                 self.start_client_and_send_corpus(client)
+        else:
+            pass  # Client connection is kept in clients dict for later
 
     def _transmit_pool(self, client, pool) -> None:
         for seed, typ in pool.items():
@@ -363,11 +366,23 @@ class PastisBroker(BrokerAgent):
         # Call the statmanager to wrap-up values
         self.statmanager.post_execution(list(self.clients.values()), self.workspace)
 
+        if self.is_proxied:
+            self._proxy.stop()
+
         if self.sast_report:  # If a SAST report was loaded
             # Write the final CSV in the workspace
             self.sast_report.write_csv(self.workspace.csv_result_file)
             # And also re-write the Klocwork report (that also contains resutls)
             self.sast_report.write(self.workspace.sast_report_file)
+
+    def start_pending_clients(self) -> None:
+        """
+        Start clients that connected but for which we did not yet send a response.
+        """
+        # Send the start message to all clients (already connected)
+        for c in self.clients.values():
+            if not c.is_running():
+                self.start_client_and_send_corpus(c)
 
     def start_client_and_send_corpus(self, client: PastisClient) -> None:
         self.start_client(client)
@@ -446,7 +461,6 @@ class PastisBroker(BrokerAgent):
                 logging.error(f"In mode {self.ck_mode} but the binary package is not a QBinExport")
                 return
 
-
         # Update internal client info and send him the message
         engine_args_str = engine_args.to_str() if engine_args else ""
         logging.info(f"send start client {client.id}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
@@ -465,7 +479,6 @@ class PastisBroker(BrokerAgent):
                         engine_args_str,
                         self.inject,
                         self.sast_report.to_json() if self.sast_report else b"")
-
 
     def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:
         """
@@ -522,11 +535,13 @@ class PastisBroker(BrokerAgent):
         self.workspace.status = WorkspaceStatus.RUNNING
         logging.info("start broking")
 
-        # Send the start message to all clients
-        if self._running:  # If we want to run now (cmdline mode)
-            for c in self.clients.values():
-                if not c.is_running():
-                    self.start_client(c)
+        if self.is_proxied and self._proxy_cli:
+            self._running = False  # disable running wait start broker
+            self._proxy.send_hello([self._proxy_cli])
+        else:
+            # Send the start message to all clients (already connected)
+            if self._running:  # If we want to run now (cmdline mode)
+                self.start_pending_clients()
 
     def run(self, timeout: int = None):
         self.start()
@@ -656,3 +671,47 @@ class PastisBroker(BrokerAgent):
             logging.warning(f"Threshold reached: {mem.percent}%")
             return False
         return True
+
+    @property
+    def is_proxied(self) -> bool:
+        """
+        Get if the broker as a proxy to another broker.
+        """
+        return self._proxy is not None
+
+    def set_proxy(self, ip: str, port: int, py_module: str) -> bool:
+        self._proxy = ClientAgent()
+
+        # Load the engine info to impersonate
+        desc = load_engine_descriptor(py_module)
+        if desc is None:
+            logging.error("Cannot load FuzzingEngineDescriptor")
+            return False
+        else:
+            self._proxy_cli = FuzzingEngineInfo(desc.NAME, desc.VERSION, py_module)
+
+        self._proxy.register_start_callback(self._proxy_start_received)
+        self._proxy.register_seed_callback(self._proxy_seed_received)
+        self._proxy.register_stop_callback(self._proxy_stop_received)
+
+        logging.info(f"connect to broker {ip}:{port}")
+        self._proxy.connect(ip, port)
+        self._proxy.start()
+
+    def _proxy_start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode,
+                              fuzzmode: FuzzMode, chkmode: CheckMode, covmode: CoverageMode, seed_inj: SeedInjectLoc,
+                              engine_args: str, argv: List[str], sast_report: str = None):
+        # FIXME: Use parameters received
+        logging.info("[PROXY] start received !")
+        self._running = True
+        if self._running:
+            self.start_pending_clients()
+
+    def _proxy_seed_received(self, typ: SeedType, seed: bytes):
+        # Forward the seed to underlying clients
+        logging.info(f"[PROXY] seed {typ.name} received forward to agents")
+        self.send_seed_to_all_others(b"PROXY", typ, seed)
+
+    def _proxy_stop_received(self):
+        logging.info(f"[PROXY] stop received!")
+        self._stop = True
