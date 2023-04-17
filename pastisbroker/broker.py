@@ -57,7 +57,8 @@ class PastisBroker(BrokerAgent):
                  inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
                  sast_report: PathLike = None,
                  p_argv: List[str] = None,
-                 memory_threshold: int = 85):
+                 memory_threshold: int = 85,
+                 start_quorum: int = 0):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -114,6 +115,12 @@ class PastisBroker(BrokerAgent):
         # Watchdog to monitor RAM usage
         self.watchdog = None
         self._threshold = memory_threshold # percent
+
+        # startup quorum
+        self._startup_quorum = start_quorum
+        self._current_quorum = 0
+        self._pending_startup_clients = []
+
 
     def load_engine_addon(self, py_module: str) -> bool:
         desc = load_engine_descriptor(py_module)
@@ -229,8 +236,24 @@ class PastisBroker(BrokerAgent):
             if eng.name not in self.engines:
                 self.load_engine_addon(eng.pymodule)
 
+
         if self.running: # A client is coming in the middle of a session
-            self.start_client_and_send_corpus(client)
+            if self._startup_quorum:
+                self._current_quorum += 1
+                if self._current_quorum >= self._startup_quorum:
+                    while self._pending_startup_clients:
+                        logging.info(f"client number quorum ({self._current_quorum}/{self._startup_quorum}) reached, start all of them")
+                        # Start all clients that were on-hold
+                        cli = self._pending_startup_clients.pop(0)
+                        self.start_client_and_send_corpus(cli)
+                    # Start the client that just connected
+                    self.start_client_and_send_corpus(client)
+                else:
+                    # Put the client on-hold to wait for quorum
+                    logging.info(f"client {client.strid} on-hold, wait quorum ({self._current_quorum}/{self._startup_quorum})")
+                    self._pending_startup_clients.append(client)
+            else:  # there is no quorum so start immediately
+                self.start_client_and_send_corpus(client)
 
     def _transmit_pool(self, client, pool) -> None:
         for seed, typ in pool.items():

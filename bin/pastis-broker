@@ -53,10 +53,11 @@ def iterate_file(file):
 @click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False, show_default=True)
 @click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit", show_default=True)
+@click.option('--start-quorum', type=int, default=0, help="Number of client connection to receive before triggering startup", show_default=True)
 @click.argument('pargvs', nargs=-1)
 def main(workspace: str, sast_report: Optional[str], bins: str, mode: str, chkmode: str, injloc: str, engine: Tuple[str],
          tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], timeout: Optional[int],
-         port: Optional[int], pargvs: Tuple[str], mem_threshold: int):
+         port: Optional[int], pargvs: Tuple[str], mem_threshold: int, start_quorum: int):
     global broker
     # Instanciate the broker
 
@@ -65,7 +66,7 @@ def main(workspace: str, sast_report: Optional[str], bins: str, mode: str, chkmo
         logging.error(f"Check mode {chkmode.name} requires a SAST report (use -r) to provide it")
         sys.exit(1)
 
-    broker = PastisBroker(workspace, bins, BrokingMode[mode], chkmode, SeedInjectLoc[injloc], sast_report, list(pargvs), mem_threshold)
+    broker = PastisBroker(workspace, bins, BrokingMode[mode], chkmode, SeedInjectLoc[injloc], sast_report, list(pargvs), mem_threshold, start_quorum)
 
     # Preload all Fuzzing engine if needed
     for eng in engine:
