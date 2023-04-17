@@ -46,6 +46,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'breathe',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.githubpages',
     'sphinx_fontawesome',
     "nbsphinx",
 ]
