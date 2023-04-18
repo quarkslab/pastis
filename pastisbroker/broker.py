@@ -194,7 +194,7 @@ class PastisBroker(BrokerAgent):
         self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
         cli.log(LogLevel.INFO, f"seed {h} [{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
         cli.add_own_seed(seed)  # Add seed in client's seed
-        self.write_seed(typ, cli, seed) # Write seed to file
+        self.write_seed(typ, cli.strid, seed) # Write seed to file
 
         if is_new:
             self._seed_pool[seed] = typ  # Save it in the local pool
@@ -226,10 +226,10 @@ class PastisBroker(BrokerAgent):
         if initial:
             self._init_seed_pool[seed] = SeedType.INPUT
 
-    def write_seed(self, typ: SeedType, from_cli: PastisClient, seed: bytes):
+    def write_seed(self, typ: SeedType, cli_id: str, seed: bytes):
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         elapsed = str(datetime.timedelta(seconds=time.time() - self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
-        fname = f"{t}_{elapsed}_{from_cli.strid}_{md5(seed).hexdigest()}.cov"
+        fname = f"{t}_{elapsed}_{cli_id}_{md5(seed).hexdigest()}.cov"
         self.workspace.save_seed(typ, fname, seed)
 
     def hello_received(self, cli_id: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
@@ -710,6 +710,13 @@ class PastisBroker(BrokerAgent):
     def _proxy_seed_received(self, typ: SeedType, seed: bytes):
         # Forward the seed to underlying clients
         logging.info(f"[PROXY] seed {typ.name} received forward to agents")
+
+        # Save the seed locally
+        self.write_seed(typ, "PROXY", seed)
+        self._seed_pool[seed] = typ  # add it to the pool
+        self._init_seed_pool[seed] = typ  # also consider it as initial corpus
+
+        # Forward it to all clients
         self.send_seed_to_all_others(b"PROXY", typ, seed)
 
     def _proxy_stop_received(self):
