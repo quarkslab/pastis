@@ -69,7 +69,8 @@ class HonggfuzzDriver:
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
 
-    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, seed_inj: SeedInjectLoc, engine_args: str):
+    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode,
+              seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
@@ -77,13 +78,15 @@ class HonggfuzzDriver:
         self.workspace.start()  # Start looking at directories
 
         logging.info("Start process")
-        self.honggfuzz.start(self.__package.executable_path.absolute(),
+        if not self.honggfuzz.start(self.__package.executable_path.absolute(),
                              " ".join(argv),
                              self.workspace,
-                             exmode == ExecMode.PERSISTENT,
+                             exmode,
+                             fuzzmode,
                              seed_inj == SeedInjectLoc.STDIN,
                              engine_args,
-                             str(package.dictionary.absolute()) if package.dictionary else None)
+                             str(package.dictionary.absolute()) if package.dictionary else None):
+            self._agent.send_log(LogLevel.ERROR, "Cannot start target, HFQBDIPRELAOD not found")
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
@@ -226,7 +229,7 @@ class HonggfuzzDriver:
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], sast_report: str = None):
-        logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
+        logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} fuzzmode:{fuzzmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
             return
@@ -255,7 +258,7 @@ class HonggfuzzDriver:
 
         # FIXME: (chris) Do something with fuzz mode ?
 
-        self.start(package, argv, exmode, seed_inj, engine_args)
+        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
         h = self.hash_seed(seed)

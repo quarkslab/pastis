@@ -6,6 +6,7 @@ import signal
 import time
 from pathlib import Path
 from typing import Optional
+from libpastis.types import ExecMode, FuzzMode
 
 # Local imports
 from .workspace import Workspace
@@ -43,20 +44,27 @@ class HonggfuzzProcess:
 
         self.__process = None
 
-
-    def start(self, target: str, target_arguments: str, workspace: Workspace, persistent: bool, stdin: bool, engine_args: str, dictionary: Optional[str] = None):
+    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode,
+              stdin: bool, engine_args: str, dictionary: Optional[str] = None) -> bool:
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
+
+        HFQBDIPRELOAD_LIB_PATH = os.getenv('HFQBDIPRELOAD_LIB_PATH')
+
+        if fuzzmode == FuzzMode.BINARY_ONLY and HFQBDIPRELOAD_LIB_PATH is None:
+            logging.error(f"target in BINARY_ONLY but can't find HFQBDIPRELOAD")
+            return False
 
         # Build fuzzer arguments.
         # NOTE: Assuming the target receives inputs from stdin.
         hfuzz_arguments = ' '.join([
             f"--statsfile {workspace.stats_file}",
             f"--stdin_input" if stdin else "",
-            f"--persistent" if persistent else "",
+            f"--persistent" if exmode == ExecMode.PERSISTENT or fuzzmode == FuzzMode.BINARY_ONLY else "",
+            f"--env HFQBDI_FS=1" if fuzzmode == FuzzMode.BINARY_ONLY else "",
+            f"--env LD_PRELOAD={HFQBDIPRELOAD_LIB_PATH}/libHFQBDIpreload.so" if fuzzmode == FuzzMode.BINARY_ONLY else "",
             re.sub(r"\s", " ", engine_args),  # Any arguments coming right from the broker (remove \r\n)
             f"--logfile logfile.log",
-            f"--sanitizers_del_report true",
             f"--input {workspace.input_dir}",
             f"--dynamic_input {workspace.dynamic_input_dir}",
             f"--output {workspace.corpus_dir}",
@@ -79,6 +87,7 @@ class HonggfuzzProcess:
         self.__process = subprocess.Popen(command, cwd=str(workspace.root_dir), preexec_fn=os.setsid)
 
         logging.debug(f'Process pid: {self.__process.pid}')
+        return True
 
     @property
     def instanciated(self):

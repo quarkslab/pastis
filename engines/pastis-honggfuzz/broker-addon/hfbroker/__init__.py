@@ -64,13 +64,13 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
             return False, None, None
 
         # Search for HF instrumentation
-        good = False
+        instrumented = False
         for f in p.functions:
             if "hfuzz_" in f.name:
-                good = True
+                instrumented = True
                 break
-        if not good:
-            return False, None, None
+        if not instrumented:
+            return False, ExecMode.PERSISTENT, FuzzMode.BINARY_ONLY
 
         # Search for persistent magic
         exmode = ExecMode.SINGLE_EXEC  # by default single_exec
