@@ -217,27 +217,27 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
             if spawn:
                 spawn_online_honggfuzz(hf_ws, hf_exe_path, port, hfuzz_threads)
 
-    if triton:
-        # Look for configuration files, add them to the broker and launch as many triton instances
-        tt_confs = ws_root / "triton_confs"
-        if not tt_confs.exists():  # if folder is empty
-            logging.info(f"{tt_confs} not found fall back current workdir")
-            tt_confs = Path("triton_confs")
-        broker.load_engine_addon("pastisttbroker")
-        if tt_confs.exists():
-            for i, conf in enumerate(sorted(tt_confs.iterdir())):
-                with open(conf, "r+") as fd:
-                    tt_ws = clients_ws / f"ttdse_{i}"
-                    c = json.load(fd)
-                    c["workspace"] = str(tt_ws)
-                    fd.seek(0)
-                    json.dump(c, fd, indent=2)
-                    fd.truncate()
-                logging.info(f"Add Triton configuration: {conf}")
-                broker.add_engine_configuration("TRITON", conf)
-                if spawn:
-                    spawn_online_triton(port, probe)
-        else:
+    # Look for configuration files, add them to the broker and launch as many triton instances
+    tt_confs = ws_root / "triton_confs"
+    if not tt_confs.exists():  # if folder is empty
+        logging.info(f"{tt_confs} not found fall back current workdir")
+        tt_confs = Path("triton_confs")
+    broker.load_engine_addon("pastisttbroker")
+    if tt_confs.exists():
+        for i, conf in enumerate(sorted(tt_confs.iterdir())):
+            with open(conf, "r+") as fd:
+                tt_ws = clients_ws / f"ttdse_{i}"
+                c = json.load(fd)
+                c["workspace"] = str(tt_ws)
+                fd.seek(0)
+                json.dump(c, fd, indent=2)
+                fd.truncate()
+            logging.info(f"Add Triton configuration: {conf}")
+            broker.add_engine_configuration("TRITON", conf)
+            if triton and spawn:
+                spawn_online_triton(port, probe)
+    else:
+        if not triton:
             logging.warning("Triton enabled but no configuration found")
 
     # Bind it and start listening (clients can connect)
