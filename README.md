@@ -128,6 +128,26 @@ The process is further [detailed in the documentation](https://quarkslab.github.
 
 ---
 
+## Docker
+
+You can also run PASTIS using Docker:
+
+```bash
+docker pull ubuntu:22.04
+docker build -t pastis-docker-ubuntu .
+docker run -v <HOST-WORKSPACE>:/workspace --cap-add=SYS_PTRACE -it pastis-docker
+```
+
+To open another terminal to an already running container:
+
+```bash
+docker exec -it $(docker ps | grep 'pastis-docker' | awk '{print $1}') /bin/bash
+```
+
+The PASTIS Docker image has already installed all the needed dependencies such as AFL++ and Honggfuzz.
+
+---
+
 ## Papers and conference
 
 * **Symbolic Execution the Swiss-Knife of the Reverse Engineer Toolbox**  
