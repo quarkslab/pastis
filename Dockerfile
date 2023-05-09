@@ -80,6 +80,9 @@ RUN DEBIAN_FRONTEND="noninteractive" \
 RUN git clone https://github.com/AFLplusplus/AFLplusplus && \
     cd AFLplusplus && \
     CC=clang make && \
+    cd qemu_mode && \
+    ./build_qemu_support.sh && \
+    cd .. && \
     make install
 
 #
