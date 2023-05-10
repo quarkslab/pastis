@@ -82,7 +82,7 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
         else:
             if 'HF_ITER' in (x.name for x in p.imported_functions):  # More dummy method
                 exmode = ExecMode.PERSISTENT
-        return True, exmode, FuzzMode.INSTRUMENTED  # FIXME: Can honggfuzz work in binary_only?
+        return True, exmode, FuzzMode.INSTRUMENTED
 
     @staticmethod
     def supported_coverage_strategies() -> List[CoverageMode]:

@@ -256,8 +256,6 @@ class HonggfuzzDriver:
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
-        # FIXME: (chris) Do something with fuzz mode ?
-
         self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
