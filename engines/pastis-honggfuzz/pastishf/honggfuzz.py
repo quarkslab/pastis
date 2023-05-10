@@ -52,7 +52,7 @@ class HonggfuzzProcess:
         HFQBDIPRELOAD_LIB_PATH = os.getenv('HFQBDIPRELOAD_LIB_PATH')
 
         if fuzzmode == FuzzMode.BINARY_ONLY and HFQBDIPRELOAD_LIB_PATH is None:
-            logging.error(f"target in BINARY_ONLY but can't find HFQBDIPRELOAD")
+            logging.error(f"target in BINARY_ONLY but can't find HFQBDIPRELOAD_LIB_PATH")
             return False
 
         # Build fuzzer arguments.

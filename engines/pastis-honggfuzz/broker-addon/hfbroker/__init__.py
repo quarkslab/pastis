@@ -70,7 +70,7 @@ class HonggfuzzEngineDescriptor(FuzzingEngineDescriptor):
                 instrumented = True
                 break
         if not instrumented:
-            return False, ExecMode.PERSISTENT, FuzzMode.BINARY_ONLY
+            return True, ExecMode.PERSISTENT, FuzzMode.BINARY_ONLY
 
         # Search for persistent magic
         exmode = ExecMode.SINGLE_EXEC  # by default single_exec
