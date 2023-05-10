@@ -56,7 +56,6 @@ class HonggfuzzProcess:
             return False
 
         # Build fuzzer arguments.
-        # NOTE: Assuming the target receives inputs from stdin.
         hfuzz_arguments = ' '.join([
             f"--statsfile {workspace.stats_file}",
             f"--stdin_input" if stdin else "",
@@ -76,6 +75,10 @@ class HonggfuzzProcess:
 
         # Build fuzzer command line.
         hfuzz_cmdline = f'{self.__path} {hfuzz_arguments} -- {target_cmdline}'
+
+        # NOTE: Assuming fixed location for the input file.
+        if not stdin:
+            hfuzz_cmdline += " ___FILE___"
 
         logging.info(f"Run Honggfuzz with: {hfuzz_cmdline}")
         logging.debug(f"\tWorkspace: {workspace.root_dir}")

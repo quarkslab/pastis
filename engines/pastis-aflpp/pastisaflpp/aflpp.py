@@ -78,6 +78,10 @@ class AFLPPProcess:
         # Build fuzzer command line.
         aflpp_cmdline = f'{self.__path} {aflpp_arguments} -- {target_cmdline}'
 
+        # NOTE: Assuming fixed location for the input file.
+        if not stdin:
+            aflpp_cmdline += " @@"
+
         logging.info(f"Run AFL++: {aflpp_cmdline}")
         logging.debug(f"\tWorkspace: {workspace.root_dir}")
 
