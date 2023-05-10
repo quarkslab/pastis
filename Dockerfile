@@ -121,6 +121,7 @@ RUN DEBIAN_FRONTEND="noninteractive" \
 
 RUN pip install pastis-framework
 
-ENV HFUZZ_PATH=/honggfuzz-5a504b49
+ENV AFLPP_PATH=/usr/local/bin
+ENV HFUZZ_PATH=/usr/local/bin
 
 WORKDIR /workspace
