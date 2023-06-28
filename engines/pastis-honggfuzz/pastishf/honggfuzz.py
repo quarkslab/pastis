@@ -49,10 +49,10 @@ class HonggfuzzProcess:
         # Build target command line.
         target_cmdline = f"{target} {target_arguments}"
 
-        HFQBDIPRELOAD_LIB_PATH = os.getenv('HFQBDIPRELOAD_LIB_PATH')
+        HFQBDI_LIB_PATH = os.getenv('HFQBDI_LIB_PATH')
 
-        if fuzzmode == FuzzMode.BINARY_ONLY and HFQBDIPRELOAD_LIB_PATH is None:
-            logging.error(f"target in BINARY_ONLY but can't find HFQBDIPRELOAD_LIB_PATH")
+        if fuzzmode == FuzzMode.BINARY_ONLY and HFQBDI_LIB_PATH is None:
+            logging.error(f"target in BINARY_ONLY but can't find HFQBDI_LIB_PATH")
             return False
 
         # Build fuzzer arguments.
@@ -61,7 +61,9 @@ class HonggfuzzProcess:
             f"--stdin_input" if stdin else "",
             f"--persistent" if exmode == ExecMode.PERSISTENT or fuzzmode == FuzzMode.BINARY_ONLY else "",
             f"--env HFQBDI_FS=1" if fuzzmode == FuzzMode.BINARY_ONLY else "",
-            f"--env LD_PRELOAD={HFQBDIPRELOAD_LIB_PATH}/libHFQBDIpreload.so" if fuzzmode == FuzzMode.BINARY_ONLY else "",
+            f"--env LD_LIBRARY_PATH={HFQBDI_LIB_PATH}" if fuzzmode == FuzzMode.BINARY_ONLY else "",
+            f"--env LD_PRELOAD={HFQBDI_LIB_PATH}/libHFQBDIpreload.so" if fuzzmode == FuzzMode.BINARY_ONLY else "",
+            f"--env LD_BIND_NOW=1" if fuzzmode == FuzzMode.BINARY_ONLY else "",
             re.sub(r"\s", " ", engine_args),  # Any arguments coming right from the broker (remove \r\n)
             f"--logfile logfile.log",
             f"--input {workspace.input_dir}",
