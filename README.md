@@ -135,7 +135,7 @@ You can also run PASTIS using Docker:
 ```bash
 docker pull ubuntu:22.04
 docker build -t pastis-docker .
-docker run -v <HOST-WORKSPACE>:/workspace --cap-add=SYS_PTRACE -it pastis-docker
+docker run -v <HOST-WORKSPACE>:/workspace --cap-add=SYS_PTRACE --user $(id -u $USER):$(id -g $USER) -it pastis-docker
 ```
 
 To open another terminal to an already running container:
