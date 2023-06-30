@@ -25,34 +25,6 @@ RUN DEBIAN_FRONTEND="noninteractive" \
         libunwind-dev \
         libunwind8-dev
 
-# Download and install Triton dependencies.
-RUN DEBIAN_FRONTEND="noninteractive" \
-    apt-get install -y --no-install-suggests --no-install-recommends \
-        build-essential \
-        clang \
-        libboost-all-dev \
-        libgmp-dev \
-        libpython3-dev \
-        libpython3-stdlib \
-        libz3-dev \
-        llvm-12 \
-        llvm-12-dev
-
-RUN curl -o capstone-4.0.2.tgz -L https://github.com/aquynh/capstone/archive/4.0.2.tar.gz && \
-    tar xvf capstone-4.0.2.tgz && \
-    cd capstone-4.0.2 && \
-    ./make.sh && \
-    sudo make install
-
-RUN cd /tmp && \
-    git clone https://github.com/bitwuzla/bitwuzla && \
-    cd bitwuzla && \
-    ./contrib/setup-cadical.sh && \
-    ./contrib/setup-btor2tools.sh && \
-    ./contrib/setup-symfpu.sh && \
-    ./configure.sh production --only-cadical --no-testing --shared && \
-    sudo make -C build install
-
 #
 # AFLplusplus
 #
