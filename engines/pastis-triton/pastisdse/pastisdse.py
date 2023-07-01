@@ -38,7 +38,7 @@ class PastisDSE(object):
         self.agent = agent
         self._init_callbacks()  # register callbacks on the given agent
 
-        self.config = Config(debug=False)
+        self.config = Config()
         self.config.workspace = ""  # Reset workspace so that it will computed in start_received
         self.dse        = None
         self.program    = None
@@ -100,7 +100,7 @@ class PastisDSE(object):
     def reset(self):
         """ Reset the current DSE to be able to restart from fresh settings """
         self.dse = None  # remove DSE object
-        self.config = Config(debug=False)
+        self.config = Config()
         self.config.workspace = ""  # Reset workspace so that it will computed in start_received
         self._last_id_pc = None
         self._last_id = None
@@ -312,7 +312,6 @@ class PastisDSE(object):
         # ------- Create the TritonDSE configuration file ---------
         if engine_args:
             self.config = Config.from_json(engine_args)
-            logging.root.level = logging.DEBUG if self.config.debug else logging.INFO  # dynamically change level
         else:
             self.config = Config()  # Empty configuration
 
