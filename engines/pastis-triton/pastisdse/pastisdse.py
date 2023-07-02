@@ -566,7 +566,7 @@ class PastisDSE(object):
                     self.dse.add_input_seed(seed)
                 else:
                     # Check whether the seed improves the current coverage.
-                    if self.dse.coverage.improves_coverage(coverage):
+                    if self.dse.coverage.improve_coverage(coverage):
                         logging.info(f"seed added {seed.hash} [{typ.name}] (coverage merged)")
                         self.seeds_merged += 1
                         self.dse.coverage.merge(coverage)

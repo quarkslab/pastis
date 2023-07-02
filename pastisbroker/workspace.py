@@ -31,6 +31,7 @@ class Workspace(object):
     LOG_FILE = "broker.log"
     STATUS_FILE = "STATUS"
     RUNTIME_CONFIG_FILE = "config.json"
+    COVERAGE_HISTORY = "coverage-history.csv"
 
     def __init__(self, directory: Path, erase: bool = False):
         self.root = directory
@@ -111,6 +112,10 @@ class Workspace(object):
     @property
     def config_file(self) -> Path:
         return self.root / self.RUNTIME_CONFIG_FILE
+
+    @property
+    def coverage_history(self) -> Path:
+        return self.root / self.COVERAGE_HISTORY
 
     def add_binary(self, binary_path: Path) -> Path:
         """
