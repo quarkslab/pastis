@@ -99,7 +99,7 @@ ENV HFUZZ_PATH=/usr/local/bin
 # Add new user.
 RUN adduser --disabled-password --gecos '' pastis-user && \
     adduser pastis-user sudo && \
-    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    echo 'pastis-user ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Switch to the new user.
 USER pastis-user
