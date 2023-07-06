@@ -21,11 +21,13 @@ from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, Fu
 from pastisdse import PastisDSE, __version__
 from tritondse import CoverageStrategy, ProbeInterface, Config, SmtSolver
 from tritondse.probes.basic_trace import BasicDebugTrace
+import tritondse.logging
 
 pastis = None
 
 
 def configure_logs(level: int):
+    tritondse.logging.enable(level)  # Enable tritondse to print logging information
     coloredlogs.install(level=level,
                         fmt="%(asctime)s %(threadName)s [%(levelname)s] %(message)s",
                         level_styles={'debug': {'color': 'blue'}, 'info': {'color': 'white'}, 'warning': {'color': 'yellow'},
@@ -170,11 +172,7 @@ def offline(program: str,
     else:
         config = Config()
 
-    if debug:
-        configure_logs(logging.DEBUG)
-        config.debug = True
-    else:
-        configure_logs(logging.INFO)
+    configure_logs(logging.DEBUG if debug else logging.INFO)
 
     if trace:
         pastis.add_probe(BasicDebugTrace())
