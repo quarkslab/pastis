@@ -534,9 +534,6 @@ class PastisDSE(object):
                         logging.error(f"seed injection {self._seedloc.name} but can't find 'input_file' on program argv")
                         return
 
-                # set the longjmp addr if defined
-                if hasattr(self.program, "longjmp_addr"):
-                    os.environ["TT_LONGJMP_ADDR"] = str(self.program.longjmp_addr)
                 try:
                     # Run the seed and determine whether it improves our current coverage.
                     t0 = time.time()
