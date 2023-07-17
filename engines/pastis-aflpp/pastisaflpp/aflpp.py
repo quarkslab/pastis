@@ -46,9 +46,14 @@ class AFLPPProcess:
             aflpp_path = os.environ.get(AFLPPProcess.AFLPP_ENV_VAR)
             return Path(aflpp_path) / 'afl-fuzz' if aflpp_path else shutil.which(AFLPPProcess.BINARY)
 
-    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str] = None, dictionary: Optional[str] = None):
+    def start(self, target: str, target_arguments: list[str], workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str] = None, dictionary: Optional[str] = None):
+        # Check that we have '@@' if input provided via argv
+        if not stdin:
+            if "@@" not in target_arguments:
+                logging.error(f"seed provided via ARGV but can't find '@@' on program argv")
+                return
         # Build target command line.
-        target_cmdline = f"{target} {target_arguments}"
+        target_cmdline = f"{target} {' '.join(target_arguments)}"
 
         # Build fuzzer arguments.
         # NOTE: Assuming the target receives inputs from stdin.
@@ -77,10 +82,6 @@ class AFLPPProcess:
 
         # Build fuzzer command line.
         aflpp_cmdline = f'{self.__path} {aflpp_arguments} -- {target_cmdline}'
-
-        # NOTE: Assuming fixed location for the input file.
-        if not stdin:
-            aflpp_cmdline += " @@"
 
         logging.info(f"Run AFL++: {aflpp_cmdline}")
         logging.debug(f"\tWorkspace: {workspace.root_dir}")

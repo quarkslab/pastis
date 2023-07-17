@@ -78,8 +78,8 @@ class HonggfuzzDriver:
         self.workspace.start()  # Start looking at directories
 
         logging.info("Start process")
-        if not self.honggfuzz.start(self.__package.executable_path.absolute(),
-                             " ".join(argv),
+        if not self.honggfuzz.start(str(self.__package.executable_path.absolute()),
+                             argv,
                              self.workspace,
                              exmode,
                              fuzzmode,

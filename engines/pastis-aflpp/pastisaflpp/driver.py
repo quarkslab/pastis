@@ -78,7 +78,7 @@ class AFLPPDriver:
 
         logging.info(f"Start process (injectloc: {seed_inj.name})")
         self.aflpp.start(str(package.executable_path.absolute()),
-                         " ".join(argv),
+                         argv,
                          self.workspace,
                          exmode,
                          fuzzmode,

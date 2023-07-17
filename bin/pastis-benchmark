@@ -164,10 +164,11 @@ def showmap(bins: str):
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
 @click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
 @click.option('--proxy', type=str, default="", help="Run the broker as a proxy to another broker")
+@click.argument('pargvs', nargs=-1)
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool,
         debug: bool, timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool,
         allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool,  mem_threshold: int, start_quorum: int,  proxy: str,
-        filter_inputs: bool, stream: bool, replay_threads: int):
+        filter_inputs: bool, stream: bool, replay_threads: int, pargs: Tuple[str]):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
@@ -177,7 +178,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
                           CheckMode.CHECK_ALL,
                           SeedInjectLoc[injloc],
                           None,
-                          [],
+                          list(pargs),
                           mem_threshold,
                           start_quorum,
                           filter_inputs,
