@@ -9,6 +9,7 @@ from enum import Enum
 from collections import Counter
 import datetime
 import random
+import queue
 
 # Third-party imports
 import psutil
@@ -115,6 +116,8 @@ class PastisBroker(BrokerAgent):
         # Proxy feature
         self._proxy = None
         self._proxy_cli = None
+        self._proxy_start_signal = False
+        self._proxy_seed_queue = queue.Queue()
 
         # Coverage + filtering feature
         self._coverage_manager = None
@@ -623,6 +626,20 @@ class PastisBroker(BrokerAgent):
                     for item in self._coverage_manager.iter_granted_inputs():
                         self.seed_granted(item.fuzzer_id, item.seed_status, item.content)
 
+                # Check if we received the start signal from the proxy-master
+                if self._proxy_start_signal:
+                    self._proxy_start_signal = False
+                    self.start_pending_clients()
+
+                # Check if there are seed coming from the proxy-master to forward to clients
+                if not self._proxy_seed_queue.empty():
+                    try:
+                        while True:
+                            origin, typ, seed = self._proxy_seed_queue.get_nowait()
+                            self.send_seed_to_all_others(origin, typ, seed)
+                    except queue.Empty:
+                        pass
+
                 if self._stop:
                     logging.info("broker terminate")
                     break
@@ -759,8 +776,8 @@ class PastisBroker(BrokerAgent):
         # FIXME: Use parameters received
         logging.info("[PROXY] start received !")
         self._running = True
-        if self._running:
-            self.start_pending_clients()
+        # if self._running:
+        #     self.start_pending_clients()
 
     def _proxy_seed_received(self, typ: SeedType, seed: bytes):
         # Forward the seed to underlying clients
@@ -772,7 +789,8 @@ class PastisBroker(BrokerAgent):
         self._init_seed_pool[seed] = typ  # also consider it as initial corpus
 
         # Forward it to all clients
-        self.send_seed_to_all_others(b"PROXY", typ, seed)
+        self._proxy_seed_queue.put((b"PROXY", typ, seed))
+        # self.send_seed_to_all_others(b"PROXY", typ, seed)
 
     def _proxy_stop_received(self):
         logging.info(f"[PROXY] stop received!")
