@@ -51,7 +51,6 @@ class CoverageManager(object):
         self.program = str(program)
         self.args = args
         self.inj_loc = inj_loc
-        self.longjmp_addr = self.calc_longjmp_addr(self.program)
 
         # Coverage and messaging attributes
         self._coverage = GlobalCoverage(self.STRATEGY, BranchSolvingStrategy.ALL_NOT_COVERED)
@@ -87,28 +86,12 @@ class CoverageManager(object):
         logging.info("Starting coverage manager")
 
         for work_id in range(self.pool_size):
-            self.pool.apply_async(self.worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc, self.longjmp_addr))
+            self.pool.apply_async(self.worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc))
 
     def stop(self) -> None:
         self._running = False
         self.cov_worker.join()
         self.pool.terminate()
-
-    @staticmethod
-    def calc_longjmp_addr(program) -> int:
-        # TODO find a better way to do this
-        # There is no generic way but since the plt layout is known we could do
-        # https://github.com/lief-project/LIEF/issues/762
-        try:
-            proc1 = subprocess.Popen(['objdump', '-D', f'{program}'], stdout=subprocess.PIPE)
-            proc2 = subprocess.Popen(['grep', '<longjmp@plt>:'], stdin=proc1.stdout,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-            proc1.stdout.close() # Allow proc1 to receive a SIGPIPE if proc2 exits.
-            out, err = proc2.communicate()
-            return int(out.split()[0], 16)
-        except:
-            return 0
 
     def push_input(self, cli_input: ClientInput) -> None:
         """ Push the input in the """
@@ -226,7 +209,7 @@ class CoverageManager(object):
             return mk_color(status, Bcolors.FAIL)
 
     @staticmethod
-    def worker(input_queue: Queue, cov_queue: Queue, program: str, argv: list[str], seed_inj: SeedInjectLoc, longjaddr: int) -> None:
+    def worker(input_queue: Queue, cov_queue: Queue, program: str, argv: list[str], seed_inj: SeedInjectLoc) -> None:
         """
         worker thread that unstack inputs and replay them.
         """
@@ -252,9 +235,6 @@ class CoverageManager(object):
                     except ValueError as e:
                         logging.error(f"seed injection {seed_inj.name} but can't find '@@' on program argv: {argv}: {e}")
                         continue
-
-                # Set longjump addr if any
-                os.environ["TT_LONGJMP_ADDR"] = str(longjaddr)
 
                 try:
                     # Run the seed

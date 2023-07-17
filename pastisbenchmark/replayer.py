@@ -43,24 +43,9 @@ class Replayer(object):
         # initiatialize directories
         self._init_directories()
 
-        # set longjmp ENV var if applicable
-        self._set_longjump_plt()
-
     def _init_directories(self):
         if not self.corpus_replay_dir.exists():
             self.corpus_replay_dir.mkdir()
-
-    def _set_longjump_plt(self):
-        try:
-            proc = subprocess.Popen(['objdump', '-D', self.program.absolute()], stdout=subprocess.PIPE)
-            out, err = proc.communicate()
-            for line in out.split(b"\n"):
-                if b"<longjmp@plt>:" in line:
-                    addr = line.split()[0]
-                    logging.info(f"lonjmp address found at: {addr}")
-                    os.environ["TT_LONGJMP_ADDR"] = str(int(addr, 16))
-        except:
-            return 0
 
     @property
     def corpus_replay_dir(self) -> Path:
