@@ -314,10 +314,10 @@ class PastisDSE(object):
             self.config = Config.from_json(engine_args)
         else:
             self.config = Config()  # Empty configuration
-
-        # Override config argv if provided
-        if argv:
-            self.config.program_argv = argv
+            # Use argv ONLY if no configuration provided
+            self.config.program_argv = [f"./{fname}"]
+            if argv:
+                self.config.program_argv.extend(argv) # Preprend the binary to argv
 
         """
         Actions taken depending on seed format & co:
@@ -563,7 +563,7 @@ class PastisDSE(object):
                     self.dse.add_input_seed(seed)
                 else:
                     # Check whether the seed improves the current coverage.
-                    if self.dse.coverage.improves_coverage(coverage):
+                    if self.dse.coverage.improve_coverage(coverage):
                         logging.info(f"seed added {seed.hash} [{typ.name}] (coverage merged)")
                         self.seeds_merged += 1
                         self.dse.coverage.merge(coverage)

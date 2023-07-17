@@ -44,10 +44,19 @@ class HonggfuzzProcess:
 
         self.__process = None
 
-    def start(self, target: str, target_arguments: str, workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode,
+    def start(self, target: str, target_arguments: list[str], workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode,
               stdin: bool, engine_args: str, dictionary: Optional[str] = None) -> bool:
+        if not stdin:
+            if "@@" in target_arguments:  # Change '@@' for ___FILE___
+                idx = target_arguments.index("@@")
+                target_arguments[idx] = "___FILE___"
+            else:
+                if "___FILE___" not in target_arguments:
+                    logging.error(f"seed provided via ARGV but can't find '@@'/___FILE___ on program argv")
+                    return False
+
         # Build target command line.
-        target_cmdline = f"{target} {target_arguments}"
+        target_cmdline = f"{target} {' '.join(target_arguments)}"
 
         HFQBDI_LIB_PATH = os.getenv('HFQBDI_LIB_PATH')
 
@@ -77,10 +86,6 @@ class HonggfuzzProcess:
 
         # Build fuzzer command line.
         hfuzz_cmdline = f'{self.__path} {hfuzz_arguments} -- {target_cmdline}'
-
-        # NOTE: Assuming fixed location for the input file.
-        if not stdin:
-            hfuzz_cmdline += " ___FILE___"
 
         logging.info(f"Run Honggfuzz with: {hfuzz_cmdline}")
         logging.debug(f"\tWorkspace: {workspace.root_dir}")

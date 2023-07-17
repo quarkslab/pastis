@@ -54,10 +54,14 @@ def iterate_file(file):
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False, show_default=True)
 @click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit", show_default=True)
 @click.option('--start-quorum', type=int, default=0, help="Number of client connection to receive before triggering startup", show_default=True)
+@click.option('--filter-inputs', type=bool, is_flag=True, default=False, help="Filter inputs that do not generate coverage", show_default=True)
+@click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
+@click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
 @click.argument('pargvs', nargs=-1)
 def main(workspace: str, sast_report: Optional[str], bins: str, mode: str, chkmode: str, injloc: str, engine: Tuple[str],
          tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], timeout: Optional[int],
-         port: Optional[int], pargvs: Tuple[str], mem_threshold: int, start_quorum: int):
+         port: Optional[int], pargvs: Tuple[str], mem_threshold: int, start_quorum: int, filter_inputs: bool,
+         stream: bool, replay_threads: int):
     global broker
     # Instanciate the broker
 
@@ -66,7 +70,18 @@ def main(workspace: str, sast_report: Optional[str], bins: str, mode: str, chkmo
         logging.error(f"Check mode {chkmode.name} requires a SAST report (use -r) to provide it")
         sys.exit(1)
 
-    broker = PastisBroker(workspace, bins, BrokingMode[mode], chkmode, SeedInjectLoc[injloc], sast_report, list(pargvs), mem_threshold, start_quorum)
+    broker = PastisBroker(workspace,
+                          bins,
+                          BrokingMode[mode],
+                          chkmode,
+                          SeedInjectLoc[injloc],
+                          sast_report,
+                          list(pargvs),
+                          mem_threshold,
+                          start_quorum,
+                          filter_inputs,
+                          stream,
+                          replay_threads)
 
     # Preload all Fuzzing engine if needed
     for eng in engine:

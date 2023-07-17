@@ -23,3 +23,22 @@ def load_engine_descriptor(py_module: str) -> Optional[FuzzingEngineDescriptor]:
             return mems[0][1]
     except ImportError:
         logging.error(f"cannot import py_module: {py_module}")
+
+
+
+COLORS = [32, 33, 34, 35, 36, 37, 39, 91, 93, 94, 95, 96]
+
+
+class Bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def mk_color(text: str, color: str) -> str:
+    return color+text+Bcolors.ENDC

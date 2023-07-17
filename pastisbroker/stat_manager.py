@@ -96,4 +96,4 @@ class StatManager(object):
         self._tel_file.flush()  # Flush the csv if it has not been
 
         with open(workspace.clients_stat_file, "w") as f:
-            json.dump([cli.to_dict() for cli in clients], f, indent=2)
+            json.dump([cli.to_dict() for cli in clients if cli.is_running()], f, indent=2)

@@ -78,15 +78,15 @@ class HonggfuzzDriver:
         self.workspace.start()  # Start looking at directories
 
         logging.info("Start process")
-        if not self.honggfuzz.start(self.__package.executable_path.absolute(),
-                             " ".join(argv),
+        if not self.honggfuzz.start(str(self.__package.executable_path.absolute()),
+                             argv,
                              self.workspace,
                              exmode,
                              fuzzmode,
                              seed_inj == SeedInjectLoc.STDIN,
                              engine_args,
                              str(package.dictionary.absolute()) if package.dictionary else None):
-            self._agent.send_log(LogLevel.ERROR, "Cannot start target, HFQBDIPRELAOD not found")
+            self._agent.send_log(LogLevel.ERROR, "Cannot start target")
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)

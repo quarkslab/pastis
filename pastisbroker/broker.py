@@ -1,4 +1,5 @@
 # built-in imports
+import hashlib
 import logging
 from typing import Generator, List, Optional, Union
 from pathlib import Path
@@ -14,6 +15,7 @@ import psutil
 from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage, SASTReport, ClientAgent
 from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
                             ExecMode, AlertData, PathLike, Platform, FuzzMode
+from libpastis.utils import get_local_architecture
 import lief
 from tritondse import QuokkaProgram
 
@@ -21,7 +23,8 @@ from tritondse import QuokkaProgram
 from pastisbroker.client import PastisClient
 from pastisbroker.stat_manager import StatManager
 from pastisbroker.workspace import Workspace, WorkspaceStatus
-from pastisbroker.utils import load_engine_descriptor
+from pastisbroker.utils import load_engine_descriptor, Bcolors, COLORS
+from pastisbroker.coverage import CoverageManager, ClientInput
 
 
 lief.logging.disable()
@@ -32,19 +35,6 @@ class BrokingMode(Enum):
     NO_TRANSMIT = 2       # Does not transmit seed to peers (for comparing perfs of tools against each other)
 
 
-COLORS = [32, 33, 34, 35, 36, 37, 39, 91, 93, 94, 95, 96]
-
-
-class Bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 
 class PastisBroker(BrokerAgent):
@@ -57,7 +47,10 @@ class PastisBroker(BrokerAgent):
                  sast_report: PathLike = None,
                  p_argv: List[str] = None,
                  memory_threshold: int = 85,
-                 start_quorum: int = 0):
+                 start_quorum: int = 0,
+                 filter_inputs: bool = False,
+                 stream: bool = False,
+                 replay_threads: int = 4):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -86,7 +79,7 @@ class PastisBroker(BrokerAgent):
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
 
         # Initialize availables binaries
-        self.programs = {}  # Tuple[(Arch, Fuzzer, ExecMode)] -> Path
+        self.programs = {}  # Tuple[(Platform, Arch)] -> List[BinaryPackage]
         self._find_binaries(binaries_dir)
 
         # Klocwork informations
@@ -122,6 +115,38 @@ class PastisBroker(BrokerAgent):
         # Proxy feature
         self._proxy = None
         self._proxy_cli = None
+
+        # Coverage + filtering feature
+        self._coverage_manager = None
+        self.filter_inputs: bool = filter_inputs
+        if filter_inputs or stream:
+            if (path := self.find_vanilla_binary()) is not None:  # Find an executable suitable for coverage
+                logging.info(f"Coverage binary: {path}")
+                stream_file = self.workspace.coverage_history if stream else ""
+                self._coverage_manager = CoverageManager(replay_threads, filter_inputs, path, self.argv, self.inject, stream_file)
+            else:
+                logging.warning("filtering or stream enabled but cannot find vanilla binary")
+
+
+    def find_vanilla_binary(self) -> Optional[str]:
+        """
+        Find a binary without instrumentation to be used for coverage
+        computation. It also has to match local architecture.
+        :return: Path to the progam
+        """
+        local_arch = get_local_architecture()
+        for pkg in self.programs.get((Platform.LINUX, local_arch)):
+            path = str(pkg.executable_path.absolute())
+            p = lief.parse(str(path))
+            ok = True
+            for f in p.functions:
+                if "hfuzz_" in f.name or "__afl_" in f.name or "__gcov_" in f.name or "__asan_" in f.name:
+                    ok = False
+                    break
+            if ok:
+                return path
+        return None
+
 
     def load_engine_addon(self, py_module: str) -> bool:
         desc = load_engine_descriptor(py_module)
@@ -194,17 +219,26 @@ class PastisBroker(BrokerAgent):
         self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
         cli.log(LogLevel.INFO, f"seed {h} [{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
         cli.add_own_seed(seed)  # Add seed in client's seed
-        self.write_seed(typ, cli.strid, seed) # Write seed to file
+        fname = self.write_seed(typ, cli.strid, seed) # Write seed to file
 
         if is_new:
             self._seed_pool[seed] = typ  # Save it in the local pool
-        else:
-            pass
-            # logging.warning(f"receive duplicate seed {h} by {cli.strid}")
 
+            if self._coverage_manager:
+                sp = fname.split("_")
+                covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], h, fname, typ, cli.netid, cli.strid, "GRANTED", "", -1, [])
+                self._coverage_manager.push_input(covi)
+
+            if not self.filter_inputs:  # If seed are not filtered send it right away
+                self.seed_granted(cli.netid, typ, seed)
+        else:
+            logging.debug(f"receive duplicate seed {h} by {cli.strid}")
+
+
+    def seed_granted(self, cli_id: bytes, typ: SeedType, seed: bytes):
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
-            self.send_seed_to_all_others(cli.netid, typ, seed)
+            self.send_seed_to_all_others(cli_id, typ, seed)
 
         if self.is_proxied:  # Forward it to the proxy
             self._proxy.send_seed(typ, seed)
@@ -226,11 +260,15 @@ class PastisBroker(BrokerAgent):
         if initial:
             self._init_seed_pool[seed] = SeedType.INPUT
 
-    def write_seed(self, typ: SeedType, cli_id: str, seed: bytes):
+    def write_seed(self, typ: SeedType, cli_id: str, seed: bytes) -> str:
+        fname = self.mk_input_name(cli_id, seed)
+        self.workspace.save_seed(typ, fname, seed)
+        return fname
+
+    def mk_input_name(self, cli_id: str, seed: bytes) -> str:
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         elapsed = str(datetime.timedelta(seconds=time.time() - self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
-        fname = f"{t}_{elapsed}_{cli_id}_{md5(seed).hexdigest()}.cov"
-        self.workspace.save_seed(typ, fname, seed)
+        return f"{t}_{elapsed}_{cli_id}_{md5(seed).hexdigest()}.cov"
 
     def hello_received(self, cli_id: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
         uid = self.new_uid()
@@ -362,6 +400,10 @@ class PastisBroker(BrokerAgent):
             logging.info(f"Send stop to {client.strid}")
             self.send_stop(client.netid)
         self._stop = True
+
+        # Stop coverage manager if any
+        if self._coverage_manager:
+            self._coverage_manager.stop()
 
         # Call the statmanager to wrap-up values
         self.statmanager.post_execution(list(self.clients.values()), self.workspace)
@@ -535,6 +577,14 @@ class PastisBroker(BrokerAgent):
         self.workspace.status = WorkspaceStatus.RUNNING
         logging.info("start broking")
 
+        if self._coverage_manager:  # if it has been instanciated start it
+            self._coverage_manager.start()
+            for seed in self._init_seed_pool.keys():  # Push initial corpus to set baseline coverage
+                fname = self.mk_input_name("INITIAL", seed)
+                sp = fname.split("_")
+                covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], sp[4], fname, SeedType.INPUT, b"INITIAL", "INITIAL", "GRANTED", "", -1, [])
+                self._coverage_manager.push_input(covi)
+
         if self.is_proxied and self._proxy_cli:
             self._running = False  # disable running wait start broker
             self._proxy.send_hello([self._proxy_cli])
@@ -550,7 +600,7 @@ class PastisBroker(BrokerAgent):
         # Start infinite loop
         try:
             while True:
-                time.sleep(1)
+                time.sleep(0.05)
                 t = time.time()
 
                 # Check if the campaign have to be stopped
@@ -567,6 +617,11 @@ class PastisBroker(BrokerAgent):
                         for cli in list(self.clients.values()):
                             if cli.engine.SHORT_NAME == "TT":  # is triton
                                 self.kick_client(cli.netid)
+
+                # if inputs are filtered. Get granted inputs and forward them to appropriate clients
+                if self.filter_inputs:
+                    for item in self._coverage_manager.iter_granted_inputs():
+                        self.seed_granted(item.fuzzer_id, item.seed_status, item.content)
 
                 if self._stop:
                     logging.info("broker terminate")

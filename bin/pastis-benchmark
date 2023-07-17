@@ -158,20 +158,41 @@ def showmap(bins: str):
 @click.option("--allow-remote", type=bool, is_flag=True, default=False, help="Enable remote connection")
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 @click.option('--skip-cpufreq', is_flag=True, type=bool, default=False, help="Skip CPU frequency scaling check")
+@click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit", show_default=True)
 @click.option('--start-quorum', type=int, default=0, help="Number of client connection to receive before triggering startup", show_default=True)
-@click.option('--proxy', type=str, default="", help="Run the broker as a proxy to another broker")
+@click.option('--filter-inputs', type=bool, is_flag=True, default=False, help="Filter inputs that do not generate coverage", show_default=True)
+@click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
+@click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
+@click.option('--proxy', type=str, default="", help="Run the broker as a proxy to another broker: pymodule@ip:port")
+@click.argument('pargs', nargs=-1)
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool,
         debug: bool, timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool,
-        allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool, start_quorum: int, proxy: str):
+        allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool,  mem_threshold: int, start_quorum: int,  proxy: str,
+        filter_inputs: bool, stream: bool, replay_threads: int, pargs: Tuple[str]):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
-    broker = PastisBroker(workspace, bins, BrokingMode[mode], CheckMode.CHECK_ALL, SeedInjectLoc[injloc], None, [], start_quorum=start_quorum)
+    broker = PastisBroker(workspace,
+                          bins,
+                          BrokingMode[mode],
+                          CheckMode.CHECK_ALL,
+                          SeedInjectLoc[injloc],
+                          None,
+                          list(pargs),
+                          mem_threshold,
+                          start_quorum,
+                          filter_inputs,
+                          stream,
+                          replay_threads)
 
     if proxy:  # proxy format should be:  IP:port@py_module
-        url, py_module = proxy.split("@")
-        proxy_ip, proxy_port = url.split(":")
-        broker.set_proxy(proxy_ip, int(proxy_port), py_module)
+        try:
+            py_module, url = proxy.split("@")
+            proxy_ip, proxy_port = url.split(":")
+            broker.set_proxy(proxy_ip, int(proxy_port), py_module)
+        except ValueError:
+            logging.error(f"Cannot parse proxy: {proxy}, format need to be: py_module@ip:port")
+            return
 
     # Add all given seeds as initial seed
     if seeds is None:

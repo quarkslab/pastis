@@ -67,7 +67,7 @@ message StartMsg {
     string coverage_mode   = 8;       // coverage strategy for Triton (ignored by Triton)
     SeedInjectLoc seed_location  = 9;
     string engine_args           = 10; // Serialized JSON of engine parameters
-    repeated string program_argv = 11;
+    repeated string program_argv = 11;  // Arguments (without program name (argv[0]))
 }
 
 message StopMsg {

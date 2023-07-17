@@ -58,8 +58,9 @@ def cli():
 @cli.command()
 @click.option('-h', '--host', type=str, default='localhost', help='Host to connect to')
 @click.option('-p', '--port', type=int, default=5555, help='Port to connect to')
+@click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
-def online(host: str, port: int, probe: Tuple[str]):
+def online(host: str, port: int, debug: bool, probe: Tuple[str]):
     """
     This is the online mode of the pastis-triton exploration. With this mode,
     the client (pastis-triton) will try to connect to the broker. Then, the broker
@@ -67,9 +68,11 @@ def online(host: str, port: int, probe: Tuple[str]):
 
     :param host: The remote host to connect
     :param port: The remote host's port to connect
+    :param debug: Configure debugging logs
+    :param probe: Probes to enable (Python modules imported with importlib)
     """
 
-    configure_logs(logging.INFO)
+    configure_logs(logging.DEBUG if debug else logging.INFO)
 
     # Create the network agent and connect to the broker
     agent = ClientAgent()
