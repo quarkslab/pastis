@@ -86,7 +86,7 @@ class HonggfuzzDriver:
                              seed_inj == SeedInjectLoc.STDIN,
                              engine_args,
                              str(package.dictionary.absolute()) if package.dictionary else None):
-            self._agent.send_log(LogLevel.ERROR, "Cannot start target, HFQBDIPRELAOD not found")
+            self._agent.send_log(LogLevel.ERROR, "Cannot start target")
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
