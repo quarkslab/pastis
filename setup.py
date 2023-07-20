@@ -11,7 +11,7 @@ with open("README.md") as f:
 
 setup(
     name="pastis-framework",
-    version="1.0.3",
+    version="1.0.4",
     description="PASTIS framework for collaborative fuzzing",
     long_description=README,
     long_description_content_type='text/markdown',
