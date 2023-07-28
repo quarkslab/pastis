@@ -163,12 +163,13 @@ def showmap(bins: str):
 @click.option('--filter-inputs', type=bool, is_flag=True, default=False, help="Filter inputs that do not generate coverage", show_default=True)
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
 @click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
+@click.option('--replay-timeout', type=int, default=60, help="Timeout for seed replay", show_default=True)
 @click.option('--proxy', type=str, default="", help="Run the broker as a proxy to another broker: pymodule@ip:port")
 @click.argument('pargs', nargs=-1)
 def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool,
         debug: bool, timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool,
         allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool,  mem_threshold: int, start_quorum: int,  proxy: str,
-        filter_inputs: bool, stream: bool, replay_threads: int, pargs: Tuple[str]):
+        filter_inputs: bool, stream: bool, replay_threads: int, replay_timeout: int, pargs: Tuple[str]):
 
     configure_logging(logging.DEBUG if debug else logging.INFO, "%(asctime)s %(name)s [%(levelname)s] %(message)s")
 
@@ -183,7 +184,8 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
                           start_quorum,
                           filter_inputs,
                           stream,
-                          replay_threads)
+                          replay_threads,
+                          replay_timeout)
 
     if proxy:  # proxy format should be:  IP:port@py_module
         try:

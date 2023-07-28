@@ -51,7 +51,8 @@ class PastisBroker(BrokerAgent):
                  start_quorum: int = 0,
                  filter_inputs: bool = False,
                  stream: bool = False,
-                 replay_threads: int = 4):
+                 replay_threads: int = 4,
+                 replay_timeout: int = 60):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -126,7 +127,7 @@ class PastisBroker(BrokerAgent):
             if (path := self.find_vanilla_binary()) is not None:  # Find an executable suitable for coverage
                 logging.info(f"Coverage binary: {path}")
                 stream_file = self.workspace.coverage_history if stream else ""
-                self._coverage_manager = CoverageManager(replay_threads, filter_inputs, path, self.argv, self.inject, stream_file)
+                self._coverage_manager = CoverageManager(replay_threads, replay_timeout, filter_inputs, path, self.argv, self.inject, stream_file)
             else:
                 logging.warning("filtering or stream enabled but cannot find vanilla binary")
 
@@ -585,7 +586,21 @@ class PastisBroker(BrokerAgent):
             for seed in self._init_seed_pool.keys():  # Push initial corpus to set baseline coverage
                 fname = self.mk_input_name("INITIAL", seed)
                 sp = fname.split("_")
-                covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], sp[4], fname, SeedType.INPUT, b"INITIAL", "INITIAL", "GRANTED", "", -1, [])
+                hash = sp[4].split(".")[0]
+                covi = ClientInput(
+                    content=seed,
+                    log_time="",
+                    recv_time=f"{sp[0]}_{sp[1]}",
+                    elapsed=sp[2],
+                    hash=hash,
+                    path=fname,
+                    seed_status=SeedType.INPUT,
+                    fuzzer_id=b"INITIAL",
+                    fuzzer_name="INITIAL",
+                    broker_status="GRANTED",  # Unless rejected (later)
+                    replay_status="",
+                    replay_time=-1,
+                    new_coverage=[])
                 self._coverage_manager.push_input(covi)
 
         if self.is_proxied and self._proxy_cli:
@@ -621,24 +636,26 @@ class PastisBroker(BrokerAgent):
                             if cli.engine.SHORT_NAME == "TT":  # is triton
                                 self.kick_client(cli.netid)
 
-                # if inputs are filtered. Get granted inputs and forward them to appropriate clients
-                if self.filter_inputs:
-                    for item in self._coverage_manager.iter_granted_inputs():
-                        self.seed_granted(item.fuzzer_id, item.seed_status, item.content)
-
                 # Check if we received the start signal from the proxy-master
                 if self._proxy_start_signal:
+                    logging.info("signal received start clients !")
                     self._proxy_start_signal = False
                     self.start_pending_clients()
 
-                # Check if there are seed coming from the proxy-master to forward to clients
-                if not self._proxy_seed_queue.empty():
-                    try:
-                        while True:
-                            origin, typ, seed = self._proxy_seed_queue.get_nowait()
-                            self.send_seed_to_all_others(origin, typ, seed)
-                    except queue.Empty:
-                        pass
+                if self._running: # Perform following checks only if running
+                    # if inputs are filtered. Get granted inputs and forward them to appropriate clients
+                    if self.filter_inputs:
+                        for item in self._coverage_manager.iter_granted_inputs():
+                            self.seed_granted(item.fuzzer_id, item.seed_status, item.content)
+
+                    # Check if there are seed coming from the proxy-master to forward to clients
+                    if not self._proxy_seed_queue.empty():
+                        try:
+                            while True:
+                                origin, typ, seed = self._proxy_seed_queue.get_nowait()
+                                self.send_seed_to_all_others(origin, typ, seed)
+                        except queue.Empty:
+                            pass
 
                 if self._stop:
                     logging.info("broker terminate")
@@ -776,12 +793,13 @@ class PastisBroker(BrokerAgent):
         # FIXME: Use parameters received
         logging.info("[PROXY] start received !")
         self._running = True
+        self._proxy_start_signal = True
         # if self._running:
         #     self.start_pending_clients()
 
     def _proxy_seed_received(self, typ: SeedType, seed: bytes):
         # Forward the seed to underlying clients
-        logging.info(f"[PROXY] seed {typ.name} received forward to agents")
+        logging.info(f"[PROXY] receive {md5(seed).hexdigest()} [{typ.name}] (forward it)")
 
         # Save the seed locally
         self.write_seed(typ, "PROXY", seed)

@@ -44,9 +44,10 @@ class CoverageManager(object):
     ARGV_PLACEHOLDER = "@@"
     STRATEGY = CoverageStrategy.EDGE
 
-    def __init__(self, pool_size: int, filter: bool, program: str, args: list[str], inj_loc: SeedInjectLoc, stream_file: str = ""):
+    def __init__(self, pool_size: int, replay_timeout: int, filter: bool, program: str, args: list[str], inj_loc: SeedInjectLoc, stream_file: str = ""):
         # Base info for replay
         self.pool_size = pool_size
+        self.replay_timeout = replay_timeout
         self.filter_enabled = filter
         self.program = str(program)
         self.args = args
@@ -86,7 +87,7 @@ class CoverageManager(object):
         logging.info("Starting coverage manager")
 
         for work_id in range(self.pool_size):
-            self.pool.apply_async(self.worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc))
+            self.pool.apply_async(self.worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc, self.replay_timeout))
 
     def stop(self) -> None:
         self._running = False
@@ -174,14 +175,17 @@ class CoverageManager(object):
                     os.unlink(cov_file)
                 except FileNotFoundError:
                     if item.seed_status == SeedType.INPUT:
-                        logging.warning(f"seed {item.hash}({item.seed_status}) can't load coverage file (maybe had crashed?)")
+                        pass
+                        # logging.warning(f"seed {item.hash}({item.seed_status}) can't load coverage file (maybe had crashed?)")
                     else:
-                        logging.info(f"seed {item.hash}({item.seed_status}) cannot get coverage (normal..)")
+                        pass
+                        # logging.info(f"seed {item.hash}({item.seed_status}) cannot get coverage (normal..)")
                     # Grant input
                     self.seeds_accepted += 1
-                    self.granted_queue.put(item)
+                    if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
+                        self.granted_queue.put(item)
 
-                logging.info(f"seed {item.hash} ({item.fuzzer_name}) [replay:{self.mk_rpl_status(item.replay_status)}][status:{self.mk_broker_status(item.broker_status, bool(new_items))}] ({len(new_items)} new edges)")
+                logging.info(f"seed {item.hash} ({item.fuzzer_name}) [replay:{self.mk_rpl_status(item.replay_status)}][{self.mk_broker_status(item.broker_status, bool(new_items))}][{int(item.replay_time):}s] ({len(new_items)} new edges) (pool:{self.input_queue.qsize()})")
                 # Regardless if it was a success or not log it
                 self.add_item_coverage_stream(item)
             except queue.Empty:
@@ -209,7 +213,7 @@ class CoverageManager(object):
             return mk_color(status, Bcolors.FAIL)
 
     @staticmethod
-    def worker(input_queue: Queue, cov_queue: Queue, program: str, argv: list[str], seed_inj: SeedInjectLoc) -> None:
+    def worker(input_queue: Queue, cov_queue: Queue, program: str, argv: list[str], seed_inj: SeedInjectLoc, timeout) -> None:
         """
         worker thread that unstack inputs and replay them.
         """
@@ -236,26 +240,25 @@ class CoverageManager(object):
                         logging.error(f"seed injection {seed_inj.name} but can't find '@@' on program argv: {argv}: {e}")
                         continue
 
+                t0 = time.time()
                 try:
                     # Run the seed
-                    t0 = time.time()
                     if QBDITrace.run(CoverageManager.STRATEGY,
                                      program,
                                      cur_argv,  # argv[1:] if len(argv) > 1 else [],
                                      output_path=str(cov_file),
                                      stdin_file=str(tmpfile) if seed_inj == SeedInjectLoc.STDIN else None,
                                      cwd=Path(program).parent,
-                                     timeout=60):
-                        item.replay_time = time.time() - t0
+                                     timeout=timeout):
                         item.replay_status = "SUCCESS"
                         # logging.info(f"[worker-{pid}] replaying {item.hash} sucessful")
                     else:
                         item.replay_status = "FAIL_NO_COV"
-                        logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
+                        # logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                 except TraceException:
                     item.replay_status = "FAIL_TIMEOUT"
-                    logging.warning('Timeout hit, while trying to re-run the seed')
-
+                    # logging.warning('Timeout hit, while trying to re-run the seed')
+                item.replay_time = time.time() - t0
                 # Add it to the coverage queue (even if it failed
                 cov_queue.put((item, cov_file))
         except KeyboardInterrupt:

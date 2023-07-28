@@ -3,6 +3,7 @@ from typing import List, Tuple
 import os
 import time
 import logging
+from hashlib import md5
 from pathlib import Path
 import threading
 import platform
@@ -23,6 +24,17 @@ from libpastis import ClientAgent, BinaryPackage, SASTReport
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, AlertData, FuzzMode
 from tritondse.trace      import QBDITrace, TraceException
 from tritondse.worklist import FreshSeedPrioritizerWorklist, WorklistAddressToSet
+
+def to_h(seed: Seed) -> str:
+    if seed.is_composite():
+        if PastisDSE.INPUT_FILE_NAME in seed.content.files:
+            return md5(seed.content.files[PastisDSE.INPUT_FILE_NAME]).hexdigest()
+        elif "stdin" in seed.content.files:
+            return md5(seed.content.files["stdin"]).hexdigest()
+        else:
+            raise NameError("can't find main payload in Seed")
+    else:
+        return md5(seed.content).hexdigest()
 
 
 class PastisDSE(object):
@@ -492,11 +504,11 @@ class PastisDSE(object):
         seed = self._get_seed(seed)
 
         if seed in self._seed_received:
-            logging.warning(f"receiving seed already known: {seed.hash} (dropped)")
+            logging.warning(f"receiving seed already known: {to_h(seed)} (dropped)")
             return
         else:
             self._seed_queue.put((seed, typ))
-            logging.info(f"seed received {seed.hash} (pool: {self._seed_queue.qsize()})")
+            logging.info(f"seed received {to_h(seed)} (pool: {self._seed_queue.qsize()})")
 
 
     def _process_seed_received(self, typ: SeedType, seed: Seed):
@@ -515,7 +527,7 @@ class PastisDSE(object):
             else:  # Try running the seed to know whether to keep it
                 # NOTE: re-run the seed regardless of its status
                 coverage = None
-                logging.info(f"process seed received {seed.hash} (pool: {self._seed_queue.qsize()})")
+                logging.info(f"process seed received {to_h(seed)} (pool: {self._seed_queue.qsize()})")
 
                 data = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.bytes()
                 self.replay_seed_file.write_bytes(data)
@@ -555,7 +567,7 @@ class PastisDSE(object):
                     logging.warning('There was an error while trying to re-run the seed')
 
                 if not coverage:
-                    logging.warning(f"coverage not found after replaying: {seed.hash} [{typ.name}] (add it anyway)")
+                    logging.warning(f"coverage not found after replaying: {to_h(seed)} [{typ.name}] (add it anyway)")
                     # Add the seed anyway, if it was not possible to re-run the seed.
                     # TODO Set seed.coverage_objectives as "empty" (use ellipsis
                     # object). Modify WorklistAddressToSet to support it.
@@ -564,7 +576,7 @@ class PastisDSE(object):
                 else:
                     # Check whether the seed improves the current coverage.
                     if self.dse.coverage.improve_coverage(coverage):
-                        logging.info(f"seed added {seed.hash} [{typ.name}] (coverage merged)")
+                        logging.info(f"seed added {to_h(seed)} [{typ.name}] (coverage merged)")
                         self.seeds_merged += 1
                         self.dse.coverage.merge(coverage)
                         self.dse.seeds_manager.worklist.update_worklist(coverage)
@@ -572,7 +584,7 @@ class PastisDSE(object):
                         seed.coverage_objectives = self.dse.coverage.new_items_to_cover(coverage)
                         self.dse.add_input_seed(seed)
                     else:
-                        logging.info(f"seed archived {seed.hash} [{typ.name}] (NOT merging coverage)")
+                        logging.info(f"seed archived {to_h(seed)} [{typ.name}] (NOT merging coverage)")
                         self.seeds_rejected += 1
                         #self.dse.seeds_manager.archive_seed(seed)
                         # logging.info(f"seed archived {seed.hash} [{typ.name}]")
@@ -596,7 +608,7 @@ class PastisDSE(object):
         if self.dse:
             self.dse.stop_exploration()
 
-        self.save_stats()  # Save stats
+            self.save_stats()  # Save stats
 
         self._stop = True
         # self.agent.stop()  # Can't call it here as this function executed from within agent thread
@@ -635,7 +647,7 @@ class PastisDSE(object):
     def send_seed_to_broker(self, se: SymbolicExecutor, state: ProcessState, seed: Seed):
         if seed not in self._seed_received:  # Do not send back a seed that already came from broker
             self._sending_count += 1
-            logging.info(f"Sending new: {seed.hash} [{self._sending_count}]")
+            logging.info(f"Sending new: {to_h(seed)} [{self._sending_count}]")
             bytes = seed.content.files[self.INPUT_FILE_NAME] if seed.is_composite() else seed.content
             self.agent.send_seed(SeedType.INPUT, bytes)
 
