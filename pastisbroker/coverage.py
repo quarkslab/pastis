@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import time
 import logging
 import tempfile
@@ -173,13 +174,15 @@ class CoverageManager(object):
 
                     # Remove the coverage file
                     os.unlink(cov_file)
+
+                except json.JSONDecodeError:
+                    item.replay_status = "FAIL_PARSE_COV"
+                    os.unlink(cov_file)
+                    self.seeds_accepted += 1
+                    if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
+                        self.granted_queue.put(item)
+
                 except FileNotFoundError:
-                    if item.seed_status == SeedType.INPUT:
-                        pass
-                        # logging.warning(f"seed {item.hash}({item.seed_status}) can't load coverage file (maybe had crashed?)")
-                    else:
-                        pass
-                        # logging.info(f"seed {item.hash}({item.seed_status}) cannot get coverage (normal..)")
                     # Grant input
                     self.seeds_accepted += 1
                     if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
