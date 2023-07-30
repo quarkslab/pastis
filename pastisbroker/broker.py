@@ -236,7 +236,6 @@ class PastisBroker(BrokerAgent):
         else:
             logging.debug(f"receive duplicate seed {h} by {cli.strid}")
 
-
     def seed_granted(self, cli_id: bytes, typ: SeedType, seed: bytes):
         # Save it in the local pool
         self._seed_pool[seed] = typ
