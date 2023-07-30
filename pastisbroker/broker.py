@@ -226,8 +226,6 @@ class PastisBroker(BrokerAgent):
         fname = self.write_seed(typ, cli.strid, seed) # Write seed to file
 
         if is_new:
-            self._seed_pool[seed] = typ  # Save it in the local pool
-
             if self._coverage_manager:
                 sp = fname.split("_")
                 covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], h, fname, typ, cli.netid, cli.strid, "GRANTED", "", -1, [])
@@ -240,6 +238,9 @@ class PastisBroker(BrokerAgent):
 
 
     def seed_granted(self, cli_id: bytes, typ: SeedType, seed: bytes):
+        # Save it in the local pool
+        self._seed_pool[seed] = typ
+
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
             self.send_seed_to_all_others(cli_id, typ, seed)
