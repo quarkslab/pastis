@@ -152,21 +152,16 @@ class CoverageManager(object):
                     coverage: CoverageSingleRun = QBDITrace.from_file(cov_file).coverage
                     if self._coverage.improve_coverage(coverage):
                         self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
-                        self.seeds_accepted += 1
 
                         # Get newly covered items (and put them in the stream queue
-
                         new_items = coverage.difference(self._coverage)
 
                         item.new_coverage = list(new_items)
 
-                        # logging.info(f"seed {item.hash}  ({item.fuzzer_name}) [replay:{}][status:{}] ({len(new_items)} new edges)")
-
                         # Update the global coverage
                         self._coverage.merge(coverage)
 
-                        if item.fuzzer_name != "INITIAL":  # if not initial corpus and granted
-                            self.granted_queue.put(item)
+                        self.grant_input(item)
 
                     else:
                         item.broker_status = "DROPPED" if self.filter_enabled else "GRANTED"
@@ -178,15 +173,11 @@ class CoverageManager(object):
                 except json.JSONDecodeError:
                     item.replay_status = "FAIL_PARSE_COV"
                     os.unlink(cov_file)
-                    self.seeds_accepted += 1
-                    if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
-                        self.granted_queue.put(item)
+                    self.grant_input(item)
 
                 except FileNotFoundError:
                     # Grant input
-                    self.seeds_accepted += 1
-                    if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
-                        self.granted_queue.put(item)
+                    self.grant_input(item)
 
                 logging.info(f"seed {item.hash} ({item.fuzzer_name}) [replay:{self.mk_rpl_status(item.replay_status)}][{self.mk_broker_status(item.broker_status, bool(new_items))}][{int(item.replay_time):}s] ({len(new_items)} new edges) (pool:{self.input_queue.qsize()})")
                 # Regardless if it was a success or not log it
@@ -197,6 +188,17 @@ class CoverageManager(object):
                 self._running = False
                 logging.info("coverage worker stop")
                 break
+
+    def grant_input(self, item: ClientInput) -> None:
+        """
+        Add the input to the granted_queue if
+        filtering is activated and the input is not
+        part of the initial.
+        """
+        self.seeds_accepted += 1
+        if self.filter_enabled:  # if not enabled do not need to put it in granted input (just logging)
+            if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
+                self.granted_queue.put(item)
 
     @staticmethod
     def mk_rpl_status(status: str) -> str:

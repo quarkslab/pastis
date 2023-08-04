@@ -40,6 +40,9 @@ class BrokingMode(Enum):
 
 class PastisBroker(BrokerAgent):
 
+    PROXY_NETID = b"PROXY"
+    PROXY_ID = "PROXY"
+
     def __init__(self, workspace: PathLike,
                  binaries_dir: PathLike,
                  broker_mode: BrokingMode,
@@ -118,7 +121,8 @@ class PastisBroker(BrokerAgent):
         self._proxy = None
         self._proxy_cli = None
         self._proxy_start_signal = False
-        self._proxy_seed_queue = queue.Queue()
+        self._proxy_to_clis = queue.Queue()
+        self._clis_to_proxy = queue.Queue()
 
         # Coverage + filtering feature
         self._coverage_manager = None
@@ -204,7 +208,8 @@ class PastisBroker(BrokerAgent):
         cli = self.clients.get(cli_id)
         if not cli:
             logging.warning(f"client '{cli_id}' unknown (send stop)")
-            self.send_stop(cli_id)
+            if cli.netid != self.PROXY_NETID:
+                self.send_stop(cli_id)
         return cli
 
     def kick_client(self, cli_id: bytes) -> None:
@@ -221,37 +226,49 @@ class PastisBroker(BrokerAgent):
 
         # Show log message and save seed to file
         self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
-        cli.log(LogLevel.INFO, f"seed {h} [{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
+        cli.log(LogLevel.INFO, f"seed {h} [{cli.strid}][{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
         cli.add_own_seed(seed)  # Add seed in client's seed
         fname = self.write_seed(typ, cli.strid, seed) # Write seed to file
 
         if is_new:
-            if self._coverage_manager:
-                sp = fname.split("_")
-                covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], h, fname, typ, cli.netid, cli.strid, "GRANTED", "", -1, [])
-                self._coverage_manager.push_input(covi)
+            if self.is_proxied and not cli.strid == self.PROXY_ID:  # Directly forward to proxy if not proxy
+                self._clis_to_proxy.put((cli.netid, typ, seed))
+
+            if self._coverage_manager:  # True if filter_is_activated
+                self.push_input_filtering(cli.netid, cli.strid, fname, seed, typ)
 
             if not self.filter_inputs:  # If seed are not filtered send it right away
                 self.seed_granted(cli.netid, typ, seed)
         else:
             logging.debug(f"receive duplicate seed {h} by {cli.strid}")
 
+    def push_input_filtering(self, netid: bytes, id: str, fname: str, seed: bytes, typ: SeedType) -> None:
+        sp = fname.split("_")
+        covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], md5(seed).hexdigest(),
+                           fname, typ, netid, id, "GRANTED", "", -1, [])
+        self._coverage_manager.push_input(covi)
+
     def seed_granted(self, cli_id: bytes, typ: SeedType, seed: bytes):
         # Save it in the local pool
         self._seed_pool[seed] = typ
+        if cli_id == b"PROXY":
+            self._init_seed_pool[seed] = typ
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
             self.send_seed_to_all_others(cli_id, typ, seed)
 
-        if self.is_proxied:  # Forward it to the proxy
-            self._proxy.send_seed(typ, seed)
-
     def send_seed_to_all_others(self, origin_id: bytes, typ: SeedType, seed: bytes) -> None:
         for c in self.iter_other_clients(origin_id):
-            if c.is_new_seed(seed):
-                self.send_seed(c.netid, typ, seed)  # send the seed to the client
-                c.add_peer_seed(seed)  # Add it in its list of seed
+            self.send_seed_to(c, typ, seed)
+
+    def send_seed_to(self, cli: PastisClient, typ: SeedType, seed: bytes) -> None:
+        if cli.is_new_seed(seed):
+            if cli.netid == self.PROXY_NETID:
+                self._proxy.send_seed(typ, seed)
+            else:
+                self.send_seed(cli.netid, typ, seed)  # send the seed to the client
+            cli.add_peer_seed(seed)  # Add it in its list of seed
 
     def add_seed_file(self, file: PathLike, initial: bool = False) -> None:
         p = Path(file)
@@ -402,7 +419,8 @@ class PastisBroker(BrokerAgent):
     def stop_broker(self):
         for client in self.clients.values():
             logging.info(f"Send stop to {client.strid}")
-            self.send_stop(client.netid)
+            if client.netid != self.PROXY_NETID:
+                self.send_stop(client.netid)
         self._stop = True
 
         # Stop coverage manager if any
@@ -509,7 +527,7 @@ class PastisBroker(BrokerAgent):
 
         # Update internal client info and send him the message
         engine_args_str = engine_args.to_str() if engine_args else ""
-        logging.info(f"send start client {client.id}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
+        logging.info(f"send start client {client.strid}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
         client.set_running(package.name, engine, covmode, exmode, self.ck_mode, engine_args_str)
         client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
 
@@ -648,14 +666,26 @@ class PastisBroker(BrokerAgent):
                         for item in self._coverage_manager.iter_granted_inputs():
                             self.seed_granted(item.fuzzer_id, item.seed_status, item.content)
 
-                    # Check if there are seed coming from the proxy-master to forward to clients
-                    if not self._proxy_seed_queue.empty():
-                        try:
-                            while True:
-                                origin, typ, seed = self._proxy_seed_queue.get_nowait()
-                                self.send_seed_to_all_others(origin, typ, seed)
-                        except queue.Empty:
-                            pass
+                    if self.is_proxied:
+                        # Check if there are seed to forward to primary (proxy main)
+                        cli = self.clients[self.PROXY_NETID]
+                        if not self._clis_to_proxy.empty():
+                            try:
+                                while True:
+                                    _, typ, seed = self._clis_to_proxy.get_nowait()
+                                    self.send_seed_to(cli, typ, seed)
+                            except queue.Empty:
+                                pass
+
+                        # Check if there are seed coming from the proxy to forward to clients
+                        # Used: only if filtering is disabled (otherwise goes through coverageManager)
+                        if not self._proxy_to_clis.empty():
+                            try:
+                                while True:
+                                    origin, typ, seed = self._proxy_to_clis.get_nowait()
+                                    self.seed_received(origin, typ, seed)
+                            except queue.Empty:
+                                pass
 
                 if self._stop:
                     logging.info("broker terminate")
@@ -768,6 +798,10 @@ class PastisBroker(BrokerAgent):
         """
         return self._proxy is not None
 
+    @property
+    def is_filter_activated(self) -> bool:
+        return bool(self.filter_inputs)
+
     def set_proxy(self, ip: str, port: int, py_module: str) -> bool:
         self._proxy = ClientAgent()
 
@@ -787,6 +821,12 @@ class PastisBroker(BrokerAgent):
         self._proxy.connect(ip, port)
         self._proxy.start()
 
+        # Create "fake" client object
+        cli = PastisClient(self.new_uid(), self.PROXY_NETID, [], Arch.X86_64, 0, 0, "proxy", Platform.LINUX)
+        cli.set_running("", desc, CoverageMode.AUTO, ExecMode.AUTO, self.ck_mode, "")
+        cli.configure_logger(self.workspace.log_directory, random.choice(COLORS))
+        self.clients[self.PROXY_NETID] = cli
+
     def _proxy_start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode,
                               fuzzmode: FuzzMode, chkmode: CheckMode, covmode: CoverageMode, seed_inj: SeedInjectLoc,
                               engine_args: str, argv: List[str], sast_report: str = None):
@@ -801,14 +841,8 @@ class PastisBroker(BrokerAgent):
         # Forward the seed to underlying clients
         logging.info(f"[PROXY] receive {md5(seed).hexdigest()} [{typ.name}] (forward it)")
 
-        # Save the seed locally
-        self.write_seed(typ, "PROXY", seed)
-        self._seed_pool[seed] = typ  # add it to the pool
-        self._init_seed_pool[seed] = typ  # also consider it as initial corpus
-
-        # Forward it to all clients
-        self._proxy_seed_queue.put((b"PROXY", typ, seed))
-        # self.send_seed_to_all_others(b"PROXY", typ, seed)
+        # Forward it to main thread to be handled as normal seed
+        self._proxy_to_clis.put((b"PROXY", typ, seed))
 
     def _proxy_stop_received(self):
         logging.info(f"[PROXY] stop received!")

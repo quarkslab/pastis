@@ -80,7 +80,10 @@ class PastisClient(object):
 
     @property
     def strid(self):
-        return f"CLI-{self.id}-{self._engine.SHORT_NAME if self._engine else 'N/A'}"
+        if self.netid == b"PROXY":
+            return "PROXY"
+        else:
+            return f"CLI-{self.id}-{self._engine.SHORT_NAME if self._engine else 'N-A'}"
 
     def is_new_seed(self, seed: bytes) -> bool:
         """
