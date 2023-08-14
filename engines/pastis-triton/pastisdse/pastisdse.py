@@ -90,7 +90,7 @@ class PastisDSE(object):
             return dir / self.TMP_TRACE, dir / self.TMP_SEED
         else:
             logging.info(f"tmp directory set to: /tmp")
-            return Path(f"/tmp/triton_{pid}.trace"), Path("/tmp/triton_{pid}.seed")
+            return Path(f"/tmp/triton_{pid}.trace"), Path(f"/tmp/triton_{pid}.seed")
 
     def add_probe(self, probe: ProbeInterface):
         self._probes.append(probe)
@@ -546,9 +546,9 @@ class PastisDSE(object):
                         logging.error(f"seed injection {self._seedloc.name} but can't find 'input_file' on program argv")
                         return
 
+                t0 = time.time()
                 try:
                     # Run the seed and determine whether it improves our current coverage.
-                    t0 = time.time()
                     if QBDITrace.run(self.config.coverage_strategy,
                                           str(self.program.path.resolve()),
                                           argv[1:] if len(argv) > 1 else [],
@@ -560,11 +560,13 @@ class PastisDSE(object):
                     else:
                         logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                         coverage = None
-                    self._replay_acc += time.time() - t0  # Save time spent replaying inputs
                 except FileNotFoundError:
                     logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
                 except TraceException:
                     logging.warning('There was an error while trying to re-run the seed')
+                replay_time = time.time() - t0
+                logging.info(f'replay time for seed {to_h(seed)}: {int(replay_time)}s')
+                self._replay_acc += replay_time  # Save time spent replaying inputs
 
                 if not coverage:
                     logging.warning(f"coverage not found after replaying: {to_h(seed)} [{typ.name}] (add it anyway)")
