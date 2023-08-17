@@ -785,7 +785,7 @@ class PastisBroker(BrokerAgent):
 
     def _check_memory_usage(self) -> bool:
         mem = psutil.virtual_memory()
-        logging.info(f"RAM usage: {mem.percent:.2f}%")
+        logging.debug(f"RAM usage: {mem.percent:.2f}%")
         if mem.percent >= self._threshold:
             logging.warning(f"Threshold reached: {mem.percent}%")
             return False
