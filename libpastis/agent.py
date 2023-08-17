@@ -122,8 +122,12 @@ class NetworkAgent(object):
                 return
             try:
                 if self.mode == AgentMode.BROKER:
-                    uid, data = self.socket.recv_multipart()
-                    self.__broker_transfer_to_callback(uid, data)
+                    result = self.socket.recv_multipart()
+                    try:
+                        uid, data = result  # try unpacking the result
+                        self.__broker_transfer_to_callback(uid, data)
+                    except ValueError:  # means we can't unpack uid, data
+                        logging.error(f"cannot unpack the message: {result}")
                 else:
                     data = self.socket.recv()
                     self.__client_transfer_to_callback(data)
