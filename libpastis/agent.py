@@ -203,6 +203,9 @@ class NetworkAgent(object):
         except:
             logging.error(f"can't parse message from {id} (len:{len(message)})")
             return
+        if msg.WhichOneof('msg') is None:
+            logging.error(f"Failed at parsing incoming message from {repr(id)}: {repr(message)}")
+            return
         message, topic = self._unpack_message(msg)
         if topic in [MessageType.START]:
             logging.error(f"Invalid message of type {topic.name} received")
@@ -213,8 +216,15 @@ class NetworkAgent(object):
             cb(id, *args)
 
     def __client_transfer_to_callback(self, message: bytes):
-        msg = EnvelopeMsg()
-        msg.ParseFromString(message)
+        try:
+            msg = EnvelopeMsg()
+            msg.ParseFromString(message)
+        except:
+            logging.error(f"can't parse message from broker (len:{repr(message)})")
+            return
+        if msg.WhichOneof('msg') is None:
+            logging.error(f"Failed at parsing incoming message from broker: {repr(message)}")
+            return
         message, topic = self._unpack_message(msg)
         if topic in [MessageType.HELLO, MessageType.TELEMETRY, MessageType.LOG, MessageType.STOP_COVERAGE_DONE]:
             logging.error(f"Invalid message of type {topic.name} received")
