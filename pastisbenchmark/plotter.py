@@ -90,14 +90,19 @@ class Plotter(object):
             if short:
                 return "TritonDSE"
             config = campaign.fuzzers_config[fuzzer]
-            cov_name = {CoverageStrategy.BLOCK: "B", CoverageStrategy.EDGE: "E", CoverageStrategy.PREFIXED_EDGE: "PE",
+            if config:
+                cov_name = {CoverageStrategy.BLOCK: "B", CoverageStrategy.EDGE: "E", CoverageStrategy.PREFIXED_EDGE: "PE",
                         CoverageStrategy.PATH: "P"}[config.coverage_strategy]
-            param = [
-                "R" if BranchSolvingStrategy.COVER_SYM_READ in config.branch_solving_strategy else "-",
-                "W" if BranchSolvingStrategy.COVER_SYM_WRITE in config.branch_solving_strategy else "-",
-                "J" if BranchSolvingStrategy.COVER_SYM_DYNJUMP in config.branch_solving_strategy else "-"
-            ]
-            solver = {SmtSolver.Z3: "Z3", SmtSolver.BITWUZLA: "BZLA"}[config.smt_solver]
+                param = [
+                    "R" if BranchSolvingStrategy.COVER_SYM_READ in config.branch_solving_strategy else "-",
+                    "W" if BranchSolvingStrategy.COVER_SYM_WRITE in config.branch_solving_strategy else "-",
+                    "J" if BranchSolvingStrategy.COVER_SYM_DYNJUMP in config.branch_solving_strategy else "-"
+                ]
+                solver = {SmtSolver.Z3: "Z3", SmtSolver.BITWUZLA: "BZLA"}[config.smt_solver]
+            else:
+                cov_name = ""
+                param = []
+                solver = ""
             return f"TritonDSE[{cov_name}][{''.join(param)}][{solver}]"
         elif "AFLPP" in fuzzer:
             return "AFL++"
@@ -122,7 +127,7 @@ class Plotter(object):
         elif "HF" in fuzzer:
             return "#9467bd"
         else:
-            return ""
+            return "#aa00ff"
 
 
     def add_triton_input(self, campaign: CampaignResult):
@@ -158,6 +163,8 @@ class Plotter(object):
         mapping = {}
 
         def iter_input_dir(conf, dirname):
+            if not conf:
+                return
             tt_workspace = campaign.workspace.root / conf.workspace
             for file in (tt_workspace / dirname).iterdir():
                 try:
@@ -189,19 +196,20 @@ class Plotter(object):
             syms = {"CC": 0, "SR": 0, "SW": 0, "DYN": 0}
             if campaign.is_triton(fuzzer):
                 conf = campaign.fuzzers_config[fuzzer]
-                tt_workspace = campaign.workspace.root / conf.workspace
-                for file in (tt_workspace / "corpus").iterdir():
-                    for s in syms:
-                        if s in str(file):
-                            syms[s] += 1
-                for file in (tt_workspace / "worklist").iterdir():
-                    for s in syms:
-                        if s in str(file):
-                            syms[s] += 1
-                for file in (tt_workspace / "crashes").iterdir():
-                    for s in syms:
-                        if s in str(file):
-                            syms[s] += 1
+                if conf:
+                    tt_workspace = campaign.workspace.root / conf.workspace
+                    for file in (tt_workspace / "corpus").iterdir():
+                        for s in syms:
+                            if s in str(file):
+                                syms[s] += 1
+                    for file in (tt_workspace / "worklist").iterdir():
+                        for s in syms:
+                            if s in str(file):
+                                syms[s] += 1
+                    for file in (tt_workspace / "crashes").iterdir():
+                        for s in syms:
+                            if s in str(file):
+                                syms[s] += 1
 
             entry = InputEntry(engine=fuzzer, number=num, unique=-1, useless=useless_ctrs[fuzzer], condition=syms["CC"],
                                symread=syms["SR"], symwrite=syms["SW"], symjump=syms["DYN"])
@@ -218,13 +226,27 @@ class Plotter(object):
         for entry in campaign.delta_items:
             firsts[entry.fuzzer] += len(entry.overall_new_items_covered)
 
+        # Compute uniq items specific to a fuzzer
+        coverages = {k: set() for k in campaign.fuzzers_items}
+        for f, l in campaign.fuzzers_items.items():
+            for item in l:
+                if item.fuzzer_new_items_covered:
+                    print(f"union[{f}]: {item.fuzzer_new_items_covered}")
+                coverages[f].update(item.fuzzer_new_items_covered)
+        uniqs = {k: v.copy() for k, v in coverages.items()}
+        for fuzzer_target, uniq_cov in uniqs.items():
+            for fuzzer_current, cov_current in coverages.items():
+                if fuzzer_target != fuzzer_current and fuzzer_current != campaign.ALL_FUZZER:
+                    uniq_cov.difference_update(cov_current)  # Remove items of the other fuzzer
+
         for fuzzer, items in campaign.results:
             cov = campaign.fuzzers_coverage[fuzzer]
             num = len(cov.difference(seed_cov)) if fuzzer != campaign.SEED_FUZZER else cov.unique_covitem_covered
 
             # FIXME: Compute unique & first
             first = firsts[fuzzer]
-            entry = CoverageEntry(engine=fuzzer, number=num, unique=-1, first=first, total=cov.unique_covitem_covered)
+            uniq = len(uniqs[fuzzer])
+            entry = CoverageEntry(engine=fuzzer, number=num, unique=uniq, first=first, total=cov.unique_covitem_covered)
             entries.append(entry)
         return entries
 
@@ -233,7 +255,7 @@ class Plotter(object):
 
         for fuzzer, config in campaign.fuzzers_config.items():
             try:
-                if campaign.is_triton(fuzzer):
+                if campaign.is_triton(fuzzer) and config:
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
 
@@ -261,7 +283,7 @@ class Plotter(object):
 
         for fuzzer, config in campaign.fuzzers_config.items():
             try:
-                if campaign.is_triton(fuzzer):
+                if campaign.is_triton(fuzzer) and config:
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     pstats = json.loads((workdir / "metadata/pastidse-stats.json").read_text())
                     tots, accs, rejs = pstats["seed_received"], pstats["seed_accepted"], pstats["seed_rejected"]
@@ -281,7 +303,7 @@ class Plotter(object):
 
         for fuzzer, config in campaign.fuzzers_config.items():
             try:
-                if campaign.is_triton(fuzzer):
+                if campaign.is_triton(fuzzer) and config:
                     cov_number = cov_data[fuzzer].number if fuzzer in cov_data else 0
                     workdir = (campaign.workspace.root / "clients_ws") / Path(config.workspace).name
                     sstats = json.loads((workdir / "metadata/solving_stats.json").read_text())
