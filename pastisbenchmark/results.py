@@ -86,7 +86,7 @@ class CampaignResult(object):
         for client in data:
             id = client['strid']
             conf = client['engine_args']
-            if self.is_triton(id):
+            if self.is_triton(id) and conf:
                 self.fuzzers_config[id] = Config.from_json(conf)
             else:
                 self.fuzzers_config[id] = conf
@@ -233,7 +233,10 @@ class CampaignResult(object):
 
             self._init_fuzzer_coverage(fuzzer)
 
-            cov = QBDITrace.from_file(file).coverage
+            try:
+                cov = QBDITrace.from_file(file).coverage
+            except json.JSONDecodeError:
+                print(f"can't parse file: {file.name}")
 
             # Compute differences to know what has been covered
             if self.is_half_duplex:
