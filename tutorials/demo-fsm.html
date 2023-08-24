@@ -11,11 +11,11 @@
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=10f1778b"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -100,7 +100,7 @@
            <div itemprop="articleBody">
              
   <section id="fsm-demo">
-<h1>FSM Demo<a class="headerlink" href="#fsm-demo" title="Permalink to this heading"></a></h1>
+<h1>FSM Demo<a class="headerlink" href="#fsm-demo" title="Link to this heading"></a></h1>
 <p>The FSM demo is a tiny software implementing a state-machine that contains a bug.
 It shows how to combine the various approaches into a collaborative fuzzing campaign
 within the PASTIS framework.</p>
@@ -108,7 +108,7 @@ within the PASTIS framework.</p>
 on 16 bits and a data integer on 32 bits. Depending on the ID and the data
 the FSM switches state.</p>
 <div style="text-align: center;"><a href="../_static/fsm-demo.tar.gz"><i class="fa fa-download fa-lg"></i><br/>code</a></div><br/><section id="preparing-the-target">
-<h2>Preparing the target<a class="headerlink" href="#preparing-the-target" title="Permalink to this heading"></a></h2>
+<h2>Preparing the target<a class="headerlink" href="#preparing-the-target" title="Link to this heading"></a></h2>
 <p>To prepare the target it has to be compiled for all the supported engines in our
 case AFL++, Honggfuzz and TritonDSE.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>xvf<span class="w"> </span>fsm-demo.tar.gz
@@ -139,7 +139,7 @@ that TritonDSE compiles without any instrumentation.</p>
 </div>
 </section>
 <section id="running-the-broker">
-<h2>Running the Broker<a class="headerlink" href="#running-the-broker" title="Permalink to this heading"></a></h2>
+<h2>Running the Broker<a class="headerlink" href="#running-the-broker" title="Link to this heading"></a></h2>
 <p>Now that targets are compile it now time to run the broker and then engines.
 By default engines contact localhost on port 5555. If run from a remote machine
 the IP and port have to be provided. The broker can be run with:</p>
@@ -151,14 +151,14 @@ initial corpus and will write all its output to the workspace <em>output</em>. O
 launched it should have detected the various variants and wait for clients to connect.</p>
 </section>
 <section id="running-afl">
-<h2>Running AFL++<a class="headerlink" href="#running-afl" title="Permalink to this heading"></a></h2>
+<h2>Running AFL++<a class="headerlink" href="#running-afl" title="Link to this heading"></a></h2>
 <p>The target is ready to be fuzzed. One can launch AFL++ on the target with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pastis-aflpp<span class="w"> </span>online
 </pre></div>
 </div>
 </section>
 <section id="running-tritondse">
-<h2>Running TritonDSE<a class="headerlink" href="#running-tritondse" title="Permalink to this heading"></a></h2>
+<h2>Running TritonDSE<a class="headerlink" href="#running-tritondse" title="Link to this heading"></a></h2>
 <p>Once ready we can run TritonDSE on the target with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pastis-triton<span class="w"> </span>online
 </pre></div>
@@ -174,7 +174,7 @@ configuration file.</p>
 </div>
 </section>
 <section id="post-campaign">
-<h2>Post campaign<a class="headerlink" href="#post-campaign" title="Permalink to this heading"></a></h2>
+<h2>Post campaign<a class="headerlink" href="#post-campaign" title="Link to this heading"></a></h2>
 <p>Once the campaign terminated. You can retrieve the whole broker
 workspace in the <em>output</em> directory.</p>
 </section>

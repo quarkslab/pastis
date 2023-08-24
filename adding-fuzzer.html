@@ -11,11 +11,11 @@
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=10f1778b"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -99,9 +99,9 @@
            <div itemprop="articleBody">
              
   <section id="adding-a-fuzzer">
-<h1>Adding a Fuzzer<a class="headerlink" href="#adding-a-fuzzer" title="Permalink to this heading"></a></h1>
+<h1>Adding a Fuzzer<a class="headerlink" href="#adding-a-fuzzer" title="Link to this heading"></a></h1>
 <section id="prerequisites">
-<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this heading"></a></h2>
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
 <p>In order to be integrated in PASTIS a fuzzer should support:</p>
 <ul class="simple">
 <li><p><strong>receiving new inputs</strong> while running</p></li>
@@ -113,7 +113,7 @@ As a matter of example, Honggfuzz does not support such feature and has been mod
 to periodically reading a specific folder for new input files.</p>
 </section>
 <section id="python-driver">
-<h2>Python Driver<a class="headerlink" href="#python-driver" title="Permalink to this heading"></a></h2>
+<h2>Python Driver<a class="headerlink" href="#python-driver" title="Link to this heading"></a></h2>
 <p>Once the fuzzer is ready and satisfies PASTIS constraints, it can be wrapped in a Python driver
 that will act as an interface between the fuzzer and the broker. For that, all the required objects
 and types have been defined in <code class="docutils literal notranslate"><span class="pre">libpastis</span></code>. It notably provides a <code class="xref py py-class docutils literal notranslate"><span class="pre">ClientAgent</span></code> object
@@ -173,7 +173,7 @@ any pre-processing that it considers useful.</p></li>
 </div>
 </section>
 <section id="broker-addon">
-<h2>Broker Addon<a class="headerlink" href="#broker-addon" title="Permalink to this heading"></a></h2>
+<h2>Broker Addon<a class="headerlink" href="#broker-addon" title="Link to this heading"></a></h2>
 <p>The broker is designed to be independent from the fuzzing engine with which it interacts.
 Nonetheless, the broker needs to know which program variant to send the fuzzing engine.
 Thus, the fuzzing engine should provide a <code class="docutils literal notranslate"><span class="pre">FuzzingEngineDescriptor</span></code> providing basic
@@ -195,7 +195,7 @@ separate python module or directly within the main driver code)</em>. The object
 in the API: <a class="reference internal" href="api/descr.html#label-engine-desc"><span class="std std-ref">Fuzzer Interface</span></a>.</p>
 </section>
 <section id="examples">
-<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h2>
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
 <p>There is nothing like examples. Thus one can see existing drivers to see how they are
 implemented and how they work. They can be used as a basis for other fuzzing engines.</p>
 <ul class="simple">

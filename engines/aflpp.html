@@ -11,11 +11,11 @@
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=10f1778b"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -101,9 +101,9 @@
            <div itemprop="articleBody">
              
   <section id="afl">
-<h1>AFL++<a class="headerlink" href="#afl" title="Permalink to this heading"></a></h1>
+<h1>AFL++<a class="headerlink" href="#afl" title="Link to this heading"></a></h1>
 <section id="installation">
-<span id="aflpp-install"></span><h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<span id="aflpp-install"></span><h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
 <p>Running <code class="docutils literal notranslate"><span class="pre">pastis-aflpp</span></code> requires installing AFL++ as it uses <code class="docutils literal notranslate"><span class="pre">afl-fuzz</span></code> binary found
 in the PATH or through an environment variable. It thus has to be installed before the Python
 module.</p>
@@ -121,12 +121,12 @@ variable to make it discoverable by <code class="docutils literal notranslate"><
 module does not intent to find automatically the <code class="docutils literal notranslate"><span class="pre">afl-fuzz</span></code> binary.</p>
 </section>
 <section id="running-pastis-aflpp">
-<h2>Running pastis-aflpp<a class="headerlink" href="#running-pastis-aflpp" title="Permalink to this heading"></a></h2>
+<h2>Running pastis-aflpp<a class="headerlink" href="#running-pastis-aflpp" title="Link to this heading"></a></h2>
 <p>The program <code class="docutils literal notranslate"><span class="pre">pastis-aflpp</span></code> is the main binary using the pastis-aflpp library
 to interact with the broker. It can either be launched locally in offline
 mode or with the broker in an online mode.</p>
 <section id="online-mode">
-<h3>Online mode<a class="headerlink" href="#online-mode" title="Permalink to this heading"></a></h3>
+<h3>Online mode<a class="headerlink" href="#online-mode" title="Link to this heading"></a></h3>
 <p>Launching the <code class="docutils literal notranslate"><span class="pre">pastis-aflpp</span></code> in online mode is as simple as:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pastis-aflpp<span class="w"> </span>online
 </pre></div>
@@ -137,7 +137,7 @@ and port. There is no other parameters as all of them will be received
 through the broker.</p>
 </section>
 <section id="offline-mode">
-<h3>Offline mode<a class="headerlink" href="#offline-mode" title="Permalink to this heading"></a></h3>
+<h3>Offline mode<a class="headerlink" href="#offline-mode" title="Link to this heading"></a></h3>
 <p>In offline mode, all parameters normally received by the broker have to be
 specified on the command line. Options are:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pastis-aflpp<span class="w"> </span>offline<span class="w"> </span>--help

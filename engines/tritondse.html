@@ -11,11 +11,11 @@
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=10f1778b"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -98,13 +98,13 @@
            <div itemprop="articleBody">
              
   <section id="tritondse">
-<h1>TritonDSE<a class="headerlink" href="#tritondse" title="Permalink to this heading"></a></h1>
+<h1>TritonDSE<a class="headerlink" href="#tritondse" title="Link to this heading"></a></h1>
 <p>The utility <code class="docutils literal notranslate"><span class="pre">pastis-triton</span></code> enables launching a TritonDSE. It can be launched
 in an alert driven manner in <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> or in independent manner with <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code>.
 Also, it can be run in two modes, <cite>online</cite> to interact with a <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> server or <cite>offline</cite>
 to run locally on its own.</p>
 <section id="online">
-<h2>Online<a class="headerlink" href="#online" title="Permalink to this heading"></a></h2>
+<h2>Online<a class="headerlink" href="#online" title="Link to this heading"></a></h2>
 <p>The online mode only requires an IP and a port to run as all subsequent parameters
 will be provided by the broker. The default IP and port are <em>localhost</em> on <em>5555</em>.</p>
 <p>If the broker is running on the same machine <code class="docutils literal notranslate"><span class="pre">pastis-triton</span></code> can be launched with:</p>
@@ -119,7 +119,7 @@ will be provided by the broker. The default IP and port are <em>localhost</em> o
 will start performing its coverage.</p>
 </section>
 <section id="offline">
-<h2>Offline<a class="headerlink" href="#offline" title="Permalink to this heading"></a></h2>
+<h2>Offline<a class="headerlink" href="#offline" title="Link to this heading"></a></h2>
 <p>Running locally, all parameters normally through the network then have to be provided
 on the commande line. The help message is the following:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: pastis-triton offline [OPTIONS] PROGRAM [PARGVS]...
@@ -173,7 +173,7 @@ Options:
 </ul>
 </section>
 <section id="configuration-results">
-<h2>Configuration &amp; Results<a class="headerlink" href="#configuration-results" title="Permalink to this heading"></a></h2>
+<h2>Configuration &amp; Results<a class="headerlink" href="#configuration-results" title="Link to this heading"></a></h2>
 <p>The project handles PASTIS parameters and translate them in their counterpart
 in tritondse. For instance the running mode <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code> and <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> are
 PASTIS parameters. That parameter will be put in practice by register different

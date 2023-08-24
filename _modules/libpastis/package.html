@@ -10,11 +10,11 @@
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../../_static/jquery.js"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=10f1778b"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -107,7 +107,9 @@
 <span class="kn">from</span> <span class="nn">libpastis.types</span> <span class="kn">import</span> <span class="n">Arch</span><span class="p">,</span> <span class="n">Platform</span>
 
 
-<div class="viewcode-block" id="BinaryPackage"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage">[docs]</a><span class="k">class</span> <span class="nc">BinaryPackage</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="BinaryPackage">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage">[docs]</a>
+<span class="k">class</span> <span class="nc">BinaryPackage</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Binary Package representing a given target to fuzz along with its shared</span>
 <span class="sd">    libraries and additional files required (cmplog, dictionnary etc.).</span>
@@ -187,7 +189,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span>
 
-<div class="viewcode-block" id="BinaryPackage.is_cmplog"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_cmplog">[docs]</a>    <span class="k">def</span> <span class="nf">is_cmplog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<div class="viewcode-block" id="BinaryPackage.is_cmplog">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_cmplog">[docs]</a>
+    <span class="k">def</span> <span class="nf">is_cmplog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if the package contains a cmplog file.</span>
 
@@ -195,7 +199,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cmplog</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
 
-<div class="viewcode-block" id="BinaryPackage.is_quokka"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_quokka">[docs]</a>    <span class="k">def</span> <span class="nf">is_quokka</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+
+<div class="viewcode-block" id="BinaryPackage.is_quokka">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_quokka">[docs]</a>
+    <span class="k">def</span> <span class="nf">is_quokka</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if the package contains a quokka file.</span>
 
@@ -203,7 +210,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quokka</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
 
-<div class="viewcode-block" id="BinaryPackage.is_dictionary"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_dictionary">[docs]</a>    <span class="k">def</span> <span class="nf">is_dictionary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+
+<div class="viewcode-block" id="BinaryPackage.is_dictionary">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_dictionary">[docs]</a>
+    <span class="k">def</span> <span class="nf">is_dictionary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if the package contains a dictionnary.</span>
 
@@ -211,7 +221,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
 
-<div class="viewcode-block" id="BinaryPackage.is_standalone"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_standalone">[docs]</a>    <span class="k">def</span> <span class="nf">is_standalone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+
+<div class="viewcode-block" id="BinaryPackage.is_standalone">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.is_standalone">[docs]</a>
+    <span class="k">def</span> <span class="nf">is_standalone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Indicates that this BinaryPackage only contains the program under test and no</span>
 <span class="sd">        additional files such as a Quokka database or a cmplog instrumented binary.</span>
@@ -221,6 +234,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">is_cmplog</span><span class="p">()</span> <span class="ow">or</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">is_dictionary</span><span class="p">()</span> <span class="ow">or</span>
                     <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">other_files</span><span class="p">))</span></div>
+
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">arch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Arch</span><span class="p">:</span>
@@ -240,7 +254,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_platform</span>
 
-<div class="viewcode-block" id="BinaryPackage.auto"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.auto">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="BinaryPackage.auto">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.auto">[docs]</a>
+    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">auto</span><span class="p">(</span><span class="n">exe_file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;BinaryPackage&#39;</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Take a file and try creating a BinaryPackage with it. The `exe_file` is</span>
@@ -295,7 +311,10 @@
 
         <span class="k">return</span> <span class="n">p</span></div>
 
-<div class="viewcode-block" id="BinaryPackage.auto_directory"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.auto_directory">[docs]</a>    <span class="nd">@staticmethod</span>
+
+<div class="viewcode-block" id="BinaryPackage.auto_directory">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.auto_directory">[docs]</a>
+    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">auto_directory</span><span class="p">(</span><span class="n">exe_file</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;BinaryPackage&#39;</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create a BinaryPackage with all files it can find in the given</span>
@@ -317,7 +336,10 @@
             <span class="k">if</span> <span class="n">file</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">_main_bin</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_callgraph</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_quokka</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_cmplog</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">]:</span>
                 <span class="n">p</span><span class="o">.</span><span class="n">other_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="BinaryPackage.make_package"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.make_package">[docs]</a>    <span class="k">def</span> <span class="nf">make_package</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+
+<div class="viewcode-block" id="BinaryPackage.make_package">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.make_package">[docs]</a>
+    <span class="k">def</span> <span class="nf">make_package</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Pack the BinaryPackage in a zip file.</span>
 
@@ -342,6 +364,7 @@
             <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
         <span class="nb">zip</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span></div>
+
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_read_binary_infos</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Platform</span><span class="p">,</span> <span class="n">Arch</span><span class="p">]]:</span>
@@ -371,7 +394,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="BinaryPackage.from_binary"><a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.from_binary">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="BinaryPackage.from_binary">
+<a class="viewcode-back" href="../../api/package.html#libpastis.package.BinaryPackage.from_binary">[docs]</a>
+    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">from_binary</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">binary</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">extract_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;BinaryPackage&#39;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Convert the binary blob received as a BinaryPackage object. If its an archive,</span>
@@ -409,7 +434,9 @@
             <span class="n">program_path</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">stat</span><span class="o">.</span><span class="n">S_IRWXU</span><span class="p">)</span>  <span class="c1"># set the binary executable</span>
             <span class="k">return</span> <span class="n">BinaryPackage</span><span class="p">(</span><span class="n">program_path</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mimetype not recognized </span><span class="si">{</span><span class="n">mime</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div></div>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mimetype not recognized </span><span class="si">{</span><span class="n">mime</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
 </pre></div>
 
            </div>

@@ -11,11 +11,11 @@
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=10f1778b"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -101,7 +101,7 @@
            <div itemprop="articleBody">
              
   <section id="running-pastis">
-<h1>Running PASTIS<a class="headerlink" href="#running-pastis" title="Permalink to this heading"></a></h1>
+<h1>Running PASTIS<a class="headerlink" href="#running-pastis" title="Link to this heading"></a></h1>
 <p>Before running PASTIS, the target must be harnessed, and all variants compiled for
 each engines. In order one should launch:</p>
 <ul class="simple">
@@ -109,7 +109,7 @@ each engines. In order one should launch:</p>
 <li><p>the fuzzing engines (with no specific order)</p></li>
 </ul>
 <section id="broker">
-<h2>Broker<a class="headerlink" href="#broker" title="Permalink to this heading"></a></h2>
+<h2>Broker<a class="headerlink" href="#broker" title="Link to this heading"></a></h2>
 <p>The broker can be launched with <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> binary. Command line arguments are
 the following:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: pastis-broker [OPTIONS] [PARGVS]...
@@ -200,7 +200,7 @@ fuzzing engines pastis-broker will automatically balances honggfuzz instances an
 </div>
 </section>
 <section id="fuzzers">
-<h2>Fuzzers<a class="headerlink" href="#fuzzers" title="Permalink to this heading"></a></h2>
+<h2>Fuzzers<a class="headerlink" href="#fuzzers" title="Link to this heading"></a></h2>
 <p>Engines can be launched with theirs appropriate binary:</p>
 <ul class="simple">
 <li><p>AFL++: <code class="docutils literal notranslate"><span class="pre">pastis-aflpp</span> <span class="pre">online</span> <span class="pre">[IP]</span> <span class="pre">[PORT]</span></code></p></li>
@@ -209,7 +209,7 @@ fuzzing engines pastis-broker will automatically balances honggfuzz instances an
 </ul>
 <p>If no IP or port is provided, they will automatically connect to <em>localhost:5555</em>.</p>
 <section id="pastisd">
-<h3>pastisd<a class="headerlink" href="#pastisd" title="Permalink to this heading"></a></h3>
+<h3>pastisd<a class="headerlink" href="#pastisd" title="Link to this heading"></a></h3>
 <p>The binary <code class="docutils literal notranslate"><span class="pre">pastisd</span></code> is meant to be used as a daemon. It will check the availability of all
 fuzzers and will connect to the broker announcing all available engines. It is thus the broker
 that will automatically decide which fuzzer to launch. The <code class="docutils literal notranslate"><span class="pre">pastisd</span></code> daemon will receive
@@ -226,7 +226,7 @@ each fuzzers explicitely.</p>
 </section>
 </section>
 <section id="analysing-results">
-<h2>Analysing Results<a class="headerlink" href="#analysing-results" title="Permalink to this heading"></a></h2>
+<h2>Analysing Results<a class="headerlink" href="#analysing-results" title="Link to this heading"></a></h2>
 <p>Corpus, crashes, clients logs and telemetry are stored in the broker workspace.
 It thus aggregate all data related to a campaign. If a SAST report have been
 provided it also provides for each alertes data returned by clients, inputs triggered
