@@ -1,6 +1,5 @@
 sphinx_rtd_theme
 sphinx
-breathe
 sphinx-intl
 sphinx_fontawesome
 nbsphinx
