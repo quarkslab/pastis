@@ -318,8 +318,9 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
 @click.option('--union/--no-union', type=bool, is_flag=True, default=True, help="Show union of analyses")
 @click.option('-t', "--timeout", type=int, default=86400, help="Duration of the campaign (timeout)")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
+@click.option('--is-proxy', type=bool, is_flag=True, default=False, help="Fuzzer is a proxy")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
-def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, workspace: Tuple[str]):
+def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, is_proxy: bool, workspace: Tuple[str]):
 
     configure_logging(logging.INFO)
 
@@ -327,6 +328,11 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
     for ws in workspace:
         logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
+
+        # FIXME: Rework this.
+        if is_proxy:
+            campaign.SEED_FUZZER = 'PROXY'
+
         campaign.load()  # by default load in qbdi
 
         if campaign.replay_ok():
