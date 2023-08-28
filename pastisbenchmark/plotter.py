@@ -313,7 +313,8 @@ class Plotter(object):
                     stot, sat, unsat, to = sstats["total_solving_attempt"], sstats["SAT"], sstats["UNSAT"], sstats["TIMEOUT"]
                     coved, uncoved = len(sstats["branch_reverted"]), len(sstats["branch_not_solved"])
                     ratio = cov_number / sat if sat else cov_number
-                    entry = SmtEntry(engine=fuzzer, sat=sat, unsat=unsat, timeout=to, total=stot, avg_query=sovt/stot,
+                    avg_query = sovt / stot if stot else -1.0
+                    entry = SmtEntry(engine=fuzzer, sat=sat, unsat=unsat, timeout=to, total=stot, avg_query=avg_query,
                                      cov_sat_ratio=ratio, branch_solved=coved, branch_not_solved=uncoved)
                     entries.append(entry)
             except FileNotFoundError:
