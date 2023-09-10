@@ -225,6 +225,8 @@ class BinaryPackage(object):
             if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog, p._dictionary]:
                 p.other_files.append(file)
 
+        return p
+
     def make_package(self) -> Path:
         """
         Pack the BinaryPackage in a zip file.
@@ -247,7 +249,7 @@ class BinaryPackage(object):
         if self._dictionary:
             zip.write(self._dictionary, self._dictionary.name)
         for file in self.other_files:
-            zip.write(file)
+            zip.write(file, file.name)
         zip.close()
         return Path(fname)
 

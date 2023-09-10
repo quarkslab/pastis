@@ -707,7 +707,7 @@ class PastisBroker(BrokerAgent):
         for file in d.iterdir():
             if file.is_file():
                 try:
-                    pkg = BinaryPackage.auto(file)  # try creating a package
+                    pkg = BinaryPackage.auto_directory(file)  # try creating a package
                 except ValueError:  # if not an executable
                     continue
 
