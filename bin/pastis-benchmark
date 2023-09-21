@@ -357,13 +357,12 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
             logging.warning(f"workspace: {ws} has not been replayed")
 
 
-    # FIXME: saving plot to pdf/png does not save the legend. Need to be fixed
-    # for ws in [Path(x) for x in workspace]:
-    #     out_dir = ws / "plots"
-    #     if not out_dir.exists():
-    #         out_dir.mkdir()
-    #     plotter.save_to(out_dir)
-    #     logging.info(f"plot written to: {out_dir}")
+    for ws in [Path(x) for x in workspace]:
+        out_dir = ws / "plots"
+        if not out_dir.exists():
+            out_dir.mkdir()
+        plotter.save_to(out_dir)
+        logging.info(f"plot written to: {out_dir}")
 
     if show:
         logging.info("Show plot")

@@ -30,7 +30,7 @@ class Plotter(object):
     PLOT_DIR = "plots"
 
     def __init__(self, name: str, timeout: int):
-        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2)
+        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(16, 8))
         self.name = name
         self._timeout = timeout
 
@@ -146,7 +146,9 @@ class Plotter(object):
         plt.show()
 
     def save_to(self, dir: Union[str, Path]) -> None:
-        plt.savefig(dir / "plot.pdf", dpi=600)
+        self._configure_plot(self.ax1, ylabel="coverage (edge)")
+        self._configure_plot(self.ax2, ylabel="coverage (edge)", is_log=True)
+        plt.savefig(dir / "plot.pdf", bbox_inches="tight")
 
 
     def calculate_stats(self, campaign: CampaignResult) -> CampaignStats:
