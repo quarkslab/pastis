@@ -334,7 +334,9 @@
 
         <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">bin_f</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">file</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">_main_bin</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_callgraph</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_quokka</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_cmplog</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">]:</span>
-                <span class="n">p</span><span class="o">.</span><span class="n">other_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span></div>
+                <span class="n">p</span><span class="o">.</span><span class="n">other_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">p</span></div>
 
 
 <div class="viewcode-block" id="BinaryPackage.make_package">
@@ -361,7 +363,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">:</span>
             <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dictionary</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_files</span><span class="p">:</span>
-            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="nb">zip</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="nb">zip</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span></div>
 
