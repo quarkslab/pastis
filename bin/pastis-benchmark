@@ -319,8 +319,9 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
 @click.option('-t', "--timeout", type=int, default=86400, help="Duration of the campaign (timeout)")
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
 @click.option('--is-proxy', type=bool, is_flag=True, default=False, help="Fuzzer is a proxy")
+@click.option('--plot-dir', type=click.Path(exists=False, file_okay=False, dir_okay=True, readable=False), default=None, help="Plot output directory")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
-def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, is_proxy: bool, workspace: Tuple[str]):
+def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, is_proxy: bool, plot_dir: Tuple[str], workspace: Tuple[str]):
 
     configure_logging(logging.INFO)
 
@@ -332,6 +333,9 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
         # FIXME: Rework this.
         if is_proxy:
             campaign.SEED_FUZZER = 'PROXY'
+
+        if plot_dir:
+            plotter.PLOT_DIR = plot_dir
 
         campaign.load()  # by default load in qbdi
 
@@ -358,7 +362,7 @@ def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str,
 
 
     for ws in [Path(x) for x in workspace]:
-        out_dir = ws / "plots"
+        out_dir = ws / plotter.PLOT_DIR
         if not out_dir.exists():
             out_dir.mkdir()
         plotter.save_to(out_dir)
