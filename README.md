@@ -71,18 +71,9 @@ engine.
 
 To install AFL++ please refer to the official [documentation](https://github.com/AFLplusplus/AFLplusplus#getting-started).
 
-**Honggfuzz**
+**Honggfuzz (>= v2.6)**
 
-Honggfuzz requires a specific build with a [patch applied](https://github.com/quarkslab/pastis/blob/main/engines/pastis-honggfuzz/patches/honggfuzz-5a504b49-pastis.patch)
-it can be compiled by applying the following steps:
-
-```bash
-sudo apt-get install binutils-dev libunwind-dev libblocksruntime-dev clang
-git clone https://github.com/quarkslab/pastis.git
-cd pastis/engines/pastis-honggfuzz/patches
-./make_hf.sh
-echo "export HFUZZ_PATH=$PWD/honggfuzz-5a504b49" >> ~/.profile
-```
+To install Honggfuzz please refer to the official [documentation](https://github.com/google/honggfuzz#installation).
 
 ## Usage
 
