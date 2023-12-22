@@ -320,12 +320,15 @@ def replay(workspace: str, type: str, injloc: str, live: bool, stream: bool, tim
 @click.option('-n', '--name', type=str, required=True, help="Name to give to the plotting")
 @click.option('--is-proxy', type=bool, is_flag=True, default=False, help="Fuzzer is a proxy")
 @click.option('--plot-dir', type=click.Path(exists=False, file_okay=False, dir_okay=True, readable=False), default=None, help="Plot output directory")
+@click.option('-c', '--colors', type=str, required=False, help="Comma-separated list of colors to use in the plots")
 @click.argument('workspace', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), nargs=-1)
-def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, is_proxy: bool, plot_dir: Tuple[str], workspace: Tuple[str]):
+def plot(show: bool, show_tt_inputs: bool, union: bool, timeout: int, name: str, is_proxy: bool, plot_dir: Tuple[str], colors: str, workspace: Tuple[str]):
 
     configure_logging(logging.INFO)
 
-    plotter = Plotter(name, timeout)
+    color_list = [c for c in colors.split(',')] if colors else []
+
+    plotter = Plotter(name, timeout, color_list)
     for ws in workspace:
         logging.info(f"Load workspace: {ws}")
         campaign = CampaignResult(Path(ws))
@@ -382,7 +385,7 @@ def history(workspace: str):
     campaign = CampaignResult(Path(workspace))
     campaign.load()
 
-    plotter = Plotter(workspace, 0)
+    plotter = Plotter(workspace, 0, [])
     plotter.show_delta_history(campaign)
 
 

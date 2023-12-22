@@ -29,10 +29,11 @@ class Plotter(object):
 
     PLOT_DIR = "plots"
 
-    def __init__(self, name: str, timeout: int):
+    def __init__(self, name: str, timeout: int, colors: List[str]):
         self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(16, 8))
         self.name = name
         self._timeout = timeout
+        self._colors = colors
 
         # self._configure_plot(self.ax1, ylabel="coverage (edge)")
         # self._configure_plot(self.ax2, ylabel="coverage (edge)", is_log=True)
@@ -112,6 +113,9 @@ class Plotter(object):
             return fuzzer
 
     def format_plot(self, campaign, fuzzer) -> str:
+        if self._colors and len(self._colors) > 0:
+            return self._colors.pop(0)
+
         green = "#30a230"
         grey = "#1f77b4"
         brown = "#944b0c"
