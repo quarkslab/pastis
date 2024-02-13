@@ -7,6 +7,10 @@ from typing import Tuple, Optional, Union
 
 # third-party imports
 import lief
+try:
+    import lief.EXE_FORMATS as EXE_FORMATS
+except ImportError:  #
+    import lief.Binary.FORMATS as EXE_FORMATS
 import magic
 import shutil
 import stat
@@ -270,9 +274,9 @@ class BinaryPackage(object):
         arch = mapping.get(p.header.machine_type)
 
         # Determine the platform from its format
-        mapping_elf = {lief.EXE_FORMATS.ELF: Platform.LINUX,
-                       lief.EXE_FORMATS.PE: Platform.WINDOWS,
-                       lief.EXE_FORMATS.MACHO: Platform.MACOS}
+        mapping_elf = {EXE_FORMATS.ELF: Platform.LINUX,
+                       EXE_FORMATS.PE: Platform.WINDOWS,
+                       EXE_FORMATS.MACHO: Platform.MACOS}
         # FIXME: differentiating between ELF (Linux, Android ..) and MACHO (MacOS, iOS..)
         fmt = mapping_elf.get(p.format)
 
