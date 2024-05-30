@@ -23,7 +23,7 @@ from tritondse.types      import Addr, Edge, SymExType, Architecture, Platform
 from libpastis import ClientAgent, BinaryPackage, SASTReport
 from libpastis.types      import SeedType, FuzzingEngineInfo, ExecMode, CoverageMode, SeedInjectLoc, CheckMode, LogLevel, AlertData, FuzzMode
 from tritondse.trace      import QBDITrace, TraceException
-from tritondse.worklist import FreshSeedPrioritizerWorklist, WorklistAddressToSet
+from tritondse.seed_scheduler import FreshSeedPrioritizerWorklist, WorklistAddressToSet
 
 def to_h(seed: Seed) -> str:
     if seed.is_composite():
