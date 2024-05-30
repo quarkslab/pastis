@@ -16,7 +16,7 @@
         <script src="../_static/jquery.js?v=5d32c60e"></script>
         <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../_static/documentation_options.js?v=10f1778b"></script>
-        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
         <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
@@ -687,7 +687,7 @@ and the original string.</p>
 character (including n r t f and spaces) and will discard
 empty strings from the result.</p>
 </dd>
-<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
 -1 (the default value) means no limit.</p>
 </dd>
 </dl>
@@ -713,11 +713,12 @@ empty strings from the result.</p>
 character (including n r t f and spaces) and will discard
 empty strings from the result.</p>
 </dd>
-<dt>maxsplit</dt><dd><p>Maximum number of splits (starting from the left).
+<dt>maxsplit</dt><dd><p>Maximum number of splits.
 -1 (the default value) means no limit.</p>
 </dd>
 </dl>
 </div></blockquote>
+<p>Splitting starts at the front of the string and works to the end.</p>
 <p>Note, str.split() is mainly useful for data that has been intentionally
 delimited.  With natural text that includes punctuation, consider using
 the regular expression module.</p>
