@@ -6,10 +6,16 @@ import logging
 from typing import Tuple, Optional, Union
 
 # third-party imports
-import lief
 import magic
 import shutil
 import stat
+import lief
+try:
+    # LIEF <= v0.13.2
+    EXE_FORMATS = lief.EXE_FORMATS
+except AttributeError:
+    # LIEF >= v0.14.0
+    EXE_FORMATS = lief.Binary.FORMATS
 
 # local imports
 from libpastis.types import Arch, Platform
@@ -270,9 +276,9 @@ class BinaryPackage(object):
         arch = mapping.get(p.header.machine_type)
 
         # Determine the platform from its format
-        mapping_elf = {lief.EXE_FORMATS.ELF: Platform.LINUX,
-                       lief.EXE_FORMATS.PE: Platform.WINDOWS,
-                       lief.EXE_FORMATS.MACHO: Platform.MACOS}
+        mapping_elf = {EXE_FORMATS.ELF: Platform.LINUX,
+                       EXE_FORMATS.PE: Platform.WINDOWS,
+                       EXE_FORMATS.MACHO: Platform.MACOS}
         # FIXME: differentiating between ELF (Linux, Android ..) and MACHO (MacOS, iOS..)
         fmt = mapping_elf.get(p.format)
 
