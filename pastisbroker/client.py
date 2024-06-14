@@ -83,7 +83,9 @@ class PastisClient(object):
         if self.netid == b"PROXY":
             return "PROXY"
         else:
-            return f"CLI-{self.id}-{self._engine.SHORT_NAME if self._engine else 'N-A'}"
+            name = self.hostname if self.hostname else "CLI"
+            engine = self._engine.SHORT_NAME if self._engine else 'N-A'
+            return f"{name}-{self.id}-{engine}"
 
     def is_new_seed(self, seed: bytes) -> bool:
         """
