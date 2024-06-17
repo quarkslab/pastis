@@ -91,7 +91,9 @@ RUN DEBIAN_FRONTEND="noninteractive" \
         libmagic1 \
         python-is-python3
 
-RUN pip install pastis-framework
+RUN git clone https://github.com/quarkslab/pastis.git && \
+    cd pastis && \
+    pip install .
 
 ENV AFLPP_PATH=/usr/local/bin
 ENV HFUZZ_PATH=/usr/local/bin
