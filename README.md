@@ -124,15 +124,20 @@ The process is further [detailed in the documentation](https://quarkslab.github.
 You can also run PASTIS using Docker:
 
 ```bash
-docker pull ubuntu:22.04
-docker build -t pastis-docker .
-docker run -v <HOST-WORKSPACE>:/workspace --cap-add=SYS_PTRACE --user $(id -u $USER):$(id -g $USER) -it pastis-docker
+# Pull from GitHub's registry.
+docker pull ghcr.io/quarkslab/pastis:latest
+
+# Or build the image.
+docker build -t pastis .
+
+# And run a container.
+docker run -v <HOST-WORKSPACE>:/workspace --cap-add=SYS_PTRACE --user $(id -u $USER):$(id -g $USER) -it ghcr.io/quarkslab/pastis # or pastis if you buily the image locally.
 ```
 
 To open another terminal to an already running container:
 
 ```bash
-docker exec -it $(docker ps | grep 'pastis-docker' | awk '{print $1}') /bin/bash
+docker exec -it $(docker ps | grep 'pastis' | awk '{print $1}') /bin/bash
 ```
 
 The PASTIS Docker image has already installed all the needed dependencies such as AFL++ and Honggfuzz.
