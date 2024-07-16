@@ -22,7 +22,6 @@ setup(
         "pastisbroker",
         "pastisbenchmark",
         "pastisaflpp",
-        "aflppbroker",
         "pastishf",
         "hfbroker",
         "pastisdse",
@@ -31,7 +30,6 @@ setup(
     package_dir={
         # AFL++
         "pastisaflpp": "engines/pastis-aflpp/pastisaflpp",
-        "aflppbroker": "engines/pastis-aflpp/broker-addon/aflppbroker",
         # Honggfuzz
         "pastishf": "engines/pastis-honggfuzz/pastishf",
         "hfbroker": "engines/pastis-honggfuzz/broker-addon/hfbroker",
@@ -72,12 +70,16 @@ setup(
         'Operating System :: OS Independent',
     ],
     test_suite="",
+    entry_points={
+        "console_scripts": [
+            "pastis-aflpp = pastisaflpp.__main__:main"
+        ]
+    },
     scripts=[
         'bin/pastis-broker',
         'bin/pastis-benchmark',
         'bin/pastisd',
         'engines/pastis-honggfuzz/bin/pastis-honggfuzz',
         'engines/pastis-triton/bin/pastis-triton',
-        'engines/pastis-aflpp/bin/pastis-aflpp'
     ]
 )

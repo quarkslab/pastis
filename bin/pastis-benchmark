@@ -129,7 +129,7 @@ def showmap(bins: str):
     MAP = {
               "Triton": "pastisttbroker",
               "Honggfuzz": "hfbroker",
-              "AFL++": "aflppbroker"
+              "AFL++": "pastisaflpp.addon"
     }
     mapping = {k: load_engine_descriptor(v) for k,v in MAP.items()}
     for file in iterate_file(bins):

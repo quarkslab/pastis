@@ -120,7 +120,7 @@ class AFLPPDriver:
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self._agent.send_hello([FuzzingEngineInfo("AFLPP", pastisaflpp.__version__, "aflppbroker")])
+        self._agent.send_hello([FuzzingEngineInfo("AFLPP", pastisaflpp.__version__, "pastisaflpp.addon")])
 
     def run(self):
         self.aflpp.wait()
