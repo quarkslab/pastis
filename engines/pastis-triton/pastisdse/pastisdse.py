@@ -103,7 +103,7 @@ class PastisDSE(object):
         self.agent.register_start_callback(self.start_received) # register start because launched manually
         self.agent.connect(remote, port)
         self.agent.start()
-        self.agent.send_hello([FuzzingEngineInfo("TRITON", pastisdse.__version__, "pastisttbroker")])
+        self.agent.send_hello([FuzzingEngineInfo("TRITON", pastisdse.__version__, "pastisdse.addon")])
 
     def start(self):
         self._th = threading.Thread(target=self.run, daemon=True)

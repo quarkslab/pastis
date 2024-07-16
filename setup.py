@@ -24,7 +24,6 @@ setup(
         "pastisaflpp",
         "pastishf",
         "pastisdse",
-        "pastisttbroker"
     ],
     package_dir={
         # AFL++
@@ -33,7 +32,6 @@ setup(
         "pastishf": "engines/pastis-honggfuzz/pastishf",
         # Triton
         "pastisdse": "engines/pastis-triton/pastisdse",
-        "pastisttbroker": "engines/pastis-triton/broker-addon/pastisttbroker"
     },
     url="https://github.com/quarkslab/pastis",
     project_urls={
@@ -71,13 +69,13 @@ setup(
     entry_points={
         "console_scripts": [
             "pastis-aflpp = pastisaflpp.__main__:main",
-            "pastis-honggfuzz = pastishf.__main__:main"
+            "pastis-honggfuzz = pastishf.__main__:main",
+            "pastis-triton = pastisdse.__main__:main"
         ]
     },
     scripts=[
         'bin/pastis-broker',
         'bin/pastis-benchmark',
         'bin/pastisd',
-        'engines/pastis-triton/bin/pastis-triton',
     ]
 )
