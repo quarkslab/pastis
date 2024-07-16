@@ -22,7 +22,7 @@ from pastisbroker.workspace import Workspace
 from libpastis.types import CheckMode, SeedInjectLoc
 
 # Engines imports
-from pastishf import HonggfuzzDriver, spawn_online_honggfuzz
+from pastishonggfuzz import HonggfuzzDriver, spawn_online_honggfuzz
 from pastisaflpp import spawn_online_aflpp, check_scaling_frequency
 from pastistritondse import spawn_online_triton
 
@@ -128,7 +128,7 @@ def showmap(bins: str):
 
     MAP = {
               "Triton": "pastistritondse.addon",
-              "Honggfuzz": "pastishf.addon",
+              "Honggfuzz": "pastishonggfuzz.addon",
               "AFL++": "pastisaflpp.addon"
     }
     mapping = {k: load_engine_descriptor(v) for k,v in MAP.items()}

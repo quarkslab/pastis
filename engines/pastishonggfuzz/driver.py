@@ -15,10 +15,10 @@ from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo
                             LogLevel, AlertData, FuzzMode
 
 # Local imports
-import pastishf
-from pastishf.replay import Replay
-from pastishf.honggfuzz import HonggfuzzProcess
-from pastishf.workspace import Workspace
+import pastishonggfuzz
+from pastishonggfuzz.replay import Replay
+from pastishonggfuzz.honggfuzz import HonggfuzzProcess
+from pastishonggfuzz.workspace import Workspace
 
 
 # Inotify logs are very talkative, set them to ERROR
@@ -121,7 +121,7 @@ class HonggfuzzDriver:
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", pastishf.__version__, "pastishf.addon")])
+        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", pastishonggfuzz.__version__, "pastishonggfuzz.addon")])
 
     def run(self):
         self.honggfuzz.wait()
@@ -238,7 +238,7 @@ class HonggfuzzDriver:
             logging.error(f"Wrong fuzzing engine received {engine.name} while I am Honggfuzz")
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine received {engine.name} can't do anything")
             return
-        if engine.version != pastishf.__version__:
+        if engine.version != pastishonggfuzz.__version__:
             logging.error(f"Wrong fuzzing engine version {engine.version} received")
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine version {engine.version} do nothing")
             return

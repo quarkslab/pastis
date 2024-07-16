@@ -17,7 +17,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngineInfo, FuzzMode
 
 # Local imports
-from pastishf import HonggfuzzDriver, __version__
+from pastishonggfuzz import HonggfuzzDriver, __version__
 
 
 coloredlogs.install(level=logging.DEBUG,

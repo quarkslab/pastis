@@ -22,14 +22,14 @@ setup(
         "pastisbroker",
         "pastisbenchmark",
         "pastisaflpp",
-        "pastishf",
+        "pastishonggfuzz",
         "pastistritondse",
     ],
     package_dir={
         # AFL++
         "pastisaflpp": "engines/pastisaflpp",
         # Honggfuzz
-        "pastishf": "engines/pastishf",
+        "pastishonggfuzz": "engines/pastishonggfuzz",
         # Triton
         "pastistritondse": "engines/pastistritondse",
     },
@@ -69,7 +69,7 @@ setup(
     entry_points={
         "console_scripts": [
             "pastis-aflpp = pastisaflpp.__main__:main",
-            "pastis-honggfuzz = pastishf.__main__:main",
+            "pastis-honggfuzz = pastishonggfuzz.__main__:main",
             "pastis-tritondse = pastistritondse.__main__:main"
         ]
     },
