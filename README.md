@@ -12,7 +12,7 @@ At the moment it supports the following fuzzing engines:
 
 <p align="center" style="font-size:20px">
   <a href="https://quarkslab.github.io/pastis">
-    [Documentation] 
+    [Documentation]
   </a>
 </p>
 
@@ -30,7 +30,7 @@ At the moment it supports the following fuzzing engines:
   </a>
   <img src="https://img.shields.io/github/downloads/quarkslab/pastis/total"/>
   <img src="https://img.shields.io/pypi/dm/pastis-framework"/>
-  
+
 </p>
 
 ---
@@ -99,7 +99,7 @@ pastis-aflpp online
 Or:
 
 ```commandline
-pastis-triton online
+pastis-tritondse online
 ```
 
 Full documentation is available: [here](https://quarkslab.github.io/pastis/campaign.html)
@@ -146,14 +146,14 @@ The PASTIS Docker image has already installed all the needed dependencies such a
 
 ## Papers and conference
 
-* **Symbolic Execution the Swiss-Knife of the Reverse Engineer Toolbox**  
-  **Venue**: KLEE Workshop, 2022 [[:books:]](https://srg.doc.ic.ac.uk/klee22/talks/David-Reverse-Engineering.pdf) [[:movie_camera:]](https://youtu.be/PNbNtTa5Sp4)  
-  **Authors**: Robin David, Richard Abou Chaaya, Christian Heitman  
+* **Symbolic Execution the Swiss-Knife of the Reverse Engineer Toolbox**
+  **Venue**: KLEE Workshop, 2022 [[:books:]](https://srg.doc.ic.ac.uk/klee22/talks/David-Reverse-Engineering.pdf) [[:movie_camera:]](https://youtu.be/PNbNtTa5Sp4)
+  **Authors**: Robin David, Richard Abou Chaaya, Christian Heitman
 
 
-* **From source code to crash test-case through software testing automation**  
-  **Venue**: European Cyber Week, C&ESAR Workshop, 2021  [paper](https://ceur-ws.org/Vol-3056/paper-02.pdf) [slides](https://github.com/quarkslab/conf-presentations/blob/main-page/C%26ESAR-2021/CESAR-2021_slides_2-2.pdf)  
-  **Authors**: Robin David, Jonathan Salwan, Justin Bourroux  
+* **From source code to crash test-case through software testing automation**
+  **Venue**: European Cyber Week, C&ESAR Workshop, 2021  [paper](https://ceur-ws.org/Vol-3056/paper-02.pdf) [slides](https://github.com/quarkslab/conf-presentations/blob/main-page/C%26ESAR-2021/CESAR-2021_slides_2-2.pdf)
+  **Authors**: Robin David, Jonathan Salwan, Justin Bourroux
 
 
 ## Cite Pastis

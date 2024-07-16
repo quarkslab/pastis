@@ -14,7 +14,7 @@ import queue
 from triton               import MemoryAccess, CPUSIZE
 
 # Pastis & triton imports
-import pastisdse
+import pastistritondse
 from tritondse            import Config, Program, CleLoader, CoverageStrategy, SymbolicExplorator, \
                                  SymbolicExecutor, ProcessState, ExplorationStatus, SeedStatus, ProbeInterface, \
                                  Workspace, Seed, CompositeData, SeedFormat, QuokkaProgram
@@ -27,8 +27,8 @@ from tritondse.seed_scheduler import FreshSeedPrioritizerWorklist, WorklistAddre
 
 def to_h(seed: Seed) -> str:
     if seed.is_composite():
-        if PastisDSE.INPUT_FILE_NAME in seed.content.files:
-            return md5(seed.content.files[PastisDSE.INPUT_FILE_NAME]).hexdigest()
+        if TritonDSEDriver.INPUT_FILE_NAME in seed.content.files:
+            return md5(seed.content.files[TritonDSEDriver.INPUT_FILE_NAME]).hexdigest()
         elif "stdin" in seed.content.files:
             return md5(seed.content.files["stdin"]).hexdigest()
         else:
@@ -37,7 +37,7 @@ def to_h(seed: Seed) -> str:
         return md5(seed.content).hexdigest()
 
 
-class PastisDSE(object):
+class TritonDSEDriver(object):
 
     INPUT_FILE_NAME = "input_file"
     STAT_FILE = "pastidse-stats.json"
@@ -103,7 +103,7 @@ class PastisDSE(object):
         self.agent.register_start_callback(self.start_received) # register start because launched manually
         self.agent.connect(remote, port)
         self.agent.start()
-        self.agent.send_hello([FuzzingEngineInfo("TRITON", pastisdse.__version__, "pastisdse.addon")])
+        self.agent.send_hello([FuzzingEngineInfo("TRITON", pastistritondse.__version__, "pastistritondse.addon")])
 
     def start(self):
         self._th = threading.Thread(target=self.run, daemon=True)
@@ -315,8 +315,8 @@ class PastisDSE(object):
         if self.dse is not None:
             logging.warning("DSE already instanciated (override it)")
 
-        if engine.version != pastisdse.__version__:
-            logging.error(f"Pastis-DSE mismatch with one from the server {engine.version} (local: {pastisdse.__version__})")
+        if engine.version != pastistritondse.__version__:
+            logging.error(f"Pastis-DSE mismatch with one from the server {engine.version} (local: {pastistritondse.__version__})")
             return
 
         self._seedloc = seed_inj

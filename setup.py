@@ -23,7 +23,7 @@ setup(
         "pastisbenchmark",
         "pastisaflpp",
         "pastishf",
-        "pastisdse",
+        "pastistritondse",
     ],
     package_dir={
         # AFL++
@@ -31,7 +31,7 @@ setup(
         # Honggfuzz
         "pastishf": "engines/pastishf",
         # Triton
-        "pastisdse": "engines/pastisdse",
+        "pastistritondse": "engines/pastistritondse",
     },
     url="https://github.com/quarkslab/pastis",
     project_urls={
@@ -70,7 +70,7 @@ setup(
         "console_scripts": [
             "pastis-aflpp = pastisaflpp.__main__:main",
             "pastis-honggfuzz = pastishf.__main__:main",
-            "pastis-triton = pastisdse.__main__:main"
+            "pastis-tritondse = pastistritondse.__main__:main"
         ]
     },
     scripts=[
