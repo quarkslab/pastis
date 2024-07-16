@@ -121,7 +121,7 @@ class HonggfuzzDriver:
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", pastishf.__version__, "hfbroker")])
+        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", pastishf.__version__, "pastishf.addon")])
 
     def run(self):
         self.honggfuzz.wait()

@@ -23,7 +23,6 @@ setup(
         "pastisbenchmark",
         "pastisaflpp",
         "pastishf",
-        "hfbroker",
         "pastisdse",
         "pastisttbroker"
     ],
@@ -32,7 +31,6 @@ setup(
         "pastisaflpp": "engines/pastis-aflpp/pastisaflpp",
         # Honggfuzz
         "pastishf": "engines/pastis-honggfuzz/pastishf",
-        "hfbroker": "engines/pastis-honggfuzz/broker-addon/hfbroker",
         # Triton
         "pastisdse": "engines/pastis-triton/pastisdse",
         "pastisttbroker": "engines/pastis-triton/broker-addon/pastisttbroker"
@@ -72,14 +70,14 @@ setup(
     test_suite="",
     entry_points={
         "console_scripts": [
-            "pastis-aflpp = pastisaflpp.__main__:main"
+            "pastis-aflpp = pastisaflpp.__main__:main",
+            "pastis-honggfuzz = pastishf.__main__:main"
         ]
     },
     scripts=[
         'bin/pastis-broker',
         'bin/pastis-benchmark',
         'bin/pastisd',
-        'engines/pastis-honggfuzz/bin/pastis-honggfuzz',
         'engines/pastis-triton/bin/pastis-triton',
     ]
 )
