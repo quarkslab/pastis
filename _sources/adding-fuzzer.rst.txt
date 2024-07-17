@@ -113,5 +113,5 @@ There is nothing like examples. Thus one can see existing drivers to see how the
 implemented and how they work. They can be used as a basis for other fuzzing engines.
 
 * tiny test clients: `test_client.py <https://github.com/quarkslab/pastis/blob/main/tests/test_client.py>`_
-* Honggfuzz driver: `driver.py <https://github.com/quarkslab/pastis/blob/main/engines/pastis-honggfuzz/pastishf/driver.py>`_
-* TritonDSE driver: `pastisdse.py <https://github.com/quarkslab/pastis/blob/main/engines/pastis-triton/pastisdse/pastisdse.py>`_
+* Honggfuzz driver: `driver.py <https://github.com/quarkslab/pastis/blob/main/engines/pastis-honggfuzz/pastishonggfuzz/driver.py>`_
+* TritonDSE driver: `driver.py <https://github.com/quarkslab/pastis/blob/main/engines/pastis-tritondse/pastistritondse/driver.py>`_

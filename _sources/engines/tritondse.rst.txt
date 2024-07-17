@@ -1,7 +1,7 @@
 TritonDSE
 =========
 
-The utility ``pastis-triton`` enables launching a TritonDSE. It can be launched
+The utility ``pastis-tritondse`` enables launching a TritonDSE. It can be launched
 in an alert driven manner in ``ALERT_ONLY`` or in independent manner with ``CHECK_ALL``.
 Also, it can be run in two modes, `online` to interact with a ``pastis-broker`` server or `offline`
 to run locally on its own.
@@ -12,17 +12,17 @@ Online
 The online mode only requires an IP and a port to run as all subsequent parameters
 will be provided by the broker. The default IP and port are *localhost* on *5555*.
 
-If the broker is running on the same machine ``pastis-triton`` can be launched with:
+If the broker is running on the same machine ``pastis-tritondse`` can be launched with:
 
 ::
 
-    $ pastis-triton online
+    $ pastis-tritondse online
 
 If the broker runs on a different machine it can then be launched with:
 
 ::
 
-    $ pastis-triton online -h 8.8.8.8 -p 5555
+    $ pastis-tritondse online -h 8.8.8.8 -p 5555
 
 
 The utility will then automatically receive the parameters, the binary to test and
@@ -39,7 +39,7 @@ on the commande line. The help message is the following:
 
 ::
 
-    Usage: pastis-triton offline [OPTIONS] PROGRAM [PARGVS]...
+    Usage: pastis-tritondse offline [OPTIONS] PROGRAM [PARGVS]...
 
     Options:
       -r, --sast-report FILE          SAST report to use

@@ -101,7 +101,7 @@
              
   <section id="tritondse">
 <h1>TritonDSE<a class="headerlink" href="#tritondse" title="Link to this heading"></a></h1>
-<p>The utility <code class="docutils literal notranslate"><span class="pre">pastis-triton</span></code> enables launching a TritonDSE. It can be launched
+<p>The utility <code class="docutils literal notranslate"><span class="pre">pastis-tritondse</span></code> enables launching a TritonDSE. It can be launched
 in an alert driven manner in <code class="docutils literal notranslate"><span class="pre">ALERT_ONLY</span></code> or in independent manner with <code class="docutils literal notranslate"><span class="pre">CHECK_ALL</span></code>.
 Also, it can be run in two modes, <cite>online</cite> to interact with a <code class="docutils literal notranslate"><span class="pre">pastis-broker</span></code> server or <cite>offline</cite>
 to run locally on its own.</p>
@@ -109,12 +109,12 @@ to run locally on its own.</p>
 <h2>Online<a class="headerlink" href="#online" title="Link to this heading"></a></h2>
 <p>The online mode only requires an IP and a port to run as all subsequent parameters
 will be provided by the broker. The default IP and port are <em>localhost</em> on <em>5555</em>.</p>
-<p>If the broker is running on the same machine <code class="docutils literal notranslate"><span class="pre">pastis-triton</span></code> can be launched with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pastis-triton online
+<p>If the broker is running on the same machine <code class="docutils literal notranslate"><span class="pre">pastis-tritondse</span></code> can be launched with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pastis-tritondse online
 </pre></div>
 </div>
 <p>If the broker runs on a different machine it can then be launched with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pastis-triton online -h 8.8.8.8 -p 5555
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pastis-tritondse online -h 8.8.8.8 -p 5555
 </pre></div>
 </div>
 <p>The utility will then automatically receive the parameters, the binary to test and
@@ -124,7 +124,7 @@ will start performing its coverage.</p>
 <h2>Offline<a class="headerlink" href="#offline" title="Link to this heading"></a></h2>
 <p>Running locally, all parameters normally through the network then have to be provided
 on the commande line. The help message is the following:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: pastis-triton offline [OPTIONS] PROGRAM [PARGVS]...
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: pastis-tritondse offline [OPTIONS] PROGRAM [PARGVS]...
 
 Options:
   -r, --sast-report FILE          SAST report to use

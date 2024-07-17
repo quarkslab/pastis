@@ -113,7 +113,7 @@ Engines can be launched with theirs appropriate binary:
 
 * AFL++: ``pastis-aflpp online [IP] [PORT]``
 * Honggfuzz: ``pastis-honggfuzz online [IP] [PORT]``
-* TritonDSE: ``pastis-triton online [IP] [PORT]``
+* TritonDSE: ``pastis-tritondse online [IP] [PORT]``
 
 If no IP or port is provided, they will automatically connect to *localhost:5555*.
 

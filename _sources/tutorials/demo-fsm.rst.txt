@@ -84,13 +84,13 @@ Once ready we can run TritonDSE on the target with:
 
 .. code-block:: bash
 
-    pastis-triton online
+    pastis-tritondse online
 
 It will connect the broker that will send it the *fsm.tt* target with the right
 configuration.
 
 .. note:: If you want to run TritonDSE with a specific configuration it has to be
-          be provided via the broker with ``-e pastisttbroker --tt-config conf.json``.
+          be provided via the broker with ``-e pastistritondse.addon --tt-config conf.json``.
           The ``-e`` preload the tritondse addon in order to be able to load the
           configuration file.
 

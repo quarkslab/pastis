@@ -162,7 +162,7 @@ launched it should have detected the various variants and wait for clients to co
 <section id="running-tritondse">
 <h2>Running TritonDSE<a class="headerlink" href="#running-tritondse" title="Link to this heading"></a></h2>
 <p>Once ready we can run TritonDSE on the target with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pastis-triton<span class="w"> </span>online
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pastis-tritondse<span class="w"> </span>online
 </pre></div>
 </div>
 <p>It will connect the broker that will send it the <em>fsm.tt</em> target with the right
@@ -170,7 +170,7 @@ configuration.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If you want to run TritonDSE with a specific configuration it has to be
-be provided via the broker with <code class="docutils literal notranslate"><span class="pre">-e</span> <span class="pre">pastisttbroker</span> <span class="pre">--tt-config</span> <span class="pre">conf.json</span></code>.
+be provided via the broker with <code class="docutils literal notranslate"><span class="pre">-e</span> <span class="pre">pastistritondse.addon</span> <span class="pre">--tt-config</span> <span class="pre">conf.json</span></code>.
 The <code class="docutils literal notranslate"><span class="pre">-e</span></code> preload the tritondse addon in order to be able to load the
 configuration file.</p>
 </div>
