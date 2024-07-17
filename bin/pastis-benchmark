@@ -22,9 +22,9 @@ from pastisbroker.workspace import Workspace
 from libpastis.types import CheckMode, SeedInjectLoc
 
 # Engines imports
-from pastishf import HonggfuzzDriver, spawn_online_honggfuzz
+from pastishonggfuzz import HonggfuzzDriver, spawn_online_honggfuzz
 from pastisaflpp import spawn_online_aflpp, check_scaling_frequency
-from pastisdse import spawn_online_triton
+from pastistritondse import spawn_online_triton
 
 from pastisbenchmark.replayer import ReplayType, Replayer
 from pastisbenchmark.plotter import Plotter
@@ -127,9 +127,9 @@ def clean(workspace: str):
 def showmap(bins: str):
 
     MAP = {
-              "Triton": "pastisttbroker",
-              "Honggfuzz": "hfbroker",
-              "AFL++": "aflppbroker"
+              "Triton": "pastistritondse.addon",
+              "Honggfuzz": "pastishonggfuzz.addon",
+              "AFL++": "pastisaflpp.addon"
     }
     mapping = {k: load_engine_descriptor(v) for k,v in MAP.items()}
     for file in iterate_file(bins):
@@ -245,7 +245,7 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
     if not tt_confs.exists():  # if folder is empty
         logging.info(f"{tt_confs} not found fall back current workdir")
         tt_confs = Path("triton_confs")
-    broker.load_engine_addon("pastisttbroker")
+    broker.load_engine_addon("pastistritondse.addon")
     if tt_confs.exists():
         for i, conf in enumerate(sorted(tt_confs.iterdir())):
             with open(conf, "r+") as fd:

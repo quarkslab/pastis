@@ -93,7 +93,7 @@ PASTIS in action
 ..
     pastis-aflpp <api/aflpp>
     pastis-honggfuzz <api/honggfuzz>
-    pastis-triton <api/tritondse>
+    pastis-tritondse <api/tritondse>
 
 
 

@@ -22,22 +22,16 @@ setup(
         "pastisbroker",
         "pastisbenchmark",
         "pastisaflpp",
-        "aflppbroker",
-        "pastishf",
-        "hfbroker",
-        "pastisdse",
-        "pastisttbroker"
+        "pastishonggfuzz",
+        "pastistritondse",
     ],
     package_dir={
         # AFL++
-        "pastisaflpp": "engines/pastis-aflpp/pastisaflpp",
-        "aflppbroker": "engines/pastis-aflpp/broker-addon/aflppbroker",
+        "pastisaflpp": "engines/pastisaflpp",
         # Honggfuzz
-        "pastishf": "engines/pastis-honggfuzz/pastishf",
-        "hfbroker": "engines/pastis-honggfuzz/broker-addon/hfbroker",
+        "pastishonggfuzz": "engines/pastishonggfuzz",
         # Triton
-        "pastisdse": "engines/pastis-triton/pastisdse",
-        "pastisttbroker": "engines/pastis-triton/broker-addon/pastisttbroker"
+        "pastistritondse": "engines/pastistritondse",
     },
     url="https://github.com/quarkslab/pastis",
     project_urls={
@@ -72,12 +66,16 @@ setup(
         'Operating System :: OS Independent',
     ],
     test_suite="",
+    entry_points={
+        "console_scripts": [
+            "pastis-aflpp = pastisaflpp.__main__:main",
+            "pastis-honggfuzz = pastishonggfuzz.__main__:main",
+            "pastis-tritondse = pastistritondse.__main__:main"
+        ]
+    },
     scripts=[
         'bin/pastis-broker',
         'bin/pastis-benchmark',
         'bin/pastisd',
-        'engines/pastis-honggfuzz/bin/pastis-honggfuzz',
-        'engines/pastis-triton/bin/pastis-triton',
-        'engines/pastis-aflpp/bin/pastis-aflpp'
     ]
 )

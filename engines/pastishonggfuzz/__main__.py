@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # To run it offline
 # pastis-honggfuzz offline [OPTS] BINARY PARAMS
 #
@@ -19,7 +17,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngineInfo, FuzzMode
 
 # Local imports
-from pastishf import HonggfuzzDriver, __version__
+from pastishonggfuzz import HonggfuzzDriver, __version__
 
 
 coloredlogs.install(level=logging.DEBUG,
@@ -114,5 +112,9 @@ def offline(program: str, sast_report: Optional[str], seed: Tuple[str], exmode, 
         honggfuzz.stop()
 
 
-if __name__ == "__main__":
+def main():
     cli()
+
+
+if __name__ == "__main__":
+    main()

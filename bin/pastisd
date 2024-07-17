@@ -18,12 +18,12 @@ except ImportError:
     hfwrapper, Honggfuzz = None, None
     HONGGFUZZ_AVAILABLE = False
 try:
-    import pastisdse
-    from pastisdse import PastisDSE
-    PASTISDSE_AVAILABLE = True
+    import pastistritondse
+    from pastistritondse import TritonDSEDriver
+    PASTISTRITONDSE_AVAILABLE = True
 except ImportError:
-    pastisdse, PastisDSE = None, None
-    PASTISDSE_AVAILABLE = False
+    pastistritondse, TritonDSEDriver = None, None
+    PASTISTRITONDSE_AVAILABLE = False
 
 
 PASTIS_MASTER = "pastis.lan"
@@ -61,7 +61,7 @@ def start_received(*args):
             logging.critical("Can't find Honggfuzzz HFUZZ_DATA not set")
 
     elif engine == FuzzingEngine.TRITON:
-        engine = PastisDSE(agent)
+        engine = TritonDSEDriver(agent)
         configure_logging(logging.DEBUG, "%(asctime)s %(threadName)s [%(levelname)s] %(message)s")
         engine.start_received(*args)
         engine.start()
@@ -80,8 +80,8 @@ def main(host=PASTIS_MASTER):
         engines.append((FuzzingEngine.HONGGFUZZ, hfwrapper.__version__))
     else:
         logging.warning("Honggfuzz is not available (cannot import it)")
-    if PASTISDSE_AVAILABLE:
-        engines.append((FuzzingEngine.TRITON, pastisdse.__version__))
+    if PASTISTRITONDSE_AVAILABLE:
+        engines.append((FuzzingEngine.TRITON, pastistritondse.__version__))
     else:
         logging.warning("Triton is not available (cannot import it)")
 

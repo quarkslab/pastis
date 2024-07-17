@@ -1,24 +1,24 @@
 # builtin imports
+import hashlib
 import logging
-from pathlib import Path
 import stat
 import threading
 import time
-import tempfile
-import hashlib
+
+from pathlib import Path
 from typing import List, Union
 
-
-# Pastis & triton imports
+# Third party imports
 from libpastis import ClientAgent, BinaryPackage, SASTReport
 from libpastis.types import CheckMode, CoverageMode, ExecMode, FuzzingEngineInfo, SeedInjectLoc, SeedType, State, \
                             LogLevel, AlertData, FuzzMode
 
+
 # Local imports
-import pastishf
-from pastishf.replay import Replay
-from pastishf.honggfuzz import HonggfuzzProcess
-from pastishf.workspace import Workspace
+import pastisaflpp
+from pastisaflpp.replay import Replay
+from pastisaflpp.aflpp import AFLPPProcess
+from pastisaflpp.workspace import Workspace
 
 
 # Inotify logs are very talkative, set them to ERROR
@@ -26,20 +26,20 @@ for logger in (logging.getLogger(x) for x in ["watchdog.observers.inotify_buffer
     logger.setLevel(logging.ERROR)
 
 
-class HonggfuzzDriver:
+class AFLPPDriver:
 
     def __init__(self, agent: ClientAgent, telemetry_frequency: int = 30):
 
         # Internal objects
         self._agent = agent
         self.workspace = Workspace()
-        self.honggfuzz = HonggfuzzProcess()
+        self.aflpp = AFLPPProcess()
 
         # Parameters received through start_received
         self.__exec_mode = None   # SINGLE_RUN, PERSISTENT
         self.__check_mode = None  # CHECK_ALL, ALERT_ONLY
         self.__seed_inj = None    # STDIN or ARGV
-        self.__report = None      # SAST report if provided
+        self.__report = None      # Klocwork report if supported
 
         # Target data
         self.__package = None
@@ -69,24 +69,23 @@ class HonggfuzzDriver:
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
 
-    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode,
-              seed_inj: SeedInjectLoc, engine_args: str):
+    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, seed_inj: SeedInjectLoc, engine_args: str):
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
 
         self.workspace.start()  # Start looking at directories
 
-        logging.info("Start process")
-        if not self.honggfuzz.start(str(self.__package.executable_path.absolute()),
-                             argv,
-                             self.workspace,
-                             exmode,
-                             fuzzmode,
-                             seed_inj == SeedInjectLoc.STDIN,
-                             engine_args,
-                             str(package.dictionary.absolute()) if package.dictionary else None):
-            self._agent.send_log(LogLevel.ERROR, "Cannot start target")
+        logging.info(f"Start process (injectloc: {seed_inj.name})")
+        self.aflpp.start(str(package.executable_path.absolute()),
+                         argv,
+                         self.workspace,
+                         exmode,
+                         fuzzmode,
+                         seed_inj == SeedInjectLoc.STDIN,
+                         engine_args,
+                         str(package.cmplog.absolute()) if package.cmplog else None,
+                         str(package.dictionary.absolute()) if package.dictionary else None)
         self._started = True
 
         # Start the replay worker (note that the queue might already have started to be filled by agent thread)
@@ -94,7 +93,7 @@ class HonggfuzzDriver:
         self._replay_thread.start()
 
     def stop(self):
-        self.honggfuzz.stop()
+        self.aflpp.stop()
         self.workspace.stop()
         self._started = False  # should stop the replay thread
 
@@ -121,10 +120,10 @@ class HonggfuzzDriver:
         self._agent.connect(remote, port)
         self._agent.start()
         # Send initial HELLO message, whick will make the Broker send the START message.
-        self._agent.send_hello([FuzzingEngineInfo("HONGGFUZZ", pastishf.__version__, "hfbroker")])
+        self._agent.send_hello([FuzzingEngineInfo("AFLPP", pastisaflpp.__version__, "pastisaflpp.addon")])
 
     def run(self):
-        self.honggfuzz.wait()
+        self.aflpp.wait()
 
     def __setup_agent(self):
         # Register callbacks.
@@ -135,7 +134,9 @@ class HonggfuzzDriver:
         self.__send(filename, SeedType.INPUT)
 
     def __send_crash(self, filename: Path):
-        self.__send(filename, SeedType.CRASH)
+        # Skip README file that AFL adds to the crash folder.
+        if filename.name != 'README.txt':
+            self.__send(filename, SeedType.CRASH)
 
     def __send(self, filename: Path, typ: SeedType):
         self._tot_seeds += 1
@@ -157,9 +158,10 @@ class HonggfuzzDriver:
             # Rerun the program with the seed
             run = Replay.run(self.__package.executable_path.absolute(), self.__target_args, stdin_file=filename, timeout=5, cwd=str(self.workspace.target_dir))
 
-            if run.is_hf_iter_crash():
-                self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
-                return False
+            # FIXME: Do same checks for AFL++ LOOP stuff for persistency mode
+            # if run.is_hf_iter_crash():
+            #     self.dual_log(LogLevel.ERROR, f"Disable replay engine (because code uses HF_ITER)")
+            #     return False
 
             # Iterate all covered alerts
             for id in run.alert_covered:
@@ -172,23 +174,26 @@ class HonggfuzzDriver:
             # Check if the target has crashed and if so tell the broker which one
             if run.has_crashed() or run.is_asan_without_crash():  # Also consider ASAN warning as detection
                 if not run.crashing_id:
-                    self.dual_log(LogLevel.WARNING, f"Crash on {filename.name} but can't link it to a SAST alert")
+                    self.dual_log(LogLevel.WARNING, f"Crash on {filename.name} but can't link it to a Klocwork alert (maybe bonus !)")
                 else:
                     alert = self.__report.get_alert(run.crashing_id)
                     if not alert.validated:
                         alert.validated = True
                         bugt, aline = run.asan_info()
-                        self.dual_log(LogLevel.INFO, f"Honggfuzz new alert validated {alert} [{alert.id}] ({aline})  (asan no crash: {run.is_asan_without_crash()})")
+                        self.dual_log(LogLevel.INFO, f"AFLPP new alert validated {alert} [{alert.id}] ({aline})  (asan no crash: {run.is_asan_without_crash()})")
                         self._agent.send_alert_data(AlertData(alert.id, alert.covered, alert.validated, p.read_bytes()))
             else:
                 if is_crash:
                     self.dual_log(LogLevel.WARNING, f"crash not reproducible by rerunning seed: {filename.name}")
 
-            if run.has_hanged():  # Honggfuzz does not stores 'hangs' it will have been sent as corpus or crash
+            if run.has_hanged():  # AFLPP does not stores 'hangs' it will have been sent as corpus or crash
                 self.dual_log(LogLevel.WARNING, f"Seed {filename} was hanging in replay")
         return True
 
     def __send_telemetry(self, filename: Path):
+        if filename.name != AFLPPProcess.STAT_FILE:
+            return
+
         now = time.time()
         if now < (self._tel_last + self._tel_frequency):
             return
@@ -198,47 +203,44 @@ class HonggfuzzDriver:
 
         with open(filename, 'r') as stats_file:
             try:
-                stats = stats_file.readlines()[-1]
+                stats = {}
+                for line in stats_file.readlines():
+                    k, v = line.strip('\n').split(':')
+                    stats[k.strip()] = v.strip()
 
-                if not stats or stats.startswith("#"):
-                    return
-
-                stats = stats.split(',')
-
-                # Stats format:
-                #   unix_time, last_cov_update, total_exec, exec_per_sec,
-                #   crashes, unique_crashes, hangs, edge_cov, block_cov
                 state = State.RUNNING
-                last_cov_update = int(stats[1])
-                total_exec = int(stats[2])
-                exec_per_sec = int(stats[3])
-                timeout = int(stats[6])             # aka hangs.
-                coverage_edge = int(stats[7])       # aka edge_cov.
-                coverage_block = int(stats[8])      # aka block_cov.
+                last_cov_update = int(stats['last_update'])
+                total_exec = int(stats['execs_done'])
+                exec_per_sec = int(float(stats['execs_per_sec']))
+                timeout = int(stats['unique_hangs']) if 'unique_hangs' in stats else None # N/A in AFL-QEMU.
+                coverage_edge = int(stats['total_edges'])
+                cycle = int(stats['cycles_done'])
+                coverage_path = int(stats['paths_total']) if 'paths_total' in stats else None # N/A in AFL-QEMU.
 
-                # NOTE: `cycle` and `coverage_path` does not apply for Honggfuzz.
+                # NOTE: `coverage_block` does not apply for AFLPP.
                 self._agent.send_telemetry(state=state,
                                            exec_per_sec=exec_per_sec,
                                            total_exec=total_exec,
+                                           cycle=cycle,
                                            timeout=timeout,
-                                           coverage_block=coverage_block,
                                            coverage_edge=coverage_edge,
+                                           coverage_path=coverage_path,
                                            last_cov_update=last_cov_update)
             except:
                 logging.error(f'Error retrieving stats!')
 
     def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
                        _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], sast_report: str = None):
-        logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} fuzzmode:{fuzzmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
+        logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
             return
 
-        if engine.name != "HONGGFUZZ":
+        if engine.name != "AFLPP":
             logging.error(f"Wrong fuzzing engine received {engine.name} while I am Honggfuzz")
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine received {engine.name} can't do anything")
             return
-        if engine.version != pastishf.__version__:
+        if engine.version != pastisaflpp.__version__:
             logging.error(f"Wrong fuzzing engine version {engine.version} received")
             self._agent.send_log(LogLevel.ERROR, f"Invalid fuzzing engine version {engine.version} do nothing")
             return
@@ -247,6 +249,9 @@ class HonggfuzzDriver:
         try:
             package = BinaryPackage.from_binary(fname, binary, self.workspace.target_dir)
         except FileNotFoundError:
+            logging.error("Invalid package received")
+            return
+        except ValueError:
             logging.error("Invalid package received")
             return
 
@@ -262,12 +267,6 @@ class HonggfuzzDriver:
         h = self.hash_seed(seed)
         logging.info(f"[SEED] received  {h} ({typ.name})")
         self._seed_recvs.add(h)
-
-        # HACK: Maybe doing it more nicely ?
-        if len(seed) > 1024*8: # HF_INPUT_DEFAULT_SIZE
-            logging.debug(f"crop seed {h} received to fit 8Kb")
-            seed = seed[:1024*8]
-
         self.add_seed(seed)
 
     def __stop_received(self):
@@ -300,6 +299,5 @@ class HonggfuzzDriver:
         seed_path = self.workspace.input_dir / p.name
         seed_path.write_bytes(p.read_bytes())
 
-    @staticmethod
-    def honggfuzz_available() -> bool:
-        return HonggfuzzProcess.hfuzz_environ_check()
+    def aflpp_available(self):
+        return self.aflpp.aflpp_environ_check()

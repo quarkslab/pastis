@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # To run it offline
 # pastis-aflpp offline [OPTS] BINARY PARAMS
 #
@@ -116,5 +114,9 @@ def offline(program: str, sast_report: Optional[str], seed: Tuple[str], exmode, 
         aflpp.stop()
 
 
-if __name__ == "__main__":
+def main():
     cli()
+
+
+if __name__ == "__main__":
+    main()

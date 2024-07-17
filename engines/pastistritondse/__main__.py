@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # PYTHONPATH=. ./bin/fuzz_cyclone.py offline -s out.frames micro_http_server_tt_fuzz_single_with_vuln wlp0s20f3 48:e2:44:f5:9b:01 10.0.13.86 255.255.255.0 10.0.13.254
 
 
@@ -18,7 +16,7 @@ from libpastis import ClientAgent, FileAgent
 from libpastis.types import ExecMode, CoverageMode, SeedInjectLoc, CheckMode, FuzzingEngineInfo, SeedType, FuzzMode
 
 # Local imports
-from pastisdse import PastisDSE, __version__
+from pastistritondse import TritonDSEDriver, __version__
 from tritondse import CoverageStrategy, ProbeInterface, Config, SmtSolver
 from tritondse.probes.basic_trace import BasicDebugTrace
 import tritondse.logging
@@ -62,8 +60,8 @@ def cli():
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
 def online(host: str, port: int, debug: bool, probe: Tuple[str]):
     """
-    This is the online mode of the pastis-triton exploration. With this mode,
-    the client (pastis-triton) will try to connect to the broker. Then, the broker
+    This is the online mode of the pastis-tritondse exploration. With this mode,
+    the client (pastis-tritondse) will try to connect to the broker. Then, the broker
     will send us the binary to explore, the configuration and initiale seeds.
 
     :param host: The remote host to connect
@@ -78,7 +76,7 @@ def online(host: str, port: int, debug: bool, probe: Tuple[str]):
     agent = ClientAgent()
 
     # Instanciate the pastis that will register the appropriate callbacks
-    pastis = PastisDSE(agent)
+    pastis = TritonDSEDriver(agent)
 
     for p in list(probe):
         probe = load_probe_module(p)
@@ -129,8 +127,8 @@ def offline(program: str,
             debug_pp: bool,
             trace: bool):
     """
-    This is the offline mode of the pastis-triton exploration. With this mode,
-    the client (pastis-triton) will be able to work without a remote broker. In
+    This is the offline mode of the pastis-tritondse exploration. With this mode,
+    the client (pastis-tritondse) will be able to work without a remote broker. In
     this mode, we have to provide all information about the configuration via
     the command line option.
 
@@ -168,7 +166,7 @@ def offline(program: str,
     agent = FileAgent()
 
     # Instanciate the pastis that will register the appropriate callbacks
-    pastis = PastisDSE(agent)
+    pastis = TritonDSEDriver(agent)
 
     if config:
         config = Config.from_file(config)
@@ -235,8 +233,9 @@ def offline(program: str,
     pastis.run(online=False, debug_pp=debug_pp)
 
 
-if __name__ == "__main__":
+def main():
     cli()
 
 
-
+if __name__ == "__main__":
+    main()
