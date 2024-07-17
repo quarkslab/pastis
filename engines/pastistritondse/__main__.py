@@ -84,7 +84,13 @@ def online(host: str, port: int, debug: bool, probe: Tuple[str]):
             pastis.add_probe(probe)
 
     pastis.init_agent(host, port)
-    pastis.run(online=True)
+
+    try:
+        logging.info(f'Starting fuzzer...')
+        pastis.run(online=True)
+    except KeyboardInterrupt:
+        logging.info(f'Stopping fuzzer... (Ctrl+C)')
+        pastis.stop()
 
 
 @cli.command(context_settings=dict(show_default=True))
@@ -218,20 +224,23 @@ def offline(program: str,
                           report)
 
     # Set the number of execution limit
-    pastis.config.exploration_limit = count
+    pastis._config.exploration_limit = count
 
     # Provide it all our seeds
     for s in seed:
         s_path = Path(s)
         if s_path.is_file():  # Add the seed file
-            pastis.seed_received(SeedType.INPUT, Path(s).read_bytes())
+            pastis.add_initial_seed(s_path)
         elif s_path.is_dir():  # Add all file contained in the directory as seeds
             for sub_s in s_path.iterdir():
-                pastis.seed_received(SeedType.INPUT, sub_s.read_bytes())
+                pastis.add_initial_seed(sub_s)
 
-    # Call run to start exploration
-    pastis.run(online=False, debug_pp=debug_pp)
-
+    try:
+        logging.info(f'Starting fuzzer...')
+        pastis.run(online=False, debug_pp=debug_pp)
+    except KeyboardInterrupt:
+        logging.info(f'Stopping fuzzer... (Ctrl+C)')
+        pastis.stop()
 
 def main():
     cli()
