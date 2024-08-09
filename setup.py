@@ -45,7 +45,7 @@ setup(
         "pyzmq",
         "psutil",
         "aenum",
-        "lief>=v0.14.0",
+        "lief>=v0.15.0",
         "python-magic",
         "click",
         "coloredlogs",

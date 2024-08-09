@@ -263,8 +263,8 @@ class BinaryPackage(object):
             return None
 
         # Determine the architecture of the binary
-        mapping = {lief.ELF.ARCH.x86_64: Arch.X86_64,
-                   lief.ELF.ARCH.i386: Arch.X86,
+        mapping = {lief.ELF.ARCH.X86_64: Arch.X86_64,
+                   lief.ELF.ARCH.I386: Arch.X86,
                    lief.ELF.ARCH.ARM: Arch.ARMV7,
                    lief.ELF.ARCH.AARCH64: Arch.AARCH64}
         arch = mapping.get(p.header.machine_type)
