@@ -56,7 +56,7 @@ RUN git clone https://github.com/AFLplusplus/AFLplusplus && \
 
 # Copy Honggfuzz PASTIS patch.
 RUN mkdir patches
-COPY engines/pastis-honggfuzz/patches/honggfuzz-5a504b49-pastis.patch patches/honggfuzz-5a504b49-pastis.patch
+COPY engines/patches/honggfuzz-5a504b49-pastis.patch patches/honggfuzz-5a504b49-pastis.patch
 
 # Download, patch, compile and install Honggfuzz.
 RUN git clone https://github.com/google/honggfuzz.git honggfuzz-5a504b49 && \
