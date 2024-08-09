@@ -55,7 +55,7 @@ setup(
         "matplotlib",
         "joblib",
         "rich",
-        "tritondse>=v0.1.11",
+        "tritondse>=v0.1.12",
     ],
     tests_require=[],
     license="AGPL-3.0",
