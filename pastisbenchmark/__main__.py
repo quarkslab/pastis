@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # built-in imports
 import shutil
 
@@ -389,6 +387,9 @@ def history(workspace: str):
     plotter.show_delta_history(campaign)
 
 
-if __name__ == "__main__":
+def main():
     cli()
 
+
+if __name__ == "__main__":
+    main()

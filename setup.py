@@ -68,6 +68,7 @@ setup(
     test_suite="",
     entry_points={
         "console_scripts": [
+            "pastis-benchmark = pastisbenchmark.__main__:main",
             "pastis-broker = pastisbroker.__main__:main",
             "pastis-aflpp = pastisaflpp.__main__:main",
             "pastis-honggfuzz = pastishonggfuzz.__main__:main",
@@ -75,7 +76,6 @@ setup(
         ]
     },
     scripts=[
-        'bin/pastis-benchmark',
         'bin/pastisd',
     ]
 )
