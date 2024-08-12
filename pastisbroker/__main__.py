@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # built-in imports
 import click
 import sys
