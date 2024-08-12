@@ -9,13 +9,13 @@ from libpastis import ClientAgent
 from libpastis.types import FuzzingEngine
 
 try:
-    import hfwrapper
-    from hfwrapper import Honggfuzz
+    import pastishonggfuzz
+    from pastishonggfuzz import Honggfuzz
     if os.environ.get("HFUZZ_PATH") is None:
         raise ImportError("HFUZZ_PATH not set")
     HONGGFUZZ_AVAILABLE = True
 except ImportError:
-    hfwrapper, Honggfuzz = None, None
+    pastishonggfuzz, Honggfuzz = None, None
     HONGGFUZZ_AVAILABLE = False
 try:
     import pastistritondse
@@ -77,7 +77,7 @@ def main(host=PASTIS_MASTER):
 
     engines = []
     if HONGGFUZZ_AVAILABLE:
-        engines.append((FuzzingEngine.HONGGFUZZ, hfwrapper.__version__))
+        engines.append((FuzzingEngine.HONGGFUZZ, pastishonggfuzz.__version__))
     else:
         logging.warning("Honggfuzz is not available (cannot import it)")
     if PASTISTRITONDSE_AVAILABLE:
