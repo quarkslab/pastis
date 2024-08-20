@@ -26,11 +26,8 @@ setup(
         "pastistritondse",
     ],
     package_dir={
-        # AFL++
         "pastisaflpp": "engines/pastisaflpp",
-        # Honggfuzz
         "pastishonggfuzz": "engines/pastishonggfuzz",
-        # Triton
         "pastistritondse": "engines/pastistritondse",
     },
     url="https://github.com/quarkslab/pastis",
