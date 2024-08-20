@@ -16,7 +16,6 @@ At the moment it supports the following fuzzing engines:
   </a>
 </p>
 
-
 <p align="center">
   <a href="https://github.com/quarkslab/pastis/releases">
     <img src="https://img.shields.io/github/v/release/quarkslab/pastis?logo=github">
@@ -46,7 +45,6 @@ At the moment it supports the following fuzzing engines:
 > **Note**
 > The video highlight the use-case driven by SAST alerts. However, the
 > main use-case the standard fuzzing for coverage or bug research.
-
 
 ---
 
@@ -106,13 +104,12 @@ Full documentation is available: [here](https://quarkslab.github.io/pastis/campa
 
 ## Adding a Fuzzer
 
-Integrating a fuzzer requires writing a Python driver using the ``libpasts`` library
+Integrating a fuzzer requires writing a Python driver using the ``libpastis`` library
 installed by the package. It requires implementing some callbacks to receive the initial
 configuration and also to receive inputs from the broker. Conversely the API enables
 sending newly generated inputs to the broker.
 
 The process is further [detailed in the documentation](https://quarkslab.github.io/pastis/adding-fuzzer.html).
-
 
 > **Note**
 > We warmly welcome any Pull Request to add the support for a new fuzzing engine.
@@ -144,28 +141,35 @@ The PASTIS Docker image has already installed all the needed dependencies such a
 
 ---
 
-## Papers and conference
+## Papers and conferences
 
-* **Symbolic Execution the Swiss-Knife of the Reverse Engineer Toolbox**
-  **Venue**: KLEE Workshop, 2022 [[:books:]](https://srg.doc.ic.ac.uk/klee22/talks/David-Reverse-Engineering.pdf) [[:movie_camera:]](https://youtu.be/PNbNtTa5Sp4)
+* **PASTIS: A Collaborative Approach to Combine Heterogeneous Software Testing Techniques**
+  **Venue**: SBFT 2023, Melbourne, Australia [:movie_camera:](https://www.youtube.com/watch?v=EF13eiidhA0&t=13295s) [slides](https://sbft23.github.io/share/pastis.pdf)
   **Authors**: Robin David, Richard Abou Chaaya, Christian Heitman
 
+* **Symbolic Execution the Swiss-Knife of the Reverse Engineer Toolbox**
+  **Venue**: KLEE Workshop, 2022 [:books:](https://srg.doc.ic.ac.uk/klee22/talks/David-Reverse-Engineering.pdf) [:movie_camera:](https://youtu.be/PNbNtTa5Sp4)
+  **Authors**: Robin David, Richard Abou Chaaya, Christian Heitman
 
 * **From source code to crash test-case through software testing automation**
-  **Venue**: European Cyber Week, C&ESAR Workshop, 2021  [paper](https://ceur-ws.org/Vol-3056/paper-02.pdf) [slides](https://github.com/quarkslab/conf-presentations/blob/main-page/C%26ESAR-2021/CESAR-2021_slides_2-2.pdf)
+  **Venue**: European Cyber Week, C&ESAR Workshop, 2021 [paper](https://ceur-ws.org/Vol-3056/paper-02.pdf) [slides](https://github.com/quarkslab/conf-presentations/blob/main-page/C%26ESAR-2021/CESAR-2021_slides_2-2.pdf)
   **Authors**: Robin David, Jonathan Salwan, Justin Bourroux
 
-
-## Cite Pastis
+## Cite PASTIS
 
 ```latex
-soon
+@inproceedings{david2023pastis,
+  title={PASTIS: A Collaborative Approach to Combine Heterogeneous Software Testing Techniques},
+  author={David, Robin and Abou Chaaya, Richard and Heitman, Christian},
+  booktitle={2023 IEEE/ACM International Workshop on Search-Based and Fuzz Testing (SBFT)},
+  pages={17--24},
+  year={2023},
+  organization={IEEE}
+}
 ```
-
 
 ## Contributors
 
-Pastis is powered by [Quarkslab](https://quarkslab.com) and initially financed by DGA-MI.
+PASTIS is powered by [Quarkslab](https://quarkslab.com) and initially financed by DGA-MI.
 
 [**All contributions**](https://github.com/quarkslab/pastis/graphs/contributors)
-

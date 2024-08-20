@@ -6,7 +6,7 @@ from setuptools import setup
 
 with open("README.md") as f:
     lines = f.readlines()
-    README = "\n".join(lines[4:7]+lines[51:])
+    README = "\n".join(lines[4:7]+lines[50:])
 
 
 setup(
