@@ -32,6 +32,8 @@ the following:
       -i, --injloc [STDIN|ARGV]       Seed injection location
       -e, --engine TEXT               Fuzzing engine module to load (python
                                       module)
+      -E, --env TEXT                  Environment variable to forward to the
+                                      target
       --tt-config PATH                Triton configuration file
       --hf-config PATH                Honggfuzz configuration file
       -s, --seed PATH                 Initial seed or directory of seeds to give
@@ -78,6 +80,10 @@ the following:
 * ``--injloc``: Whether the input is given on ``STDIN`` or via ``ARGV``
 
 * ``--engine``: Name of a broker-addon to load, that describes an engine capabilities.
+
+* ``--env``: Environment variable to forward to the target. This is useful when
+  the target requires a specific environment variable to be set. The format is
+  ``VAR=VALUE``. The variable will be set in the environment of the target.
 
 * ``--seed`` allows specifying a file or a directory of files containing the initial corpus
   for the campain.
