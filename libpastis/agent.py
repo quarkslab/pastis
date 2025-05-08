@@ -240,19 +240,42 @@ class NetworkAgent(object):
 
     def _message_args(self, topic: MessageType, msg: Message):
         if topic == MessageType.INPUT_SEED:
-            return [SeedType(msg.type), msg.seed]
+            return [SeedType(msg.type),
+                    msg.seed]
         elif topic == MessageType.LOG:
-            return [LogLevel(msg.level), msg.message]
+            return [LogLevel(msg.level),
+                    msg.message]
         elif topic == MessageType.TELEMETRY:
-            return [msg.state, msg.exec_per_sec, msg.total_exec, msg.cycle, msg.timeout, msg.coverage_block,
-                    msg.coverage_edge, msg.coverage_path, msg.last_cov_update]
+            return [msg.state, 
+                    msg.exec_per_sec,
+                    msg.total_exec,
+                    msg.cycle,
+                    msg.timeout,
+                    msg.coverage_block,
+                    msg.coverage_edge,
+                    msg.coverage_path,
+                    msg.last_cov_update]
         elif topic == MessageType.HELLO:
             engs = [(FuzzingEngineInfo.from_pb(x)) for x in msg.engines]
-            return [engs, Arch(msg.architecture), msg.cpus, msg.memory, msg.hostname, Platform(msg.platform)]
+            return [engs,
+                    Arch(msg.architecture),
+                    msg.cpus,
+                    msg.memory,
+                    msg.hostname,
+                    Platform(msg.platform)]
         elif topic == MessageType.START:
-            return [msg.binary_filename, msg.binary, FuzzingEngineInfo.from_pb(msg.engine), ExecMode(msg.exec_mode), FuzzMode(msg.fuzz_mode),
-                    CheckMode(msg.check_mode), CoverageMode(msg.coverage_mode), SeedInjectLoc(msg.seed_location),
-                    msg.engine_args, [x for x in msg.program_argv], msg.sast_report]
+            return [msg.binary_filename,
+                    msg.binary,
+                    FuzzingEngineInfo.from_pb(msg.engine),
+                    ExecMode(msg.exec_mode),
+                    FuzzMode(msg.fuzz_mode),
+                    CheckMode(msg.check_mode),
+                    CoverageMode(msg.coverage_mode),
+                    SeedInjectLoc(msg.seed_location),
+                    msg.engine_args,
+                    [x for x in msg.program_argv],
+                    [x for x in msg.environ],
+                    msg.sast_report]
         elif topic == MessageType.DATA:
             return [msg.data]
         else:  # for stop and store_coverage_done nothing to unpack
@@ -274,9 +297,20 @@ class BrokerAgent(NetworkAgent):
         msg.seed = seed
         self.send_to(id, msg, msg_type=MessageType.INPUT_SEED)
 
-    def send_start(self, id: bytes, name: str, package: PathLike, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode,
-                   ckmode: CheckMode, covmode: CoverageMode, engine: FuzzingEngineInfo, engine_args: str,
-                   seed_loc: SeedInjectLoc, sast_report: bytes = None) -> None:
+    def send_start(self,
+                   id: bytes,
+                   name: str,
+                   package: PathLike,
+                   argv: List[str],
+                   exmode: ExecMode,
+                   fuzzmode: FuzzMode,
+                   ckmode: CheckMode,
+                   covmode: CoverageMode,
+                   engine: FuzzingEngineInfo,
+                   engine_args: str,
+                   seed_loc: SeedInjectLoc,
+                   env_variables: list[str],
+                   sast_report: bytes = None) -> None:
         """
         Send a START message to a fuzzing agent with all the parameters it is meant to run with.
 
@@ -291,6 +325,7 @@ class BrokerAgent(NetworkAgent):
         :param engine: descriptor of the fuzzing engine
         :param engine_args: engine's additional arguments or configuration file
         :param seed_loc: location where to provide inputs (stdin or argv)
+        :param env_variables: list of environment variables to forward to the target
         :param sast_report: SAST report if applicable
         """
         msg = StartMsg()
@@ -310,6 +345,8 @@ class BrokerAgent(NetworkAgent):
             msg.sast_report = sast_report
         for arg in argv:
             msg.program_argv.append(arg)
+        for env in env_variables:
+            msg.environ.append(env)
         self.send_to(id, msg, msg_type=MessageType.START)
 
     def send_stop(self, id: bytes) -> None:

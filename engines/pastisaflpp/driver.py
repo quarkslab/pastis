@@ -69,7 +69,14 @@ class AFLPPDriver:
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
 
-    def start(self, package: BinaryPackage, argv: List[str], exmode: ExecMode, fuzzmode: FuzzMode, seed_inj: SeedInjectLoc, engine_args: str):
+    def start(self,
+              package: BinaryPackage,
+              argv: List[str],
+              exmode: ExecMode,
+              fuzzmode: FuzzMode,
+              seed_inj: SeedInjectLoc,
+              engine_args: str,
+              envp: list[str]):
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
@@ -84,6 +91,7 @@ class AFLPPDriver:
                          fuzzmode,
                          seed_inj == SeedInjectLoc.STDIN,
                          engine_args,
+                         envp,
                          str(package.cmplog.absolute()) if package.cmplog else None,
                          str(package.dictionary.absolute()) if package.dictionary else None)
         self._started = True
@@ -229,8 +237,19 @@ class AFLPPDriver:
             except:
                 logging.error(f'Error retrieving stats!')
 
-    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
-                       _: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], sast_report: str = None):
+    def start_received(self,
+                       fname: str,
+                       binary: bytes,
+                       engine: FuzzingEngineInfo,
+                       exmode: ExecMode,
+                       fuzzmode: FuzzMode,
+                       chkmode: CheckMode,
+                       _: CoverageMode,
+                       seed_inj: SeedInjectLoc,
+                       engine_args: str,
+                       argv: List[str],
+                       envp: list[str],
+                       sast_report: str = None):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
@@ -261,7 +280,7 @@ class AFLPPDriver:
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
-        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args)
+        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args, envp)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
         h = self.hash_seed(seed)

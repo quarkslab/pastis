@@ -55,7 +55,8 @@ class PastisBroker(BrokerAgent):
                  filter_inputs: bool = False,
                  stream: bool = False,
                  replay_threads: int = 4,
-                 replay_timeout: int = 60):
+                 replay_timeout: int = 60,
+                 env: list[str] = []):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -79,6 +80,7 @@ class PastisBroker(BrokerAgent):
         self.argv = [] if p_argv is None else p_argv
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
+        self.env_variables = env
 
         # for slicing mode (otherwise not used)
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
@@ -542,6 +544,7 @@ class PastisBroker(BrokerAgent):
                         FuzzingEngineInfo(engine.NAME, engine.VERSION, ""),
                         engine_args_str,
                         self.inject,
+                        self.env_variables,
                         self.sast_report.to_json() if self.sast_report else b"")
 
     def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:
@@ -829,7 +832,7 @@ class PastisBroker(BrokerAgent):
 
     def _proxy_start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode,
                               fuzzmode: FuzzMode, chkmode: CheckMode, covmode: CoverageMode, seed_inj: SeedInjectLoc,
-                              engine_args: str, argv: List[str], sast_report: str = None):
+                              engine_args: str, argv: List[str], envp: list[str], sast_report: str = None):
         # FIXME: Use parameters received
         logging.info("[PROXY] start received !")
         self._running = True
