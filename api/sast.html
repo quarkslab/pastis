@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="../">
 <head>
@@ -5,20 +7,16 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SAST &mdash; PASTIS 0.2 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b20cc3f5" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5349f25f" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../_static/documentation_options.js?v=10f1778b"></script>
-        <script src="../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=10f1778b"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -132,13 +130,13 @@
 used to perform alert driven testing.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.file">
-<span class="sig-name descname"><span class="pre">file</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.file" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">file</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.file" title="Link to this definition"></a></dt>
 <dd><p>Severity of the alert (e.g: Review, Error, Critical ..)</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.from_json">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.sast.SASTAlert" title="libpastis.sast.SASTAlert"><span class="pre">SASTAlert</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTAlert.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTAlert.from_json" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.sast.SASTAlert" title="libpastis.sast.SASTAlert"><span class="pre">SASTAlert</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTAlert.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTAlert.from_json" title="Link to this definition"></a></dt>
 <dd><p>Create a SASTAlert object from the JSON data provided.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -152,43 +150,43 @@ used to perform alert driven testing.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.function">
-<span class="sig-name descname"><span class="pre">function</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.function" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">function</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.function" title="Link to this definition"></a></dt>
 <dd><p>line of code (in the file)</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.line">
-<span class="sig-name descname"><span class="pre">line</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.line" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">line</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.line" title="Link to this definition"></a></dt>
 <dd><p>Source file impacted</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.params">
-<span class="sig-name descname"><span class="pre">params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.12)"><span class="pre">list</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.params" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><span class="pre">list</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.params" title="Link to this definition"></a></dt>
 <dd><p>Type of the alert BoF, UaF (in the convention of the SAST)</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.raw_line">
-<span class="sig-name descname"><span class="pre">raw_line</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.raw_line" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">raw_line</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.raw_line" title="Link to this definition"></a></dt>
 <dd><p>Function impacted</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.severity">
-<span class="sig-name descname"><span class="pre">severity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.severity" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">severity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.severity" title="Link to this definition"></a></dt>
 <dd><p>Taxonomy of the alert (e.g: CWE, CVE, MISRA checker, ..)</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.taxonomy">
-<span class="sig-name descname"><span class="pre">taxonomy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.taxonomy" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">taxonomy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.taxonomy" title="Link to this definition"></a></dt>
 <dd><p>Additional parameters of the alert (list)</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.to_dict">
-<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTAlert.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTAlert.to_dict" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTAlert.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTAlert.to_dict" title="Link to this definition"></a></dt>
 <dd><p>Export the alert attribute to a valid JSON dictionnary
 that can be written to file.</p>
 <dl class="field-list simple">
@@ -200,7 +198,7 @@ that can be written to file.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="libpastis.sast.SASTAlert.type">
-<span class="sig-name descname"><span class="pre">type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.type" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#libpastis.sast.SASTAlert.type" title="Link to this definition"></a></dt>
 <dd><p>Unique ID of the alert</p>
 </dd></dl>
 
@@ -224,7 +222,7 @@ that can be written to file.</p>
 <dd><p>SAST report. Manages a list of SAST alerts taken from a report.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.add_alert">
-<span class="sig-name descname"><span class="pre">add_alert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alert</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#libpastis.sast.SASTAlert" title="libpastis.sast.SASTAlert"><span class="pre">SASTAlert</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.add_alert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.add_alert" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_alert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alert</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#libpastis.sast.SASTAlert" title="libpastis.sast.SASTAlert"><span class="pre">SASTAlert</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.add_alert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.add_alert" title="Link to this definition"></a></dt>
 <dd><p>Add an alert in the report. This function is solely
 meant to be used by the report parser</p>
 <dl class="field-list simple">
@@ -236,7 +234,7 @@ meant to be used by the report parser</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.all_alerts_validated">
-<span class="sig-name descname"><span class="pre">all_alerts_validated</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.all_alerts_validated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.all_alerts_validated" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">all_alerts_validated</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.all_alerts_validated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.all_alerts_validated" title="Link to this definition"></a></dt>
 <dd><p>Checks if all alerts have been validated (and thus covered)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -247,7 +245,7 @@ meant to be used by the report parser</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.from_file">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.sast.SASTReport" title="libpastis.sast.SASTReport"><span class="pre">SASTReport</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.from_file" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.13)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.sast.SASTReport" title="libpastis.sast.SASTReport"><span class="pre">SASTReport</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.from_file" title="Link to this definition"></a></dt>
 <dd><p>Parse the given file into a SAST report object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -261,7 +259,7 @@ meant to be used by the report parser</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.from_json">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.12)"><span class="pre">bytes</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.sast.SASTReport" title="libpastis.sast.SASTReport"><span class="pre">SASTReport</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.from_json" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.13)"><span class="pre">bytes</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#libpastis.sast.SASTReport" title="libpastis.sast.SASTReport"><span class="pre">SASTReport</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.from_json" title="Link to this definition"></a></dt>
 <dd><p>Parse the given string into a SAST report object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -275,7 +273,7 @@ meant to be used by the report parser</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.get_stats">
-<span class="sig-name descname"><span class="pre">get_stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.12)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.get_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.get_stats" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.13)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.get_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.get_stats" title="Link to this definition"></a></dt>
 <dd><p>Get stats about the report. The results is a triple
 with the number of alerts covered, validated and total.</p>
 <dl class="field-list simple">
@@ -287,14 +285,14 @@ with the number of alerts covered, validated and total.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.iter_alerts">
-<span class="sig-name descname"><span class="pre">iter_alerts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#libpastis.sast.SASTAlert" title="libpastis.sast.SASTAlert"><span class="pre">SASTAlert</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.iter_alerts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.iter_alerts" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">iter_alerts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#libpastis.sast.SASTAlert" title="libpastis.sast.SASTAlert"><span class="pre">SASTAlert</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.iter_alerts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.iter_alerts" title="Link to this definition"></a></dt>
 <dd><p>Iterate all the alerts of the report.
 :return: list of alerts</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.to_json">
-<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.to_json" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.to_json" title="Link to this definition"></a></dt>
 <dd><p>Export the current state of the alerts within a JSON dictionnary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -305,7 +303,7 @@ with the number of alerts covered, validated and total.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.write">
-<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_file</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.write" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_file</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.write" title="Link to this definition"></a></dt>
 <dd><p>Export the current state of the alerts within a JSON dictionary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -316,7 +314,7 @@ with the number of alerts covered, validated and total.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="libpastis.sast.SASTReport.write_csv">
-<span class="sig-name descname"><span class="pre">write_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.write_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.write_csv" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">write_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.13)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/libpastis/sast.html#SASTReport.write_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libpastis.sast.SASTReport.write_csv" title="Link to this definition"></a></dt>
 <dd><p>Write the report as a csv into the given file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

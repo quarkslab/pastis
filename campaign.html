@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="./">
 <head>
@@ -5,20 +7,16 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Running PASTIS &mdash; PASTIS 0.2 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b20cc3f5" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5349f25f" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="_static/jquery.js?v=5d32c60e"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="_static/documentation_options.js?v=10f1778b"></script>
-        <script src="_static/doctools.js?v=9a2dae69"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=10f1778b"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -127,6 +125,8 @@ Options:
   -i, --injloc [STDIN|ARGV]       Seed injection location
   -e, --engine TEXT               Fuzzing engine module to load (python
                                   module)
+  -E, --env TEXT                  Environment variable to forward to the
+                                  target
   --tt-config PATH                Triton configuration file
   --hf-config PATH                Honggfuzz configuration file
   -s, --seed PATH                 Initial seed or directory of seeds to give
@@ -178,6 +178,9 @@ Also enables reporting when an alert is covered or validated</p></li>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--injloc</span></code>: Whether the input is given on <code class="docutils literal notranslate"><span class="pre">STDIN</span></code> or via <code class="docutils literal notranslate"><span class="pre">ARGV</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--engine</span></code>: Name of a broker-addon to load, that describes an engine capabilities.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--env</span></code>: Environment variable to forward to the target. This is useful when
+the target requires a specific environment variable to be set. The format is
+<code class="docutils literal notranslate"><span class="pre">VAR=VALUE</span></code>. The variable will be set in the environment of the target.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--seed</span></code> allows specifying a file or a directory of files containing the initial corpus
 for the campain.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--tt-config</span></code> Triton specific parameters to be sent as configuration to any Triton clients
