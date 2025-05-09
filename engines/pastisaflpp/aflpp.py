@@ -46,7 +46,17 @@ class AFLPPProcess:
             aflpp_path = os.environ.get(AFLPPProcess.AFLPP_ENV_VAR)
             return Path(aflpp_path) / 'afl-fuzz' if aflpp_path else shutil.which(AFLPPProcess.BINARY)
 
-    def start(self, target: str, target_arguments: list[str], workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode, stdin: bool, engine_args: str, cmplog: Optional[str] = None, dictionary: Optional[str] = None):
+    def start(self,
+              target: str,
+              target_arguments: list[str],
+              workspace: Workspace,
+              exmode: ExecMode,
+              fuzzmode: FuzzMode,
+              stdin: bool,
+              engine_args: str,
+              env_variables: list[str],
+              cmplog: Optional[str] = None,
+              dictionary: Optional[str] = None):
         # Check that we have '@@' if input provided via argv
         if not stdin:
             if "@@" not in target_arguments:
@@ -80,6 +90,14 @@ class AFLPPProcess:
         os.environ["AFL_SKIP_CPUFREQ"] = "1"
         os.environ["AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES"] = "1"
 
+        # Iterate over environment variables and set them in the global environment.
+        for env_var in env_variables:
+            if '=' in env_var:
+                key, value = env_var.split('=', 1)
+                os.environ[key] = value
+            else:
+                logging.warning(f"Invalid environment variable format: {env_var}")
+
         # Build fuzzer command line.
         aflpp_cmdline = f'{self.__path} {aflpp_arguments} -- {target_cmdline}'
 
@@ -93,7 +111,12 @@ class AFLPPProcess:
         self.__logfile = open(workspace.root_dir / 'logfile.log', 'w')
 
         # Create a new fuzzer process and set it apart into a new process group.
-        self.__process = subprocess.Popen(command, cwd=str(workspace.root_dir), preexec_fn=os.setsid, stdout=self.__logfile)
+        self.__process = subprocess.Popen(command,
+                                          cwd=str(workspace.root_dir),
+                                          preexec_fn=os.setsid,
+                                          stdout=self.__logfile,
+                                          shell=False,
+                                          env=os.environ)
 
         logging.debug(f'Process pid: {self.__process.pid}')
 

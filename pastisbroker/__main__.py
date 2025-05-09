@@ -45,6 +45,7 @@ def iterate_file(file):
 @click.option('-c', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), default=CheckMode.CHECK_ALL.name, help="Check mode (all or alert driven)", show_default=True)
 @click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location", show_default=True)
 @click.option('-e', '--engine', type=str, help="Fuzzing engine module to load (python module)", multiple=True)
+@click.option("-E", "--env", type=str, help="Environment variable to forward to the target", multiple=True)
 @click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Triton configuration file")
 @click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Honggfuzz configuration file")
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
@@ -56,10 +57,25 @@ def iterate_file(file):
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
 @click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
 @click.argument('pargvs', nargs=-1)
-def main(workspace: str, sast_report: Optional[str], bins: str, mode: str, chkmode: str, injloc: str, engine: Tuple[str],
-         tt_config: Optional[str], hf_config: Optional[str], seed: Tuple[str], timeout: Optional[int],
-         port: Optional[int], pargvs: Tuple[str], mem_threshold: int, start_quorum: int, filter_inputs: bool,
-         stream: bool, replay_threads: int):
+def main(workspace: str,
+         sast_report: Optional[str],
+         bins: str,
+         mode: str,
+         chkmode: str,
+         injloc: str,
+         engine: Tuple[str],
+         env: Tuple[str],
+         tt_config: Optional[str],
+         hf_config: Optional[str],
+         seed: Tuple[str],
+         timeout: Optional[int],
+         port: Optional[int],
+         pargvs: Tuple[str],
+         mem_threshold: int,
+         start_quorum: int,
+         filter_inputs: bool,
+         stream: bool,
+         replay_threads: int):
     global broker
     # Instanciate the broker
 
@@ -79,7 +95,8 @@ def main(workspace: str, sast_report: Optional[str], bins: str, mode: str, chkmo
                           start_quorum,
                           filter_inputs,
                           stream,
-                          replay_threads)
+                          replay_threads,
+                          env=list(env))
 
     # Preload all Fuzzing engine if needed
     for eng in engine:

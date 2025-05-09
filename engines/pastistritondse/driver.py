@@ -3,6 +3,7 @@ import json
 import logging
 import threading
 import time
+import os
 from queue import Queue
 from hashlib import md5
 from pathlib import Path
@@ -271,8 +272,19 @@ class TritonDSEDriver(object):
     # ClientAgent Callbacks
     # ---
 
-    def start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode, fuzzmode: FuzzMode, chkmode: CheckMode,
-                       covmode: CoverageMode, seed_inj: SeedInjectLoc, engine_args: str, argv: List[str], sast_report: str = None):
+    def start_received(self,
+                       fname: str,
+                       binary: bytes,
+                       engine: FuzzingEngineInfo,
+                       exmode: ExecMode,
+                       fuzzmode: FuzzMode,
+                       chkmode: CheckMode,
+                       covmode: CoverageMode,
+                       seed_inj: SeedInjectLoc,
+                       engine_args: str,
+                       argv: List[str],
+                       envp: list[str],
+                       sast_report: str = None):
         """
         This function is called when the broker says to start the fuzzing session. Here, we receive all information
         about the program to fuzz and the configuration.
@@ -287,6 +299,7 @@ class TritonDSEDriver(object):
         :param seed_inj: The location where to inject input
         :param engine_args: The engine arguments
         :param argv: The program arguments
+        :param envp: The environment variables
         :param sast_report: The SAST report
         :return: None
         """
@@ -326,6 +339,14 @@ class TritonDSEDriver(object):
         if self._program is None:
             self.dual_log(LogLevel.CRITICAL, f"LIEF was not able to parse the binary file {fname}")
             return
+
+        # if env variables provided add them to the global env
+        for env_var in envp:
+            if '=' in env_var:
+                key, value = env_var.split('=', 1)
+                os.environ[key] = value
+            else:
+                logging.warning(f"Invalid environment variable format: {env_var}")
 
         if sast_report:
             logging.info("Loading SAST report")

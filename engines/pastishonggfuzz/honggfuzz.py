@@ -44,8 +44,16 @@ class HonggfuzzProcess:
 
         self.__process = None
 
-    def start(self, target: str, target_arguments: list[str], workspace: Workspace, exmode: ExecMode, fuzzmode: FuzzMode,
-              stdin: bool, engine_args: str, dictionary: Optional[str] = None) -> bool:
+    def start(self,
+              target: str,
+              target_arguments: list[str],
+              workspace: Workspace,
+              exmode: ExecMode,
+              fuzzmode: FuzzMode,
+              stdin: bool,
+              engine_args: str,
+              env_variables: list[str],
+              dictionary: Optional[str] = None) -> bool:
         if not stdin:
             if "@@" in target_arguments:  # Change '@@' for ___FILE___
                 idx = target_arguments.index("@@")
@@ -65,7 +73,7 @@ class HonggfuzzProcess:
             return False
 
         # Build fuzzer arguments.
-        hfuzz_arguments = ' '.join([
+        hfuzz_arguments = [
             f"--statsfile {workspace.stats_file}",
             f"--stdin_input" if stdin else "",
             f"--persistent" if exmode == ExecMode.PERSISTENT or fuzzmode == FuzzMode.BINARY_ONLY else "",
@@ -82,7 +90,13 @@ class HonggfuzzProcess:
             f"--workspace {workspace.root_dir}",
             f"--threads {self._threads}" if self._threads else "",
             f"--dict {dictionary}" if dictionary is not None else ""
-        ])
+        ]
+
+        # If some env variables are provided, add them through command line.
+        if env_variables:
+            hfuzz_arguments.extend([f"--env {env}" for env in env_variables])
+
+        hfuzz_arguments = ' '.join(hfuzz_arguments)
 
         # Build fuzzer command line.
         hfuzz_cmdline = f'{self.__path} {hfuzz_arguments} -- {target_cmdline}'
