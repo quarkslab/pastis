@@ -21,7 +21,7 @@ Launching the ``pastis-libfuzzer`` in online mode is as simple as:
 
 .. code-block:: bash
 
-    $ pastis-aflpp online
+    $ pastis-libfuzzer online
 
 Without further argument the binary the server reached is localhost on port
 5555. Otherwise one can specify ``-h`` and ``-p`` respectively for the host
