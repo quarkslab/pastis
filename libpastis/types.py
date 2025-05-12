@@ -173,7 +173,7 @@ class FuzzingEngineInfo(object):
     It contains its name, version and the Python module
     where to load the descriptor and configuration object.
     """
-    def __init__(self, name: str, version: str, pymodule: str):
+    def __init__(self, name: str, version: str, pymodule: str | None):
         self.name: str = name
         #: Name of the engine
         self.version = version

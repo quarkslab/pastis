@@ -23,12 +23,14 @@ setup(
         "pastisbenchmark",
         "pastisaflpp",
         "pastishonggfuzz",
+        "pastislibfuzzer",
         "pastistritondse",
     ],
     package_dir={
         "pastisaflpp": "engines/pastisaflpp",
         "pastishonggfuzz": "engines/pastishonggfuzz",
         "pastistritondse": "engines/pastistritondse",
+        "pastislibfuzzer": "engines/pastislibfuzzer",
     },
     url="https://github.com/quarkslab/pastis",
     project_urls={
@@ -68,6 +70,7 @@ setup(
             "pastis-benchmark = pastisbenchmark.__main__:main",
             "pastis-broker = pastisbroker.__main__:main",
             "pastis-aflpp = pastisaflpp.__main__:main",
+            "pastis-libfuzzer = pastislibfuzzer.__main__:main",
             "pastis-honggfuzz = pastishonggfuzz.__main__:main",
             "pastis-tritondse = pastistritondse.__main__:main"
         ]

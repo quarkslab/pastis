@@ -23,6 +23,7 @@ from libpastis.types import CheckMode, SeedInjectLoc
 from pastishonggfuzz import HonggfuzzDriver, spawn_online_honggfuzz
 from pastisaflpp import spawn_online_aflpp, check_scaling_frequency
 from pastistritondse import spawn_online_triton
+from pastislibfuzzer import spawn_online_libfuzzer
 
 from pastisbenchmark.replayer import ReplayType, Replayer
 from pastisbenchmark.plotter import Plotter
@@ -147,11 +148,13 @@ def showmap(bins: str):
 @click.option('--aflpp', is_flag=True, type=bool, default=False, help="Enable AFL++")
 @click.option('--hfuzz', is_flag=True, type=bool, default=False, help="Enable Honggfuzz")
 @click.option('--triton', is_flag=True, type=bool, help="Enable TritonDSE")
+@click.option('--libfuzzer', is_flag=True, type=bool, help="Enable libfuzzer")
 @click.option('--debug', type=bool,  is_flag=True, show_default=True, default=False, help='Enable debug logs')
 @click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False)
 @click.option('--hfuzz-path', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), required=False, help="Custom Honggfuzz path")
 @click.option('--hfuzz-threads', type=int, default=0, help="Number of threads to launch Honggfuzz with")
+@click.option('--libfuzzer-threads', type=int, default=0, help="Number of threads to launch Libfuzzer with")
 @click.option('--spawn/--no-spawn', type=bool, is_flag=True, default=True, help="Either to spawn engines or not")
 @click.option("--allow-remote", type=bool, is_flag=True, default=False, help="Enable remote connection")
 @click.option('--probe', type=str, help="Probe to load as a python module (should contain a ProbeInterface)", multiple=True)
@@ -164,8 +167,8 @@ def showmap(bins: str):
 @click.option('--replay-timeout', type=int, default=60, help="Timeout for seed replay", show_default=True)
 @click.option('--proxy', type=str, default="", help="Run the broker as a proxy to another broker: pymodule@ip:port")
 @click.argument('pargs', nargs=-1)
-def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool,
-        debug: bool, timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, spawn: bool,
+def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bool, hfuzz: bool, triton: bool, libfuzzer: bool,
+        debug: bool, timeout: Optional[int], port: int, hfuzz_path: str, hfuzz_threads: int, libfuzzer_threads: int, spawn: bool,
         allow_remote: bool, probe: Tuple[str], skip_cpufreq: bool,  mem_threshold: int, start_quorum: int,  proxy: str,
         filter_inputs: bool, stream: bool, replay_threads: int, replay_timeout: int, pargs: Tuple[str]):
 
@@ -237,6 +240,13 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
             hf_ws.mkdir()
             if spawn:
                 spawn_online_honggfuzz(hf_ws, hf_exe_path, port, hfuzz_threads)
+
+    if libfuzzer:
+        libfuzzer_ws = clients_ws / "libfuzzer"
+        libfuzzer_ws.mkdir()
+        if spawn:
+            spawn_online_libfuzzer(libfuzzer_ws, port, libfuzzer_threads)
+
 
     # Look for configuration files, add them to the broker and launch as many triton instances
     tt_confs = ws_root / "triton_confs"

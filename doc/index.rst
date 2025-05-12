@@ -72,6 +72,7 @@ PASTIS in action
     AFL++ <engines/aflpp>
     Honggfuzz <engines/honggfuzz>
     TritonDSE <engines/tritondse>
+    Libfuzzer <engines/libfuzzer>
 
 
 .. toctree::
