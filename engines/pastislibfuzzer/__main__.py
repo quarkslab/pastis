@@ -57,21 +57,15 @@ def online(host: str, port: int, telemetry_frequency: int):
 @click.argument('program', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option('-r', '--sast-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help='SAST report to use')
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Seed or directory of seeds to give to the exploration", multiple=True)
-@click.option('-x', '--exmode', type=click.Choice([x.name for x in ExecMode]), help="Execution mode", default=ExecMode.SINGLE_EXEC.name) # type: ignore
-@click.option('-f', '--fuzzmode', type=click.Choice([x.name for x in FuzzMode]), help="Fuzzing mode", default=FuzzMode.INSTRUMENTED.name) # type: ignore
 @click.option('-chk', '--chkmode', type=click.Choice([x.name for x in CheckMode]), help="Check mode", default=CheckMode.ALERT_ONLY.name) # type: ignore
-@click.option('-i', '--seedinj', type=click.Choice([x.name for x in SeedInjectLoc]), help="Location where to inject input", default=SeedInjectLoc.STDIN.name) # type: ignore
 @click.option('--logfile', type=str, default="libfuzzer-fileagent-broker.log", help='Log file of all messages received by the broker')
 @click.argument('pargvs', nargs=-1)
-def offline(program: str, sast_report: Optional[str], seed: Tuple[str], exmode, fuzzmode, chkmode, seedinj, logfile, pargvs: Tuple[str]):
+def offline(program: str, sast_report: Optional[str], seed: Tuple[str], chkmode, logfile, pargvs: Tuple[str]):
     global libfuzzer
 
     # Transform the type of parameters
     program_path: Path = Path(program)
-    exmode = ExecMode[exmode]
-    fuzzmode = FuzzMode[fuzzmode]
     chkmode = CheckMode[chkmode]
-    seedinj = SeedInjectLoc[seedinj]
     program_argvs: list[str] = list(pargvs)
 
     # Create a dummy FileAgent
@@ -87,11 +81,11 @@ def offline(program: str, sast_report: Optional[str], seed: Tuple[str], exmode, 
     libfuzzer.start_received(program_path.name,
                              program_path.read_bytes(),
                              FuzzingEngineInfo("LIBFUZZER", __version__, None),
-                             exmode,
-                             fuzzmode,
+                             ExecMode.PERSISTENT, # type: ignore
+                             FuzzMode.AUTO, # type: ignore
                              chkmode,
                              CoverageMode.EDGE, # type: ignore
-                             seedinj,
+                             SeedInjectLoc.ARGV, # type: ignore
                              "",
                              program_argvs,
                              [],
