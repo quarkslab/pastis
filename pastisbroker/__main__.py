@@ -7,11 +7,15 @@ from pathlib import Path
 
 # Thirs-party imports
 import coloredlogs
+import lief
+import tritondse.logging
 
 # Local imports
 from pastisbroker import PastisBroker, BrokingMode, __version__
-from libpastis.types import CheckMode, SeedInjectLoc
+from libpastis.types import CheckMode, SeedInjectLoc, ReplayType
+import tritondse
 
+tritondse.logging.enable(level=logging.DEBUG)
 
 #logging.basicConfig(level=logging.DEBUG)
 logging.root.name = f"\033[7m\033[39m[ BROKER ]\033[0m"
@@ -36,6 +40,41 @@ def iterate_file(file):
             yield sub_s
 
 
+def coverage_binary_checks(binary: str, type: ReplayType) -> bool:
+    """
+    Sanitization checks, make sure the provided binary (does not have any instrumentation
+    for QBDI or do contains llvm_profile functions for LLVM. 
+    """
+    # Parse executable with LIEF
+    p = lief.parse(str(binary))
+    fun_names = list(x.name for x in p.functions)
+
+    if type == ReplayType.qbdi:
+        BLACKLIST = ["hfuzz_", "__afl_", "__gcov_", "__asan_"]
+        for name in fun_names:
+            for token in BLACKLIST:
+                if token in name:
+                    logging.warning(f"{binary} do contains: {token} which is not expected for coverage binary")
+                    return False
+        return True
+    
+    elif type == ReplayType.llvm_profile:
+        BLACKLIST = ["hfuzz_", "__afl_", "__gcov_", "__asan_"]
+        WHITELIST = "llvm_profile"
+        found = False
+        for name in fun_names:
+            for token in BLACKLIST:
+                if token in name:
+                    logging.warning(f"{binary} do contains: {token} which is not expected for coverage binary")
+                    return False
+            if WHITELIST in name:
+                found = True
+        return found
+    
+    else:
+        return False
+
+
 @click.command()
 @click.version_option(__version__)
 @click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data", show_default=True)
@@ -54,6 +93,8 @@ def iterate_file(file):
 @click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit", show_default=True)
 @click.option('--start-quorum', type=int, default=0, help="Number of client connection to receive before triggering startup", show_default=True)
 @click.option('--filter-inputs', type=bool, is_flag=True, default=False, help="Filter inputs that do not generate coverage", show_default=True)
+@click.option("--cov-binary", type=click.Path(exists=True, file_okay=True, dir_okay=False, executable=True, path_type=Path), required=False, help="Binary executable to use for coverage")
+@click.option("--cov-type", type=click.Choice([x.name for x in list(ReplayType)]), required=False, help="Coverage type")
 @click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
 @click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
 @click.argument('pargvs', nargs=-1)
@@ -74,6 +115,8 @@ def main(workspace: str,
          mem_threshold: int,
          start_quorum: int,
          filter_inputs: bool,
+         cov_binary: Path,
+         cov_type: str,
          stream: bool,
          replay_threads: int):
     global broker
@@ -83,6 +126,18 @@ def main(workspace: str,
     if chkmode in [CheckMode.ALERT_ONLY, CheckMode.ALERT_ONE] and not sast_report:
         logging.error(f"Check mode {chkmode.name} requires a SAST report (use -r) to provide it")
         sys.exit(1)
+
+    # if input filtering or streaming enabled check that a coverage replay binary is provided
+    if filter_inputs or stream:
+        if not cov_binary or not cov_type:
+            logging.error(f"if filter_inputs or stream activated need --cov-binary and --cov-type")
+            sys.exit(1)
+        replay_type = ReplayType[cov_type]
+
+        if not coverage_binary_checks(cov_binary, replay_type):
+            sys.exit(1)
+    else:
+        replay_type = None
 
     broker = PastisBroker(workspace,
                           bins,
@@ -96,6 +151,9 @@ def main(workspace: str,
                           filter_inputs,
                           stream,
                           replay_threads,
+                          timeout,
+                          cov_binary,
+                          replay_type,
                           env=list(env))
 
     # Preload all Fuzzing engine if needed

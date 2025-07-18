@@ -1,5 +1,5 @@
 import json
-from aenum import Enum, extend_enum
+from aenum import Enum, extend_enum, auto
 from pathlib import Path
 from typing import Union
 import base64
@@ -190,3 +190,14 @@ class FuzzingEngineInfo(object):
         :return: object
         """
         return FuzzingEngineInfo(pb.name, pb.version, pb.pymodule)
+
+
+
+class ReplayType(Enum):
+    """
+    Class to represent the kind of replay binary used. It is used to determine
+    coverage. It can be acquired from source instrumentation with LLVM profile
+    or directly from the binary with QBDI.
+    """
+    qbdi = auto()
+    llvm_profile = auto()

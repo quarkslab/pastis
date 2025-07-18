@@ -15,7 +15,7 @@ import queue
 import psutil
 from libpastis import BrokerAgent, FuzzingEngineDescriptor, EngineConfiguration, BinaryPackage, SASTReport, ClientAgent
 from libpastis.types import SeedType, FuzzingEngineInfo, LogLevel, Arch, State, SeedInjectLoc, CheckMode, CoverageMode, \
-                            ExecMode, AlertData, PathLike, Platform, FuzzMode
+                            ExecMode, AlertData, PathLike, Platform, FuzzMode, ReplayType
 from libpastis.utils import get_local_architecture
 import lief
 from tritondse import QuokkaProgram
@@ -25,7 +25,7 @@ from pastisbroker.client import PastisClient
 from pastisbroker.stat_manager import StatManager
 from pastisbroker.workspace import Workspace, WorkspaceStatus
 from pastisbroker.utils import load_engine_descriptor, Bcolors, COLORS
-from pastisbroker.coverage import CoverageManager, ClientInput
+from pastisbroker.coverage_manager import CoverageManager, ClientInput
 
 
 lief.logging.disable()
@@ -34,7 +34,6 @@ lief.logging.disable()
 class BrokingMode(Enum):
     FULL = 1              # Transmit all seeds to all peers
     NO_TRANSMIT = 2       # Does not transmit seed to peers (for comparing perfs of tools against each other)
-
 
 
 
@@ -56,6 +55,8 @@ class PastisBroker(BrokerAgent):
                  stream: bool = False,
                  replay_threads: int = 4,
                  replay_timeout: int = 60,
+                 replay_binary: Path|None = None,
+                 replay_type: ReplayType = ReplayType.qbdi,
                  env: list[str] = []):
         super(PastisBroker, self).__init__()
 
@@ -130,32 +131,16 @@ class PastisBroker(BrokerAgent):
         self._coverage_manager = None
         self.filter_inputs: bool = filter_inputs
         if filter_inputs or stream:
-            if (path := self.find_vanilla_binary()) is not None:  # Find an executable suitable for coverage
-                logging.info(f"Coverage binary: {path}")
-                stream_file = self.workspace.coverage_history if stream else ""
-                self._coverage_manager = CoverageManager(replay_threads, replay_timeout, filter_inputs, path, self.argv, self.inject, stream_file)
-            else:
-                logging.warning("filtering or stream enabled but cannot find vanilla binary")
-
-
-    def find_vanilla_binary(self) -> Optional[str]:
-        """
-        Find a binary without instrumentation to be used for coverage
-        computation. It also has to match local architecture.
-        :return: Path to the progam
-        """
-        local_arch = get_local_architecture()
-        for pkg in self.programs.get((Platform.LINUX, local_arch)):
-            path = str(pkg.executable_path.absolute())
-            p = lief.parse(str(path))
-            ok = True
-            for f in p.functions:
-                if "hfuzz_" in f.name or "__afl_" in f.name or "__gcov_" in f.name or "__asan_" in f.name:
-                    ok = False
-                    break
-            if ok:
-                return path
-        return None
+            logging.info(f"Coverage binary: {replay_binary}")
+            stream_file = self.workspace.coverage_history if stream else ""
+            self._coverage_manager = CoverageManager(replay_threads,
+                                                     replay_timeout,
+                                                     filter_inputs,
+                                                     replay_binary,
+                                                     replay_type,
+                                                     self.argv,
+                                                     self.inject,
+                                                     stream_file)
 
 
     def load_engine_addon(self, py_module: str) -> bool:
