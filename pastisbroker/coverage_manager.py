@@ -47,19 +47,21 @@ class CoverageManager(object):
                  pool_size: int,
                  replay_timeout: int,
                  filter: bool,
-                 program: str,
+                 program: Path,
                  replay_type: ReplayType,
                  args: list[str],
                  inj_loc: SeedInjectLoc,
-                 stream_file: str = ""):
+                 stream_file: str = "",
+                 env: dict[str, str] | None = None):
         # Base info for replay
         self.pool_size = pool_size
         self.replay_timeout = replay_timeout
         self.filter_enabled = filter
         self.replay_type = replay_type
-        self.program = str(Path(program).absolute())
+        self.program = program
         self.args = args
         self.inj_loc = inj_loc
+        self.env = env if env is not None else {}
 
         # Coverage and messaging attributes
         if replay_type == ReplayType.qbdi:
@@ -127,15 +129,17 @@ class CoverageManager(object):
 
     def push_input_synchronous(self, cli_input: ClientInput) -> None:
         self.push_input(cli_input)
-        self.replay_one_input_in_queue(self.input_queue,
-                                       self.cov_queue,
+        self.replay_one_input_in_queue(self.input_queue, # type: ignore
+                                       self.cov_queue, # type: ignore
                                        self.program,
                                        self.args,
                                        self.inj_loc,
                                        self.replay_timeout,
+                                       self.replay_type,
                                        Path("/tmp/toto.txt"),
                                        os.getpid())
         self.read_one_coverage_in_queue()
+
 
     def iter_granted_inputs(self) -> Generator[ClientInput, None, None]:
         try:
@@ -155,6 +159,7 @@ class CoverageManager(object):
 
     def add_item_coverage_stream(self, item: ClientInput) -> None:
         if self.stream_file:  # Stream enabled
+            assert self.csv is not None, "CSV writer not initialized"
             self.csv.writerow([
                 item.log_time,
                 item.recv_time,
@@ -187,13 +192,14 @@ class CoverageManager(object):
         try:
             item, cov_file = self.cov_queue.get(timeout=0.5)
             # logging.info("Coverage worker fetch item")
-            new_items = []
+            _print_new_items = []
             try:
                 covdiff: CoverageUpdateDiff = self._coverage.add_coverage_file(cov_file)
                 if covdiff.updated:
                     self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
 
                     item.new_coverage = list(covdiff.new_items)
+                    _print_new_items = item.new_coverage
 
                     self.grant_input(item)
 
@@ -213,7 +219,11 @@ class CoverageManager(object):
                 # Grant input
                 self.grant_input(item)
 
-            logging.info(f"seed {item.hash} ({item.fuzzer_name}) [replay:{self.mk_rpl_status(item.replay_status)}][{self.mk_broker_status(item.broker_status, bool(new_items))}][{int(item.replay_time):}s] ({len(new_items)} new edges) (pool:{self.input_queue.qsize()})")
+            logging.info(f"seed {item.hash} ({item.fuzzer_name})"
+                         f"[replay:{self.mk_rpl_status(item.replay_status)}]"
+                         f"[{self.mk_broker_status(item.broker_status, bool(_print_new_items))}]"
+                         f"[{int(item.replay_time):}s] ({len(_print_new_items)} new edges)"
+                         f" (pool:{self.input_queue.qsize()})")
             # Regardless if it was a success or not log it
             self.add_item_coverage_stream(item)
         except queue.Empty:
@@ -251,7 +261,7 @@ class CoverageManager(object):
     @staticmethod
     def replay_worker(input_queue: Queue,
                       cov_queue: Queue,
-                      program: str,
+                      program: Path,
                       argv: list[str],
                       seed_inj: SeedInjectLoc,
                       timeout,
@@ -273,7 +283,7 @@ class CoverageManager(object):
     @staticmethod
     def replay_one_input_in_queue(input_queue: Queue,
                                   cov_queue: Queue,
-                                  program: str,
+                                  program: Path,
                                   argv: list[str],
                                   seed_inj: SeedInjectLoc,
                                   timeout: int,
@@ -286,7 +296,7 @@ class CoverageManager(object):
         tmpfile.write_bytes(item.content)
 
         # Create to coverage file
-        cov_file = tempfile.mktemp(f"_{item.hash}.cov")
+        cov_file = Path(tempfile.mktemp(f"_{item.hash}.cov"))
 
         # Adjust injection location before calling QBDITrace
         cur_argv = argv[:]
@@ -301,13 +311,19 @@ class CoverageManager(object):
 
         t0 = time.time()
 
-        cwd = str(Path(program).absolute().parent)
+        cwd = program.parent
         is_stdin = bool(seed_inj == SeedInjectLoc.STDIN)
         
         # Run the seed
         logging.info(f"[replay-worker] running input into trace {cov_file}")
         Runner = QbdiCoverage if replay_type == ReplayType.qbdi else LlvmProfileCoverage
-        if Runner.run(program, cur_argv, cwd, timeout, str(tmpfile), str(cov_file), is_stdin):
+        if Runner.run(program,
+                      cur_argv,
+                      timeout,
+                      tmpfile,
+                      cov_file,
+                      is_stdin,
+                      cwd):
             item.replay_status = "SUCCESS"
             logging.info(f"[worker-{pid}] replaying {item.hash} sucessful")
         else:

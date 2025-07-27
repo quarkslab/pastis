@@ -1,3 +1,4 @@
+from abc import ABC
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,31 +13,34 @@ from tritondse.trace import QBDITrace, TraceException
 @dataclass
 class CoverageUpdateDiff(object):
     updated: bool
-    new_items: list[int, int]
+    new_items: list[tuple[int, int]]
+    
 
 
-
-class Coverage(object):
+class Coverage(ABC):
     """
-    Abstract class represent current program coverage.
+    Abstract class represent current program coverage. It is meant to be
+    subclassed by concrete coverage implementations such as QBDI or LLVM profile.
+    It is meant to work as an accumulator of coverage so that it holds
+    at all time the current coverage.
     """
 
-    def add_coverage_file(self, path: Path) -> CoverageUpdateDiff:
+    def add_coverage_file(self, cov_file: Path) -> CoverageUpdateDiff:
         """
         Add the file to the current coverage
         """
-        raise NotImplementedError("should be suclassed")
-
-    @staticmethod
-    def run(program: str,
-            argvs: list[str],
-            cwd: str,
-            timeout: float,
-            input_file: str,
-            cov_file: str,
-            is_stdin: bool) -> bool:
         raise NotImplementedError("should be subclassed")
 
+    @staticmethod
+    def run(program: Path,
+            argvs: list[str],
+            timeout: float,
+            input_file: Path,
+            coverage_file: Path,
+            is_stdin: bool,
+            cwd: Path | None = None,
+            env: dict[str, str]|None = None) -> bool:
+        raise NotImplementedError("should be subclassed")
 
 
 class QbdiCoverage(Coverage):
@@ -63,13 +67,14 @@ class QbdiCoverage(Coverage):
         return CoverageUpdateDiff(bool_improved, new_items)
 
     @staticmethod
-    def run(program: str,
+    def run(program: Path,
             argvs: list[str],
-            cwd: str,
             timeout: float,
-            input_file: str,
-            cov_file: str,
-            is_stdin: bool) -> bool:
+            input_file: Path,
+            coverage_file: Path,
+            is_stdin: bool,
+            cwd: Path | None = None,
+            env: dict[str, str]|None = None) -> bool:
         """
         Run program using QBDI as a tracer.
         """
@@ -79,10 +84,11 @@ class QbdiCoverage(Coverage):
             return QBDITrace.run(QbdiCoverage.STRATEGY,
                                  program,
                                  argvs,
-                                 output_path=cov_file,
+                                 output_path=coverage_file,
                                  stdin_file=input_file if is_stdin else None,
                                  cwd=cwd,
-                                 timeout=timeout)
+                                 timeout=timeout,
+                                 env=env)
         except TraceException:
             logging.info("trace exception !")
             return False  # TIMEOUT

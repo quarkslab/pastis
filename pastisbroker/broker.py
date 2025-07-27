@@ -45,18 +45,18 @@ class PastisBroker(BrokerAgent):
     def __init__(self, workspace: PathLike,
                  binaries_dir: PathLike,
                  broker_mode: BrokingMode,
-                 check_mode: CheckMode = CheckMode.CHECK_ALL,
-                 inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN,
-                 sast_report: PathLike = None,
+                 check_mode: CheckMode = CheckMode.CHECK_ALL, # type: ignore
+                 inject_loc: SeedInjectLoc = SeedInjectLoc.STDIN, # type: ignore
                  p_argv: List[str] = None,
+                 sast_report: PathLike | None = None,
                  memory_threshold: int = 85,
                  start_quorum: int = 0,
                  filter_inputs: bool = False,
                  stream: bool = False,
                  replay_threads: int = 4,
                  replay_timeout: int = 60,
-                 replay_binary: Path|None = None,
-                 replay_type: ReplayType = ReplayType.qbdi,
+                 replay_binary: Path | None = None,
+                 replay_type: ReplayType = ReplayType.qbdi, # type: ignore
                  env: list[str] = []):
         super(PastisBroker, self).__init__()
 
@@ -131,8 +131,9 @@ class PastisBroker(BrokerAgent):
         self._coverage_manager = None
         self.filter_inputs: bool = filter_inputs
         if filter_inputs or stream:
+            assert replay_binary is not None, "If input filtering or streaming is activated, a coverage binary must be provided"
             logging.info(f"Coverage binary: {replay_binary}")
-            stream_file = self.workspace.coverage_history if stream else ""
+            stream_file = str(self.workspace.coverage_history) if stream else ""
             self._coverage_manager = CoverageManager(replay_threads,
                                                      replay_timeout,
                                                      filter_inputs,
@@ -140,7 +141,8 @@ class PastisBroker(BrokerAgent):
                                                      replay_type,
                                                      self.argv,
                                                      self.inject,
-                                                     stream_file)
+                                                     stream_file,
+                                                     env)
 
 
     def load_engine_addon(self, py_module: str) -> bool:
@@ -195,7 +197,7 @@ class PastisBroker(BrokerAgent):
         cli = self.clients.get(cli_id)
         if not cli:
             logging.warning(f"client '{cli_id}' unknown (send stop)")
-            if cli.netid != self.PROXY_NETID:
+            if cli_id != self.PROXY_NETID:
                 self.send_stop(cli_id)
         return cli
 
@@ -230,6 +232,7 @@ class PastisBroker(BrokerAgent):
             logging.debug(f"receive duplicate seed {h} by {cli.strid}")
 
     def push_input_filtering(self, netid: bytes, id: str, fname: str, seed: bytes, typ: SeedType) -> None:
+        assert self._coverage_manager is not None, "Coverage manager not initialized"
         sp = fname.split("_")
         covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], md5(seed).hexdigest(),
                            fname, typ, netid, id, "GRANTED", "", -1, [])
@@ -316,9 +319,15 @@ class PastisBroker(BrokerAgent):
         client.log(level, message)
 
     def telemetry_received(self, cli_id: bytes,
-                           _: State = None, exec_per_sec: int = None, total_exec: int = None,
-                           cycle: int = None, timeout: int = None, coverage_block: int = None, coverage_edge: int = None,
-                           coverage_path: int = None, last_cov_update: int = None):
+                           _: State = None,
+                           exec_per_sec: int = None,
+                           total_exec: int = None,
+                           cycle: int = None,
+                           timeout: int = None,
+                           coverage_block: int = None,
+                           coverage_edge: int = None,
+                           coverage_path: int = None,
+                           last_cov_update: int = None):
         client = self.get_client(cli_id)
         if not client:
             return
@@ -617,7 +626,7 @@ class PastisBroker(BrokerAgent):
             if self._running:  # If we want to run now (cmdline mode)
                 self.start_pending_clients()
 
-    def run(self, timeout: int = None):
+    def run(self, timeout: int | None = None):
         self.start()
         last_t = time.time()
 
@@ -629,7 +638,7 @@ class PastisBroker(BrokerAgent):
 
                 # Check if the campaign have to be stopped
                 if timeout is not None:
-                    if t > (self._start_time + timeout):
+                    if t > (self._start_time + timeout): # type: ignore
                         logging.info("Campaign timeout reached, stop campaign.")
                         self._stop = True
 

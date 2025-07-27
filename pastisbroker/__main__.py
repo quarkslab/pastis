@@ -40,7 +40,7 @@ def iterate_file(file):
             yield sub_s
 
 
-def coverage_binary_checks(binary: str, type: ReplayType) -> bool:
+def coverage_binary_checks(binary: Path, type: ReplayType) -> bool:
     """
     Sanitization checks, make sure the provided binary (does not have any instrumentation
     for QBDI or do contains llvm_profile functions for LLVM. 
@@ -77,26 +77,47 @@ def coverage_binary_checks(binary: str, type: ReplayType) -> bool:
 
 @click.command()
 @click.version_option(__version__)
-@click.option('-w', '--workspace', type=click.Path(), default="workspace", help="Workspace directory to store data", show_default=True)
-@click.option('-r', '--sast-report', type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True), help="SAST report to use")
-@click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True), required=True, help="Directory containing binaries")
-@click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]), default=BrokingMode.FULL.name, help="Mode of broking", show_default=True)
-@click.option('-c', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]), default=CheckMode.CHECK_ALL.name, help="Check mode (all or alert driven)", show_default=True)
-@click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]), default=SeedInjectLoc.STDIN.name, help="Seed injection location", show_default=True)
+@click.option('-w', '--workspace', type=click.Path(), default="workspace",
+              help="Workspace directory to store data", show_default=True)
+@click.option('-r', '--sast-report',
+              type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+              help="SAST report to use")
+@click.option('-b', '--bins', type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
+              required=True, help="Directory containing binaries")
+@click.option('-m', '--mode', type=click.Choice([x.name for x in BrokingMode]),
+              default=BrokingMode.FULL.name, help="Mode of broking", show_default=True)
+@click.option('-c', '--chkmode', type=click.Choice([x.name for x in list(CheckMode)]),
+              default=CheckMode.CHECK_ALL.name, help="Check mode (all or alert driven)", show_default=True)
+@click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]),
+              default=SeedInjectLoc.STDIN.name, help="Seed injection location", show_default=True)
 @click.option('-e', '--engine', type=str, help="Fuzzing engine module to load (python module)", multiple=True)
 @click.option("-E", "--env", type=str, help="Environment variable to forward to the target", multiple=True)
-@click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Triton configuration file")
-@click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Honggfuzz configuration file")
-@click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True), help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
-@click.option('-t', "--timeout", type=int, default=None, help="Timeout of the campaign. Time after which stopping the campaign")
-@click.option('-p', '--port', type=int, default=5555, help="Port to bind to", multiple=False, show_default=True)
-@click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit", show_default=True)
-@click.option('--start-quorum', type=int, default=0, help="Number of client connection to receive before triggering startup", show_default=True)
-@click.option('--filter-inputs', type=bool, is_flag=True, default=False, help="Filter inputs that do not generate coverage", show_default=True)
-@click.option("--cov-binary", type=click.Path(exists=True, file_okay=True, dir_okay=False, executable=True, path_type=Path), required=False, help="Binary executable to use for coverage")
-@click.option("--cov-type", type=click.Choice([x.name for x in list(ReplayType)]), required=False, help="Coverage type")
-@click.option('--stream', type=bool, is_flag=True, default=False, help="Stream input and coverage info in the given file", show_default=True)
-@click.option('--replay-threads', type=int, default=4, help="number of threads to use for input replay", show_default=True)
+@click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
+              help="Triton configuration file")
+@click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
+              help="Honggfuzz configuration file")
+@click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
+              help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
+@click.option('-t', "--timeout", type=int, default=None,
+              help="Whole campaign timeout. Time after which stopping the campaign")
+@click.option('-p', '--port', type=int, default=5555, help="Port to bind to",
+              multiple=False, show_default=True)
+@click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit",
+              show_default=True)
+@click.option('--start-quorum', type=int, default=0,
+              help="Number of client connection to receive before triggering startup", show_default=True)
+@click.option('--filter-inputs', type=bool, is_flag=True, default=False,
+              help="Filter inputs that do not generate coverage", show_default=True)
+@click.option("--cov-binary", type=click.Path(exists=True, file_okay=True, dir_okay=False, executable=True, path_type=Path),
+              required=False, help="Binary executable to use for coverage")
+@click.option("--cov-type", type=click.Choice([x.name for x in list(ReplayType)]),
+              required=False, help="Coverage type")
+@click.option('--stream', type=bool, is_flag=True, default=False,
+              help="Stream input and coverage info in the given file", show_default=True)
+@click.option('--replay-threads',
+              type=int, default=4, help="number of threads to use for input replay", show_default=True)
+@click.option('--replay-timeout', type=int, default=60,
+              help="timeout for replaying inputs", show_default=True)
 @click.argument('pargvs', nargs=-1)
 def main(workspace: str,
          sast_report: Optional[str],
@@ -110,7 +131,7 @@ def main(workspace: str,
          hf_config: Optional[str],
          seed: Tuple[str],
          timeout: Optional[int],
-         port: Optional[int],
+         port: int,
          pargvs: Tuple[str],
          mem_threshold: int,
          start_quorum: int,
@@ -118,11 +139,12 @@ def main(workspace: str,
          cov_binary: Path,
          cov_type: str,
          stream: bool,
-         replay_threads: int):
+         replay_threads: int,
+         replay_timeout: int) -> None:
     global broker
     # Instanciate the broker
 
-    chkmode = CheckMode[chkmode]
+    chkmode = CheckMode[chkmode] # type: ignore
     if chkmode in [CheckMode.ALERT_ONLY, CheckMode.ALERT_ONE] and not sast_report:
         logging.error(f"Check mode {chkmode.name} requires a SAST report (use -r) to provide it")
         sys.exit(1)
@@ -144,14 +166,14 @@ def main(workspace: str,
                           BrokingMode[mode],
                           chkmode,
                           SeedInjectLoc[injloc],
-                          sast_report,
                           list(pargvs),
+                          sast_report,
                           mem_threshold,
                           start_quorum,
                           filter_inputs,
                           stream,
                           replay_threads,
-                          timeout,
+                          replay_timeout,
                           cov_binary,
                           replay_type,
                           env=list(env))
