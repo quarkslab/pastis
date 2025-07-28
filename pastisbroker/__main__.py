@@ -161,9 +161,6 @@ def main(workspace: str,
     else:
         replay_type = None
 
-    # Unpack environment variables
-    env_vars = {k: v for k, v in (x.split('=', 1) for x in list(env))}
-
     # Instanciate the broker
     broker = PastisBroker(workspace,
                           bins,
@@ -180,7 +177,7 @@ def main(workspace: str,
                           replay_timeout,
                           cov_binary,
                           replay_type,
-                          env=env_vars)
+                          env)
 
     # Preload all Fuzzing engine if needed
     for eng in engine:

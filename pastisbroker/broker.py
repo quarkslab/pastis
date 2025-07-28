@@ -57,7 +57,7 @@ class PastisBroker(BrokerAgent):
                  replay_timeout: int = 60,
                  replay_binary: Path | None = None,
                  replay_type: ReplayType = ReplayType.qbdi, # type: ignore
-                 env: dict[str, str]|None = None):
+                 env: list[str]|None = None):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -81,7 +81,7 @@ class PastisBroker(BrokerAgent):
         self.argv = [] if p_argv is None else p_argv
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
-        self.env_variables = env
+        self.env_variables = env if env is not None else []
 
         # for slicing mode (otherwise not used)
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
@@ -134,6 +134,10 @@ class PastisBroker(BrokerAgent):
             assert replay_binary is not None, "If input filtering or streaming is activated, a coverage binary must be provided"
             logging.info(f"Coverage binary: {replay_binary}")
             stream_file = str(self.workspace.coverage_history) if stream else ""
+            
+            # Convert env into dictionary
+            env_dict = {k: v for k, v in (x.split('=', 1) for x in self.env_variables)}
+
             self._coverage_manager = CoverageManager(self.workspace.coverage_file,
                                                      replay_threads,
                                                      replay_timeout,
@@ -143,7 +147,7 @@ class PastisBroker(BrokerAgent):
                                                      self.argv,
                                                      self.inject,
                                                      stream_file,
-                                                     env)
+                                                     env_dict)
 
 
     def load_engine_addon(self, py_module: str) -> bool:
