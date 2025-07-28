@@ -99,7 +99,7 @@ def coverage_binary_checks(binary: Path, type: ReplayType) -> bool:
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
               help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
 @click.option('-t', "--timeout", type=int, default=None,
-              help="Whole campaign timeout. Time after which stopping the campaign")
+              help="Whole campaign timeout (in s). Time after which stopping the campaign")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to",
               multiple=False, show_default=True)
 @click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit",
