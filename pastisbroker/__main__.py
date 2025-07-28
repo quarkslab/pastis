@@ -59,7 +59,7 @@ def coverage_binary_checks(binary: Path, type: ReplayType) -> bool:
         return True
     
     elif type == ReplayType.llvm_profile:
-        BLACKLIST = ["hfuzz_", "__afl_", "__gcov_", "__asan_"]
+        BLACKLIST = ["hfuzz_", "__afl_", "__asan_"]
         WHITELIST = "llvm_profile"
         found = False
         for name in fun_names:
@@ -161,6 +161,10 @@ def main(workspace: str,
     else:
         replay_type = None
 
+    # Unpack environment variables
+    env_vars = {k: v for k, v in (x.split('=', 1) for x in list(env))}
+
+    # Instanciate the broker
     broker = PastisBroker(workspace,
                           bins,
                           BrokingMode[mode],
@@ -176,7 +180,7 @@ def main(workspace: str,
                           replay_timeout,
                           cov_binary,
                           replay_type,
-                          env=list(env))
+                          env=env_vars)
 
     # Preload all Fuzzing engine if needed
     for eng in engine:

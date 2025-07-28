@@ -2,11 +2,17 @@ from abc import ABC
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+import os
+import logging
+import subprocess
+import glob
+import hashlib 
 
 # tritondse imports
 from tritondse import GlobalCoverage, CoverageSingleRun, CoverageStrategy, BranchSolvingStrategy
 from tritondse.trace import QBDITrace, TraceException
 
+from pastisbroker.llvm_cov import ProfileCoverageFile, CovSummary, CovData, File, Function
 
 
 
@@ -46,8 +52,9 @@ class Coverage(ABC):
 class QbdiCoverage(Coverage):
     STRATEGY = CoverageStrategy.EDGE
 
-    def __init__(self):
+    def __init__(self, coverage_file: Path):
         # Keep coverage as a tritondse GlobalCoverage
+        self.coverage_file = coverage_file  # Nothing done with it yet
         self.coverage = GlobalCoverage(self.STRATEGY, BranchSolvingStrategy.ALL_NOT_COVERED)
 
     def add_coverage_file(self, cov_file: Path) -> CoverageUpdateDiff:
@@ -95,4 +102,161 @@ class QbdiCoverage(Coverage):
 
 
 class LlvmProfileCoverage(Coverage):
-    pass
+    def __init__(self, coverage_binary: Path, coverage_file: Path):
+        # Keep coverage as a tritondse GlobalCoverage
+        self.coverage_binary = coverage_binary
+        self.coverage: CovSummary = CovSummary()
+        self.coverage_file = coverage_file
+
+    @property
+    def is_first_coverage(self) -> bool:
+        return self.coverage.lines.covered == -1
+
+    def add_coverage_file(self, cov_file: Path) -> CoverageUpdateDiff:
+        
+        # Merge the profraw with the current coverage (back in itself)
+        if not LlvmProfileCoverage.merge_profdata(self.coverage_file, str(self.coverage_file), str(cov_file)):
+            logging.error(f"Failed to merge profdata {cov_file} into {self.coverage_file}")
+            return CoverageUpdateDiff(False, [])
+
+        # Export the coverage to JSON
+        json_file = self.coverage_file.with_suffix(".json")
+        if not LlvmProfileCoverage.export_profdata(self.coverage_file,
+                                                   json_file,
+                                                   self.coverage_binary,
+                                                   summary_only=True):
+            logging.error("Failed to export coverage to JSON")
+            return CoverageUpdateDiff(False, [])
+        
+        # Load the updated coverage JSON file
+        new_coverage = CovSummary.from_json(json_file)
+        
+        # Check if the coverage has been updated
+        if self.coverage.improve_coverage(new_coverage):
+            # TODO: Compute proper diff !
+            diff = new_coverage.branches.covered - self.coverage.branches.covered
+            self.coverage = new_coverage
+            return CoverageUpdateDiff(True, [(1,1)]*diff)
+        else:
+            logging.debug("No coverage update found")
+            return CoverageUpdateDiff(False, [])
+        
+
+    @staticmethod
+    def get_fuzz_env() -> dict[str, str]:
+        symbolizer = os.environ.get('LLVM_SYMBOLIZER_PATH', "/usr/bin/llvm-symbolizer")
+        fuzz_env = os.environ | {
+            'UBSAN_SYMBOLIZER_PATH': symbolizer,
+            "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1",
+            'ASAN_SYMBOLIZER_PATH': symbolizer,
+            'MSAN_SYMBOLIZER_PATH': symbolizer,
+        }
+        return fuzz_env
+
+    @staticmethod
+    def run(program: Path,
+            argvs: list[str],
+            timeout: float,
+            input_file: Path,
+            coverage_file: Path,
+            is_stdin: bool,
+            cwd: Path | None = None,
+            env: dict[str, str]|None = None) -> bool:
+
+        # Configure environment variables
+        dst_env: dict[str, str] = LlvmProfileCoverage.get_fuzz_env()
+        if env is not None:
+            dst_env.update(env)
+        dst_env['LLVM_PROFILE_FILE'] = str(coverage_file.absolute())
+
+        # Configure the way the input is introduced
+        final_argv = argvs[:]
+        if is_stdin:
+            stdin_file = open(input_file, 'rb')
+        else:
+            stdin_file = None
+            if not argvs:
+                # logging.warning("Argv empty. Add input file as argument.")
+                final_argv = [str(input_file.absolute())]
+            else:
+                try:
+                    if any(input_file.name in arg for arg in argvs):
+                        pass  # already provided (do nothing)
+                    else:
+                        idx = argvs.index("@@")
+                        final_argv[idx] = str(input_file.absolute())
+                except ValueError as e:
+                    logging.error(f"No @@ in argvs. Cannot insert input file. {e}")
+                    return False
+
+        command = [str(program)] + final_argv
+        try:
+            res = subprocess.run(command,
+                                stdin=stdin_file,
+                                env=dst_env,
+                                timeout=timeout,
+                                check=True)
+                                # stdout=subprocess.DEVNULL,
+                                # stderr=subprocess.DEVNULL)
+            return res.returncode == 0
+        except subprocess.CalledProcessError as e:
+            h = hashlib.md5(Path(input_file).read_bytes()).hexdigest()
+            logging.warning(f"Replay {h} failed with error: {str(e)}")
+            return False
+        except subprocess.TimeoutExpired:
+            logging.warning(f"Timeout expired for command: {command}")
+            return False
+
+    @staticmethod
+    def merge_profdata(output_profdata: Path, *prof_files) -> bool:
+        """
+        Merge various .profraw or profdata into a single .profdata profile.
+
+        :param output_profdata: Path where the output will be saved.
+        :param profdata_file: Path to the input .profdata file.
+        """
+        command = ['llvm-profdata', 'merge',
+                '-o',
+                output_profdata,
+        ]
+        for prof_file in (Path(f) for f in list(prof_files)):
+            if prof_file.is_dir():
+                command.extend(glob.glob(f'{prof_file}/*.profraw'))
+            elif prof_file.is_file():
+                command.append(str(prof_file))
+            else:
+                pass  # Ignore if the file is a link or block
+        res = subprocess.run(command,
+                            check=True,
+                            shell=False)
+        return res.returncode == 0
+
+    @staticmethod
+    def export_profdata(profdata_file: Path, output_file: Path, binary: Path, summary_only: bool=False) -> bool:
+        """
+        Exports the LLVM .profdata file to JSON.
+        
+        :param profdata_file: Path to the input .profdata file.
+        :param output_file: Path where the output will be saved.
+        :param binary: Path to the binary file.
+        :param summary_only: If True, only the summary will be exported.
+        """
+        with open(output_file, 'w') as out_file:
+            command = [
+                'llvm-cov', 'export',
+                '-instr-profile', str(profdata_file),
+                '-format=text', # JSON
+                '-summary-only' if summary_only else '',
+                str(binary)
+            ]
+            
+            try:
+                res = subprocess.run(command,
+                                    stdout=out_file,
+                                    check=True)
+                if res.returncode != 0:
+                    return False
+                return True
+            except subprocess.CalledProcessError as e:
+                print(f"Error exporting coverage data: {e}")
+                return False

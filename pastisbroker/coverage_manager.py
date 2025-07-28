@@ -44,6 +44,7 @@ class CoverageManager(object):
     ARGV_PLACEHOLDER = "@@"
 
     def __init__(self,
+                 global_coverage: Path,
                  pool_size: int,
                  replay_timeout: int,
                  filter: bool,
@@ -65,9 +66,9 @@ class CoverageManager(object):
 
         # Coverage and messaging attributes
         if replay_type == ReplayType.qbdi:
-            self._coverage = QbdiCoverage()
-        elif replay_type == ReplayType.LlvmProfileCoverage:
-            self._coverage = LlvmProfileCoverage()
+            self._coverage = QbdiCoverage(global_coverage)
+        elif replay_type == ReplayType.llvm_profile:
+            self._coverage = LlvmProfileCoverage(program, global_coverage)
         else:
             assert False
 
@@ -103,7 +104,7 @@ class CoverageManager(object):
         logging.info("Starting coverage manager")
 
         for work_id in range(self.pool_size):
-            self.pool.apply_async(self.replay_worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc, self.replay_timeout, self.replay_type))
+            self.pool.apply_async(self.replay_worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc, self.replay_timeout, self.replay_type, self.env))
 
     def stop(self) -> None:
         self._running = False
@@ -137,8 +138,9 @@ class CoverageManager(object):
                                        self.replay_timeout,
                                        self.replay_type,
                                        Path("/tmp/toto.txt"),
-                                       os.getpid())
-        self.read_one_coverage_in_queue()
+                                       os.getpid(),
+                                       self.env)
+        self.read_one_coverage_in_queue()   
 
 
     def iter_granted_inputs(self) -> Generator[ClientInput, None, None]:
@@ -187,10 +189,16 @@ class CoverageManager(object):
                 self._running = False
                 logging.info("coverage worker stop")
                 break
+            except Exception as e:
+                logging.exception(f"Exception in coverage worker {e}")
+                self._running = False
+                break
 
     def read_one_coverage_in_queue(self):
         try:
             item, cov_file = self.cov_queue.get(timeout=0.5)
+            if not cov_file.exists():
+                raise FileNotFoundError(f"Coverage file {cov_file} does not exist")
             # logging.info("Coverage worker fetch item")
             _print_new_items = []
             try:
@@ -216,14 +224,16 @@ class CoverageManager(object):
                 self.grant_input(item)
 
             except FileNotFoundError:
-                # Grant input
-                self.grant_input(item)
+                # self.grant_input(item)  # Grant input
+                # If not coverage file generated, just drop input
+                item.broker_status = "DROPPED"
+                logging.warning(f"Coverage file {cov_file} does not exist")
 
             logging.info(f"seed {item.hash} ({item.fuzzer_name})"
                          f"[replay:{self.mk_rpl_status(item.replay_status)}]"
                          f"[{self.mk_broker_status(item.broker_status, bool(_print_new_items))}]"
                          f"[{int(item.replay_time):}s] ({len(_print_new_items)} new edges)"
-                         f" (pool:{self.input_queue.qsize()})")
+                         f" (pool: inp={self.input_queue.qsize()}, cov={self.cov_queue.qsize()})")
             # Regardless if it was a success or not log it
             self.add_item_coverage_stream(item)
         except queue.Empty:
@@ -265,7 +275,8 @@ class CoverageManager(object):
                       argv: list[str],
                       seed_inj: SeedInjectLoc,
                       timeout,
-                      replay_type: ReplayType) -> None:
+                      replay_type: ReplayType,
+                      env: dict[str, str]) -> None:
         """
         worker thread that unstack inputs and replay them (in parrallel)
         """
@@ -275,9 +286,11 @@ class CoverageManager(object):
         
         try:
             while True:
-                CoverageManager.replay_one_input_in_queue(input_queue, cov_queue, program, argv, seed_inj, timeout, replay_type, tmpfile, pid)
+                CoverageManager.replay_one_input_in_queue(input_queue, cov_queue, program, argv, seed_inj, timeout, replay_type, tmpfile, pid, env)
         except KeyboardInterrupt:
             pass
+        except Exception as e:
+            logging.exception(f"Exception in replay worker {e}")
             # logging.info(f"replay worker {os.getpid()}, stops (keyboard interrupt)")
 
     @staticmethod
@@ -289,7 +302,8 @@ class CoverageManager(object):
                                   timeout: int,
                                   replay_type: ReplayType,
                                   tmpfile: Path,
-                                  pid: int):
+                                  pid: int,
+                                  env: dict[str, str]):
         item: ClientInput = input_queue.get()
         # logging.debug(f"Worker {os.getpid()} fetch: {str(item)[:50]}")
         # Write inputs in our tempfile
@@ -323,7 +337,8 @@ class CoverageManager(object):
                       tmpfile,
                       cov_file,
                       is_stdin,
-                      cwd):
+                      cwd,
+                      env):
             item.replay_status = "SUCCESS"
             logging.info(f"[worker-{pid}] replaying {item.hash} sucessful")
         else:
@@ -332,5 +347,4 @@ class CoverageManager(object):
         
         item.replay_time = time.time() - t0
         # Add it to the coverage queue (even if it failed
-        logging.info(f"push back input with status: {item.replay_status}")
         cov_queue.put((item, cov_file))

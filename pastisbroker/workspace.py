@@ -32,6 +32,7 @@ class Workspace(object):
     STATUS_FILE = "STATUS"
     RUNTIME_CONFIG_FILE = "config.json"
     COVERAGE_HISTORY = "coverage-history.csv"
+    COVERAGE_FILE = "coverage.cov"
 
     def __init__(self, directory: Path, erase: bool = False):
         self.root = directory
@@ -116,6 +117,10 @@ class Workspace(object):
     @property
     def coverage_history(self) -> Path:
         return self.root / self.COVERAGE_HISTORY
+
+    @property
+    def coverage_file(self) -> Path:
+        return self.root / self.COVERAGE_FILE
 
     def add_binary(self, binary_path: Path) -> Path:
         """

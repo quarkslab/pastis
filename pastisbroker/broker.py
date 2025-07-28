@@ -57,7 +57,7 @@ class PastisBroker(BrokerAgent):
                  replay_timeout: int = 60,
                  replay_binary: Path | None = None,
                  replay_type: ReplayType = ReplayType.qbdi, # type: ignore
-                 env: list[str] = []):
+                 env: dict[str, str]|None = None):
         super(PastisBroker, self).__init__()
 
         # Initialize workspace
@@ -134,7 +134,8 @@ class PastisBroker(BrokerAgent):
             assert replay_binary is not None, "If input filtering or streaming is activated, a coverage binary must be provided"
             logging.info(f"Coverage binary: {replay_binary}")
             stream_file = str(self.workspace.coverage_history) if stream else ""
-            self._coverage_manager = CoverageManager(replay_threads,
+            self._coverage_manager = CoverageManager(self.workspace.coverage_file,
+                                                     replay_threads,
                                                      replay_timeout,
                                                      filter_inputs,
                                                      replay_binary,
