@@ -42,7 +42,7 @@ class Workspace(object):
 
         # Create the base directory structure
         if not self.root.exists():
-            self.root.mkdir()
+            self.root.mkdir(parents=True, exist_ok=True)
         for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR, self.BINS_DIR, self.SEED_DIR]:
             p = self.root / s
             if not p.exists():
