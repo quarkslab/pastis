@@ -57,6 +57,7 @@ class PastisClient(object):
         self.crash_submitted_count = 0
         self.timeout_submitted_count = 0
         self.seed_first = 0
+        self.input_coverage_accepted_count = 0
 
         # SAST parameters
         self.alert_covered = set()

@@ -219,12 +219,12 @@ class PastisBroker(BrokerAgent):
         h = md5(seed).hexdigest()
 
         # Show log message and save seed to file
-        self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
         cli.log(LogLevel.INFO, f"seed {h} [{cli.strid}][{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
         cli.add_own_seed(seed)  # Add seed in client's seed
         fname = self.write_seed(typ, cli.strid, seed) # Write seed to file
 
         if is_new:
+            self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
             if self.is_proxied and not cli.strid == self.PROXY_ID:  # Directly forward to proxy if not proxy
                 self._clis_to_proxy.put((cli.netid, typ, seed))
 
@@ -234,7 +234,8 @@ class PastisBroker(BrokerAgent):
             if not self.filter_inputs:  # If seed are not filtered send it right away
                 self.seed_granted(cli.netid, typ, seed)
         else:
-            logging.debug(f"receive duplicate seed {h} by {cli.strid}")
+            pass  # Ignore inputs already submitted
+            # logging.debug(f"receive duplicate seed {h} by {cli.strid}")
 
     def push_input_filtering(self, netid: bytes, id: str, fname: str, seed: bytes, typ: SeedType) -> None:
         assert self._coverage_manager is not None, "Coverage manager not initialized"
@@ -244,6 +245,10 @@ class PastisBroker(BrokerAgent):
         self._coverage_manager.push_input(covi)
 
     def seed_granted(self, cli_id: bytes, typ: SeedType, seed: bytes):
+        # Update client stats
+        if cli := self.get_client(cli_id):
+            cli.input_coverage_accepted_count += 1
+
         # Save it in the local pool
         self._seed_pool[seed] = typ
         if cli_id == b"PROXY":

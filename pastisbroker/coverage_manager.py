@@ -173,7 +173,7 @@ class CoverageManager(object):
                 item.broker_status,
                 item.replay_status,
                 f"{item.replay_time:.2f}",
-                item.new_coverage
+                len(item.new_coverage)
             ])
             self.stream_file.flush()
 
