@@ -19,6 +19,7 @@ class Workspace(object):
     INPUT_DIR = "corpus"
     HANGS_DIR = "hangs"
     CRASH_DIR = "crashes"
+    FILTERED_CORPUS_DIR = "filtered_corpus"
     LOG_DIR = "logs"
     BINS_DIR = "binaries"
     ALERTS_DIR = "alerts_data"
@@ -43,7 +44,8 @@ class Workspace(object):
         # Create the base directory structure
         if not self.root.exists():
             self.root.mkdir(parents=True, exist_ok=True)
-        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR, self.HANGS_DIR, self.BINS_DIR, self.SEED_DIR]:
+        for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR,
+                  self.HANGS_DIR, self.BINS_DIR, self.SEED_DIR, self.FILTERED_CORPUS_DIR]:
             p = self.root / s
             if not p.exists():
                 p.mkdir()
@@ -183,3 +185,14 @@ class Workspace(object):
         dir_map = {SeedType.INPUT: self.INPUT_DIR, SeedType.CRASH: self.CRASH_DIR, SeedType.HANG: self.HANGS_DIR}
         out = self.root / dir_map[typ] / name
         out.write_bytes(data)
+
+    def save_filtered_seed(self, name: str, data: bytes) -> None:
+        """
+        Save a seed at the given location.
+
+        :param name: Name of the seed file
+        :param data: Data of the seed
+        :return: Path to the saved seed file
+        """
+        out_file = self.root / self.FILTERED_CORPUS_DIR / name
+        out_file.write_bytes(data)

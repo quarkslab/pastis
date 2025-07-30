@@ -232,7 +232,7 @@ class PastisBroker(BrokerAgent):
                 self.push_input_filtering(cli.netid, cli.strid, fname, seed, typ)
 
             if not self.filter_inputs:  # If seed are not filtered send it right away
-                self.seed_granted(cli.netid, typ, seed)
+                self.seed_granted(cli, typ, seed)
         else:
             pass  # Ignore inputs already submitted
             # logging.debug(f"receive duplicate seed {h} by {cli.strid}")
@@ -244,19 +244,22 @@ class PastisBroker(BrokerAgent):
                            fname, typ, netid, id, "GRANTED", "", -1, [])
         self._coverage_manager.push_input(covi)
 
-    def seed_granted(self, cli_id: bytes, typ: SeedType, seed: bytes):
+    def seed_granted(self, cli: PastisClient, typ: SeedType, seed: bytes):
         # Update client stats
-        if cli := self.get_client(cli_id):
-            cli.input_coverage_accepted_count += 1
+        cli.input_coverage_accepted_count += 1
+
+        # Copy it in the filtered coverage
+        if self.filter_inputs:
+            self.write_filtered_seed(cli.strid, seed)
 
         # Save it in the local pool
         self._seed_pool[seed] = typ
-        if cli_id == b"PROXY":
+        if cli.netid == b"PROXY":
             self._init_seed_pool[seed] = typ
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
-            self.send_seed_to_all_others(cli_id, typ, seed)
+            self.send_seed_to_all_others(cli.netid, typ, seed)
 
     def send_seed_to_all_others(self, origin_id: bytes, typ: SeedType, seed: bytes) -> None:
         for c in self.iter_other_clients(origin_id):
@@ -284,6 +287,11 @@ class PastisBroker(BrokerAgent):
     def write_seed(self, typ: SeedType, cli_id: str, seed: bytes) -> str:
         fname = self.mk_input_name(cli_id, seed)
         self.workspace.save_seed(typ, fname, seed)
+        return fname
+
+    def write_filtered_seed(self, cli_id: str, seed: bytes) -> str:
+        fname = self.mk_input_name(cli_id, seed)
+        self.workspace.save_filtered_seed(fname, seed)
         return fname
 
     def mk_input_name(self, cli_id: str, seed: bytes) -> str:
