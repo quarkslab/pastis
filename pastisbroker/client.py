@@ -6,7 +6,8 @@ import time
 import inspect
 
 # Third-party imports
-from libpastis.types import FuzzingEngineInfo, Arch, LogLevel, ExecMode, CheckMode, CoverageMode, SeedType, Platform
+from libpastis.types import FuzzingEngineInfo, Arch, LogLevel, ExecMode, CheckMode, \
+                            CoverageMode, SeedType, Platform
 from libpastis import FuzzingEngineDescriptor
 
 
@@ -15,6 +16,9 @@ class PastisClient(object):
     Utility class holding all information related to
     a client connected to the broker.
     """
+
+    PROXY_NETID = b"PROXY"
+    INITIAL_NETID = b"INITIAL"
 
     def __init__(self, id: int, netid: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
         # All this attributes are assigned once and for all
@@ -81,12 +85,20 @@ class PastisClient(object):
 
     @property
     def strid(self):
-        if self.netid == b"PROXY":
+        if self.netid == PastisClient.PROXY_NETID:
             return "PROXY"
+        elif self.netid == PastisClient.INITIAL_NETID:
+            return "INITIAL"
         else:
             name = self.hostname if self.hostname else "CLI"
             engine = self._engine.SHORT_NAME if self._engine else 'N-A'
             return f"{name}-{self.id}-{engine}"
+        
+    def is_proxy(self) -> bool:
+        return self.netid == PastisClient.PROXY_NETID
+
+    def is_initial(self) -> bool:
+        return self.netid == PastisClient.INITIAL_NETID
 
     def is_new_seed(self, seed: bytes) -> bool:
         """
@@ -205,3 +217,23 @@ class PastisClient(object):
             self.alert_validated.add(a_id)
         if val_first:
             self.alert_validated_first += 1
+
+    @staticmethod
+    def make_proxy(id: int) -> "PastisClient":
+        """
+        Create a proxy client that will be used to send seeds to the clients.
+        It is not a real client, but it is used to send seeds to the clients.
+        """
+        return PastisClient(id=id, netid=b"PROXY", engines=[],
+                            arch=Arch.X86_64, cpus=0, memory=0,
+                            hostname="proxy", platform=Platform.LINUX)
+
+    @staticmethod
+    def make_initial(id: int) -> "PastisClient":
+        """
+        Create an initial client that will be used to send initial seeds to the clients.
+        It is not a real client, but it is used to send initial seeds to the clients.
+        """
+        return PastisClient(id=id, netid=b"INITIAL", engines=[],
+                            arch=Arch.X86_64, cpus=0, memory=0,
+                            hostname="initial", platform=Platform.LINUX)

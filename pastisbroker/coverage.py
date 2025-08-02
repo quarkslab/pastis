@@ -7,6 +7,7 @@ import logging
 import subprocess
 import glob
 import hashlib 
+from enum import IntEnum
 
 # tritondse imports
 from tritondse import GlobalCoverage, CoverageSingleRun, CoverageStrategy, BranchSolvingStrategy
@@ -16,11 +17,22 @@ from pastisbroker.llvm_cov import ProfileCoverageFile, CovSummary, CovData, File
 
 
 
+class ReplayStatus(IntEnum):
+    """
+    Status of the replay
+    """
+    SUCCESS = 0         # The replay worked and coverage file properly produced
+    FAIL_NO_COV = 1     # No coverage file produced by the replay
+    FAIL_PARSE_COV = 2  # Failed to parse the coverage file
+    FAIL_EXCEPTION = 3  # Crash or any other exception during the replay
+    FAIL_TIMEOUT = 4    # Replay timed out
+
+
+
 @dataclass
 class CoverageUpdateDiff(object):
     updated: bool
     new_items: list[tuple[int, int]]
-    
 
 
 class Coverage(ABC):
@@ -45,7 +57,7 @@ class Coverage(ABC):
             coverage_file: Path,
             is_stdin: bool,
             cwd: Path | None = None,
-            env: dict[str, str]|None = None) -> bool:
+            env: dict[str, str]|None = None) -> ReplayStatus:
         raise NotImplementedError("should be subclassed")
 
 
@@ -81,14 +93,14 @@ class QbdiCoverage(Coverage):
             coverage_file: Path,
             is_stdin: bool,
             cwd: Path | None = None,
-            env: dict[str, str]|None = None) -> bool:
+            env: dict[str, str]|None = None) -> ReplayStatus:
         """
         Run program using QBDI as a tracer.
         """
         # note: if it input on argv the input_file should be already positioned
         #       at the right index on argv.
         try:
-            return QBDITrace.run(QbdiCoverage.STRATEGY,
+            res = QBDITrace.run(QbdiCoverage.STRATEGY,
                                  program,
                                  argvs,
                                  output_path=coverage_file,
@@ -96,9 +108,12 @@ class QbdiCoverage(Coverage):
                                  cwd=cwd,
                                  timeout=timeout,
                                  env=env)
+            if res and coverage_file.exists():
+                return ReplayStatus.SUCCESS
+            else:
+                return ReplayStatus.FAIL_NO_COV
         except TraceException:
-            logging.info("trace exception !")
-            return False  # TIMEOUT
+            return ReplayStatus.FAIL_TIMEOUT
 
 
 class LlvmProfileCoverage(Coverage):
@@ -138,7 +153,7 @@ class LlvmProfileCoverage(Coverage):
             self.coverage = new_coverage
             return CoverageUpdateDiff(True, [(1,1)]*diff)
         else:
-            logging.debug("No coverage update found")
+            # logging.debug("No coverage update found")
             return CoverageUpdateDiff(False, [])
         
 
@@ -161,7 +176,7 @@ class LlvmProfileCoverage(Coverage):
             coverage_file: Path,
             is_stdin: bool,
             cwd: Path | None = None,
-            env: dict[str, str]|None = None) -> bool:
+            env: dict[str, str]|None = None) -> ReplayStatus:
 
         # Configure environment variables
         dst_env: dict[str, str] = LlvmProfileCoverage.get_fuzz_env()
@@ -187,7 +202,7 @@ class LlvmProfileCoverage(Coverage):
                         final_argv[idx] = str(input_file.absolute())
                 except ValueError as e:
                     logging.error(f"No @@ in argvs. Cannot insert input file. {e}")
-                    return False
+                    return ReplayStatus.FAIL_EXCEPTION
 
         command = [str(program)] + final_argv
         try:
@@ -195,17 +210,21 @@ class LlvmProfileCoverage(Coverage):
                                 stdin=stdin_file,
                                 env=dst_env,
                                 timeout=timeout,
-                                check=True)
-                                # stdout=subprocess.DEVNULL,
-                                # stderr=subprocess.DEVNULL)
-            return res.returncode == 0
+                                check=True,
+                                cwd=cwd,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+            if coverage_file.exists():
+                return ReplayStatus.SUCCESS
+            else:
+                return ReplayStatus.FAIL_NO_COV
         except subprocess.CalledProcessError as e:
             h = hashlib.md5(Path(input_file).read_bytes()).hexdigest()
             logging.warning(f"Replay {h} failed with error: {str(e)}")
-            return False
+            return ReplayStatus.FAIL_EXCEPTION
         except subprocess.TimeoutExpired:
             logging.warning(f"Timeout expired for command: {command}")
-            return False
+            return ReplayStatus.FAIL_TIMEOUT
 
     @staticmethod
     def merge_profdata(output_profdata: Path, *prof_files) -> bool:

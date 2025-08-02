@@ -13,12 +13,25 @@ from dataclasses import dataclass
 from threading import Thread
 from multiprocessing import Queue, Manager
 from multiprocessing.pool import Pool
+from hashlib import md5
+from enum import IntEnum
 
 from libpastis.types import SeedType, SeedInjectLoc, ReplayType
 
-from pastisbroker.coverage import QbdiCoverage, LlvmProfileCoverage, CoverageUpdateDiff
+from pastisbroker.coverage import QbdiCoverage, LlvmProfileCoverage, CoverageUpdateDiff, ReplayStatus
 from pastisbroker.utils import Bcolors, mk_color
+from pastisbroker.workspace import Workspace
 
+
+
+class BrokerStatus(IntEnum):
+    """
+    Status of the broker
+    """
+    UNSET = 0
+    GRANTED = 1
+    DROPPED = 2
+    # DUPLICATE = 3
 
 
 @dataclass
@@ -28,15 +41,59 @@ class ClientInput:
     recv_time: str          # Time the input has been received
     elapsed: str            # Elapsed time since the begining
     hash: str               # Input hash
-    path: str               # Input file path
+    filename: str           # Input file path
     seed_status: SeedType   # Status of the seed
     fuzzer_id: bytes        # Fuzzer ID
     fuzzer_name: str        # Fuzzer name
-    broker_status: str      # Status in: DUPLICATE, DROPPED, GRANTED
-    replay_status: str      # Status in: OK, TRACE_EXCEPTION, FAIL
+    broker_status: BrokerStatus # Status in: DUPLICATE, DROPPED, GRANTED
+    replay_status: ReplayStatus # Status in: OK, TRACE_EXCEPTION, FAIL
     replay_time: float      # Time taken for the replay
     new_coverage: list[tuple[int, int]]  # New items covered
     # FIXME: check if keep it like this
+
+    def is_initial_input(self) -> bool:
+        """
+        Check if the input is part of the initial corpus
+        """
+        return self.fuzzer_name == "INITIAL"
+
+    @staticmethod
+    def unpack_name(fname: str) -> tuple[str, str, str, str]:
+        """
+        Unpack the name of the input file to retrieve the time, elapsed,
+        client id and hash.
+        """
+        sp = fname.split("_")
+        if len(sp) != 5:
+            raise ValueError(f"Invalid input filename format: {fname}")
+        date, time_rcv, elapsed, client_id, hash = sp
+        hash = hash.split(".")[0]  # Remove the extension
+        return f"{date}_{time_rcv}", elapsed, client_id, hash
+    
+    @staticmethod
+    def make(fname: str,
+             seed: bytes,
+             typ: SeedType,
+             netid: bytes) -> 'ClientInput':
+        log_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
+        date, elapsed, client_id, hash = ClientInput.unpack_name(fname)
+        return ClientInput(seed, log_time, date, elapsed, hash, fname, typ, netid,
+                           client_id, BrokerStatus.UNSET, ReplayStatus.FAIL_EXCEPTION, -1, [])
+        
+    @staticmethod
+    def make_initial(fname: str, seed: bytes) -> 'ClientInput':
+        return ClientInput.make(fname, seed, SeedType.INPUT, b"INITIAL")
+
+
+@dataclass
+class CoverageConfig:
+    enabled: bool = False
+    filter_inputs: bool = False
+    replay_thread: int = 1
+    replay_timeout: int = 60
+    replay_binary: Path = Path("")
+    replay_type: ReplayType = ReplayType.qbdi
+
 
 
 class CoverageManager(object):
@@ -44,41 +101,35 @@ class CoverageManager(object):
     ARGV_PLACEHOLDER = "@@"
 
     def __init__(self,
-                 global_coverage: Path,
-                 pool_size: int,
-                 replay_timeout: int,
-                 filter: bool,
-                 program: Path,
-                 replay_type: ReplayType,
+                 workspace: Workspace,
+                 config: CoverageConfig,
                  args: list[str],
                  inj_loc: SeedInjectLoc,
-                 stream_file: str = "",
                  env: dict[str, str] | None = None):
+        
         # Base info for replay
-        self.pool_size = pool_size
-        self.replay_timeout = replay_timeout
-        self.filter_enabled = filter
-        self.replay_type = replay_type
-        self.program = program
+        self.workspace = workspace
+        self.config = config
         self.args = args
         self.inj_loc = inj_loc
         self.env = env if env is not None else {}
 
         # Coverage and messaging attributes
-        if replay_type == ReplayType.qbdi:
-            self._coverage = QbdiCoverage(global_coverage)
-        elif replay_type == ReplayType.llvm_profile:
-            self._coverage = LlvmProfileCoverage(program, global_coverage)
+        if self.config.replay_type == ReplayType.qbdi:
+            self._coverage = QbdiCoverage(workspace.coverage_file)
+        elif self.config.replay_type == ReplayType.llvm_profile:
+            self._coverage = LlvmProfileCoverage(config.replay_binary.absolute(), workspace.coverage_file)
         else:
             assert False
 
         self._manager = Manager()
-        self.input_queue = self._manager.Queue()
-        self.cov_queue = self._manager.Queue()
-        self.granted_queue = self._manager.Queue()
+        self.input_queue = self._manager.Queue()   # Incoming inputs to replay
+        self.cov_queue = self._manager.Queue()     # Coverage queue filled after replay
+        self.granted_queue = self._manager.Queue() # Queue of granted inputs
+        self._pending_inputs = 0  # Count of inputs not yet fully processed
 
         # Pool of workers
-        self.pool = Pool(self.pool_size)
+        self.pool = Pool(self.config.replay_thread)
         self._running = False
         self.cov_worker = Thread(name="[coverage_worker]", target=self.coverage_worker)
 
@@ -86,13 +137,29 @@ class CoverageManager(object):
         self.seeds_accepted, self.seeds_submitted = 0, 0
         self.cli_stats = {}
 
-        # Streaming
-        if stream_file:
-            self.stream_file = open(stream_file, "a")
-            self.csv = csv.writer(self.stream_file)
+        # If coverage enabled open CSV log file
+        if self.config.enabled:
+            self.cov_history = open(self.workspace.coverage_history, "a")
+            self.csv = csv.writer(self.cov_history)
         else:
-            self.stream_file, self.csv = None, None
+            self.cov_history, self.csv = None, None
 
+        # Then start threads
+        self.start()
+
+    def has_pending_inputs(self) -> bool:
+        """
+        Return the number of pending inputs to be processed
+        """
+        return self._pending_inputs != 0
+
+    @property
+    def enabled(self) -> bool:
+        return self.config.enabled
+
+    @property
+    def filtering(self) -> bool:
+        return self.config.filter_inputs
 
     def start(self) -> None:
         """
@@ -103,40 +170,46 @@ class CoverageManager(object):
         self.cov_worker.start()
         logging.info("Starting coverage manager")
 
-        for work_id in range(self.pool_size):
-            self.pool.apply_async(self.replay_worker, (self.input_queue, self.cov_queue, self.program, self.args, self.inj_loc, self.replay_timeout, self.replay_type, self.env))
+        for work_id in range(self.config.replay_thread):
+            self.pool.apply_async(self.replay_worker, (self.input_queue, self.cov_queue, self.config.replay_binary,
+                                                       self.args, self.inj_loc, self.config.replay_timeout,
+                                                       self.config.replay_type, self.env))
 
     def stop(self) -> None:
-        self._running = False
-        self.cov_worker.join()
-        self.pool.terminate()
+        if self._running:  # Only join if it was started
+            self._running = False
+            self.cov_worker.join()
+            self.pool.terminate()
 
     def push_input(self, cli_input: ClientInput) -> None:
         """
         Push the clent input in the pending queue of inputs to re-run
         to determine whether it should be kept or not.
         """
-        cli_input.log_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
-        # logging.info(f"push input {str(cli_input)[:50]}")
-
-        # Update stats
+        # Update submission stats
         self.seeds_submitted += 1
         if cli_input.fuzzer_id in self.cli_stats:
             self.cli_stats[cli_input.fuzzer_id][0] += 1
         else:
             self.cli_stats[cli_input.fuzzer_id] = [1, 0]
 
-        self.input_queue.put(cli_input)
+        # If coverage enabled replay it.
+        if self.enabled:
+            self._pending_inputs += 1
+            self.input_queue.put(cli_input)
+        else:
+            # WARNING: In this case we do not gather coverage..
+            self.grant_input(cli_input)
 
     def push_input_synchronous(self, cli_input: ClientInput) -> None:
         self.push_input(cli_input)
         self.replay_one_input_in_queue(self.input_queue, # type: ignore
                                        self.cov_queue, # type: ignore
-                                       self.program,
+                                       self.config.replay_binary,
                                        self.args,
                                        self.inj_loc,
-                                       self.replay_timeout,
-                                       self.replay_type,
+                                       self.config.replay_timeout,
+                                       self.config.replay_type,
                                        Path("/tmp/toto.txt"),
                                        os.getpid(),
                                        self.env)
@@ -160,22 +233,23 @@ class CoverageManager(object):
         return n
 
     def add_item_coverage_stream(self, item: ClientInput) -> None:
-        if self.stream_file:  # Stream enabled
+        if self.enabled:  # Coverage enabled
             assert self.csv is not None, "CSV writer not initialized"
+            assert self.cov_history is not None, "Coverage history file not initialized"
             self.csv.writerow([
                 item.log_time,
                 item.recv_time,
                 item.elapsed,
                 item.hash,
-                item.path,
+                item.filename,
                 item.seed_status.name,
                 item.fuzzer_name,
-                item.broker_status,
-                item.replay_status,
+                item.broker_status.name,
+                item.replay_status.name,
                 f"{item.replay_time:.2f}",
                 len(item.new_coverage)
             ])
-            self.stream_file.flush()
+            self.cov_history.flush()
 
     def coverage_worker(self):
         """
@@ -195,43 +269,61 @@ class CoverageManager(object):
                 break
 
     def read_one_coverage_in_queue(self):
+        """
+        | Replay   | New Cov   | Filter   | Status  |
+        |----------|-----------|----------|---------|
+        | OK       | Yes       | Yes      | OK      |
+        | OK       | Yes       | No       | OK      |
+        | OK       | No        | Yes      | Dropped |
+        | OK       | No        | No       | OK      |
+        | Fail     | -         | Yes      | Dropped |
+        | Fail     | -         | No       | OK      |
+        |----------|-----------|----------|---------|
+        """
+        _print_new_items = []
+        new_cov = False
+
         try:
             item, cov_file = self.cov_queue.get(timeout=0.5)
-            if not cov_file.exists():
-                raise FileNotFoundError(f"Coverage file {cov_file} does not exist")
-            # logging.info("Coverage worker fetch item")
-            _print_new_items = []
-            try:
-                covdiff: CoverageUpdateDiff = self._coverage.add_coverage_file(cov_file)
-                if covdiff.updated:
-                    self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
 
-                    item.new_coverage = list(covdiff.new_items)
-                    _print_new_items = item.new_coverage
+            match item.replay_status:
+                case ReplayStatus.SUCCESS:
+                    # Try loading the coverage file
+                    try:
+                        covdiff: CoverageUpdateDiff = self._coverage.add_coverage_file(cov_file)
+                        # Successfully loaded the coverage file
+                        if covdiff.updated:
+                            self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
 
-                    self.grant_input(item)
+                            item.new_coverage = list(covdiff.new_items)
 
-                else:
-                    item.broker_status = "DROPPED" if self.filter_enabled else "GRANTED"
-                    # logging.info(f"seed {item.hash} ({item.seed_status.name}) of {item.fuzzer_name} rejected (do not improve coverage)")
+                            new_cov = True  # for printing
+                            _print_new_items = item.new_coverage
 
-                # Remove the coverage file
-                os.unlink(cov_file)
+                            item.broker_status = BrokerStatus.GRANTED
+                        else:
+                            item.broker_status = BrokerStatus.DROPPED if self.filtering else BrokerStatus.GRANTED
 
-            except json.JSONDecodeError:
-                item.replay_status = "FAIL_PARSE_COV"
-                os.unlink(cov_file)
+                    except json.JSONDecodeError:  # Failed to parse coverage file
+                        item.replay_status = ReplayStatus.FAIL_PARSE_COV
+                        item.broker_status = BrokerStatus.DROPPED if self.filtering else BrokerStatus.GRANTED
+                    finally:
+                        os.unlink(cov_file)  # either way remove the coverage file
+                
+                case _: # FAIL_NO_COV, FAIL_TIMEOUT, FAIL_EXCEPTION
+                    item.broker_status = BrokerStatus.DROPPED if self.filtering else BrokerStatus.GRANTED                  
+
+            # At this point the broker_status is "final"
+            if item.broker_status == BrokerStatus.GRANTED:
                 self.grant_input(item)
 
-            except FileNotFoundError:
-                # self.grant_input(item)  # Grant input
-                # If not coverage file generated, just drop input
-                item.broker_status = "DROPPED"
-                logging.warning(f"Coverage file {cov_file} does not exist")
+            # Performed in ALL cases!
+            self._pending_inputs -= 1  # Decrease the pending inputs count regardless of the outcome
 
             logging.info(f"seed {item.hash} ({item.fuzzer_name})"
-                         f"[replay:{self.mk_rpl_status(item.replay_status)}]"
-                         f"[{self.mk_broker_status(item.broker_status, bool(_print_new_items))}]"
+                         f"[replay:{self.mk_rpl_status(item.replay_status)},"
+                         f"cov:{self.mk_color_bool(new_cov, soft=True)} => "
+                         f"{self.mk_broker_status(item.broker_status)}]"
                          f"[{int(item.replay_time):}s] ({len(_print_new_items)} new edges)"
                          f" (pool: inp={self.input_queue.qsize()}, cov={self.cov_queue.qsize()})")
             # Regardless if it was a success or not log it
@@ -247,26 +339,30 @@ class CoverageManager(object):
         part of the initial.
         """
         self.seeds_accepted += 1
-        if self.filter_enabled:  # if not enabled do not need to put it in granted input (just logging)
-            if item.fuzzer_name != "INITIAL":  # if not initial corpus add it
-                self.granted_queue.put(item)
+        self.granted_queue.put(item)
 
     @staticmethod
-    def mk_rpl_status(status: str) -> str:
-        if status == "SUCCESS":
-            return mk_color(status, Bcolors.OKGREEN)
+    def mk_rpl_status(status: ReplayStatus) -> str:
+        if status == ReplayStatus.SUCCESS:
+            return mk_color("OK", Bcolors.OKGREEN)
         else:
-            return mk_color(status, Bcolors.FAIL)
-
+            return mk_color(status.name, Bcolors.FAIL)
 
     @staticmethod
-    def mk_broker_status(status: str, new_items: bool) -> str:
-        if status == "GRANTED":
-            return mk_color(status, Bcolors.OKGREEN if new_items else Bcolors.WARNING)
-        elif status == "DROPPED":
-            return mk_color(status, Bcolors.WARNING)
+    def mk_color_bool(bool_val: bool, soft: bool = False) -> str:
+        if bool_val:
+            return mk_color("YES", Bcolors.OKGREEN)
         else:
-            return mk_color(status, Bcolors.FAIL)
+            return mk_color("NO", Bcolors.WARNING if soft else Bcolors.FAIL)
+
+    @staticmethod
+    def mk_broker_status(status: BrokerStatus) -> str:
+        if status == BrokerStatus.GRANTED:
+            return mk_color(status.name, Bcolors.OKGREEN)
+        elif status == BrokerStatus.DROPPED:
+            return mk_color(status.name, Bcolors.FAIL)
+        else:
+            return mk_color(status.name, Bcolors.WARNING)
 
     @staticmethod
     def replay_worker(input_queue: Queue,
@@ -331,20 +427,22 @@ class CoverageManager(object):
         # Run the seed
         logging.info(f"[replay-worker] running input into trace {cov_file}")
         Runner = QbdiCoverage if replay_type == ReplayType.qbdi else LlvmProfileCoverage
-        if Runner.run(program,
+
+        # Run the given input on the coverage program
+        status = Runner.run(program,
                       cur_argv,
                       timeout,
                       tmpfile,
                       cov_file,
                       is_stdin,
                       cwd,
-                      env):
-            item.replay_status = "SUCCESS"
+                      env)
+        
+        if status == ReplayStatus.SUCCESS:
             logging.info(f"[worker-{pid}] replaying {item.hash} sucessful")
         else:
-            item.replay_status = "FAIL_NO_COV"
-            logging.warning("Cannot load the coverage file generated (maybe had crashed?)")
-        
+            logging.warning(f"[worker-{pid}] replay fail: {status.name.lower()}")
+        item.replay_status = status
         item.replay_time = time.time() - t0
         # Add it to the coverage queue (even if it failed
         cov_queue.put((item, cov_file))

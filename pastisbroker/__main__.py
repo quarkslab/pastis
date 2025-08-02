@@ -11,7 +11,7 @@ import lief
 import tritondse.logging
 
 # Local imports
-from pastisbroker import PastisBroker, BrokingMode, __version__
+from pastisbroker import PastisBroker, BrokingMode, __version__, CoverageConfig
 from libpastis.types import CheckMode, SeedInjectLoc, ReplayType
 import tritondse
 
@@ -111,9 +111,9 @@ def coverage_binary_checks(binary: Path, type: ReplayType) -> bool:
 @click.option("--cov-binary", type=click.Path(exists=True, file_okay=True, dir_okay=False, executable=True, path_type=Path),
               required=False, help="Binary executable to use for coverage")
 @click.option("--cov-type", type=click.Choice([x.name for x in list(ReplayType)]),
-              required=False, help="Coverage type")
-@click.option('--stream', type=bool, is_flag=True, default=False,
-              help="Stream input and coverage info in the given file", show_default=True)
+              required=False, default=ReplayType.qbdi.name, help="Coverage type")
+@click.option('--coverage', type=bool, is_flag=True, default=False,
+              help="Enable coverage computation", show_default=True)
 @click.option('--replay-threads',
               type=int, default=4, help="number of threads to use for input replay", show_default=True)
 @click.option('--replay-timeout', type=int, default=60,
@@ -138,7 +138,7 @@ def main(workspace: str,
          filter_inputs: bool,
          cov_binary: Path,
          cov_type: str,
-         stream: bool,
+         coverage: bool,
          replay_threads: int,
          replay_timeout: int) -> None:
     global broker
@@ -149,17 +149,26 @@ def main(workspace: str,
         logging.error(f"Check mode {chkmode.name} requires a SAST report (use -r) to provide it")
         sys.exit(1)
 
-    # if input filtering or streaming enabled check that a coverage replay binary is provided
-    if filter_inputs or stream:
-        if not cov_binary or not cov_type:
-            logging.error(f"if filter_inputs or stream activated need --cov-binary and --cov-type")
-            sys.exit(1)
-        replay_type = ReplayType[cov_type]
-
+    # if input filtering or coverage enabled check that a coverage replay binary is provided
+    if filter_inputs and not coverage:
+        logging.warning(f"Filtering inputs requires coverage to be enabled, enabling it")
+        coverage = True
+    if (filter_inputs or coverage) and ((not cov_binary) or (not cov_type)):
+        logging.error(f"if filter_inputs or coverage activated need --cov-binary and --cov-type")
+        sys.exit(1)
+        
         if not coverage_binary_checks(cov_binary, replay_type):
             sys.exit(1)
-    else:
-        replay_type = None
+
+    # Create CoverageConfig object
+    cov_conf = CoverageConfig(
+        enabled=coverage,
+        filter_inputs=filter_inputs,
+        replay_thread=replay_threads,
+        replay_timeout=replay_timeout,    
+        replay_binary=cov_binary.absolute(),
+        replay_type=ReplayType[cov_type] if cov_type else ReplayType.qbdi
+    )
 
     # Instanciate the broker
     broker = PastisBroker(workspace,
@@ -171,12 +180,7 @@ def main(workspace: str,
                           sast_report,
                           mem_threshold,
                           start_quorum,
-                          filter_inputs,
-                          stream,
-                          replay_threads,
-                          replay_timeout,
-                          cov_binary,
-                          replay_type,
+                          cov_conf,
                           env)
 
     # Preload all Fuzzing engine if needed
@@ -200,7 +204,7 @@ def main(workspace: str,
         for s in iterate_file(s_src):  # File if one file, or iterate dir if directory
             broker.add_seed_file(s, initial=True)
 
-    # Bind it and start listening (clients can connect)
+    # Bind it and start listening (clienCts can connect)
     broker.bind(port)
     broker.run(timeout)
 

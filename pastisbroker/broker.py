@@ -25,7 +25,7 @@ from pastisbroker.client import PastisClient
 from pastisbroker.stat_manager import StatManager
 from pastisbroker.workspace import Workspace, WorkspaceStatus
 from pastisbroker.utils import load_engine_descriptor, Bcolors, COLORS
-from pastisbroker.coverage_manager import CoverageManager, ClientInput
+from pastisbroker.coverage_manager import CoverageManager, ClientInput, CoverageConfig
 
 
 lief.logging.disable()
@@ -39,9 +39,6 @@ class BrokingMode(Enum):
 
 class PastisBroker(BrokerAgent):
 
-    PROXY_NETID = b"PROXY"
-    PROXY_ID = "PROXY"
-
     def __init__(self, workspace: PathLike,
                  binaries_dir: PathLike,
                  broker_mode: BrokingMode,
@@ -51,12 +48,7 @@ class PastisBroker(BrokerAgent):
                  sast_report: PathLike | None = None,
                  memory_threshold: int = 85,
                  start_quorum: int = 0,
-                 filter_inputs: bool = False,
-                 stream: bool = False,
-                 replay_threads: int = 4,
-                 replay_timeout: int = 60,
-                 replay_binary: Path | None = None,
-                 replay_type: ReplayType = ReplayType.qbdi, # type: ignore
+                 coverage_conf: CoverageConfig = CoverageConfig(),
                  env: list[str]|None = None):
         super(PastisBroker, self).__init__()
 
@@ -101,13 +93,16 @@ class PastisBroker(BrokerAgent):
 
         # Runtime infos
         self._running = False
-        self._seed_pool = {}  # Seed bytes -> SeedType
+        self._seed_pool = {}       # Seed bytes -> SeedType
         self._init_seed_pool = {}  # Used for NO_TRANSMIT mode
         self._start_time = None
         self._stop = False
 
         # Load the workspace seeds
         self._load_workspace()
+
+        # Create the initial client
+        self.set_initial()
 
         # Create the stat manager
         self.statmanager = StatManager(self.workspace)
@@ -127,27 +122,14 @@ class PastisBroker(BrokerAgent):
         self._proxy_to_clis = queue.Queue()
         self._clis_to_proxy = queue.Queue()
 
-        # Coverage + filtering feature
-        self._coverage_manager = None
-        self.filter_inputs: bool = filter_inputs
-        if filter_inputs or stream:
-            assert replay_binary is not None, "If input filtering or streaming is activated, a coverage binary must be provided"
-            logging.info(f"Coverage binary: {replay_binary}")
-            stream_file = str(self.workspace.coverage_history) if stream else ""
-            
-            # Convert env into dictionary
-            env_dict = {k: v for k, v in (x.split('=', 1) for x in self.env_variables)}
+        # Coverage conf, Convert env into dictionary
+        env_dict = {k: v for k, v in (x.split('=', 1) for x in self.env_variables)}
 
-            self._coverage_manager = CoverageManager(self.workspace.coverage_file,
-                                                     replay_threads,
-                                                     replay_timeout,
-                                                     filter_inputs,
-                                                     replay_binary,
-                                                     replay_type,
-                                                     self.argv,
-                                                     self.inject,
-                                                     stream_file,
-                                                     env_dict)
+        self.coverage_manager = CoverageManager(self.workspace,
+                                                 coverage_conf,
+                                                 self.argv,
+                                                 self.inject,
+                                                 env_dict)
 
 
     def load_engine_addon(self, py_module: str) -> bool:
@@ -198,12 +180,23 @@ class PastisBroker(BrokerAgent):
         self.register_stop_coverage_callback(self.stop_coverage_received)
         self.register_data_callback(self.data_received)
 
-    def get_client(self, cli_id: bytes) -> Optional[PastisClient]:
+    def maybe_get_client(self, cli_id: bytes) -> Optional[PastisClient]:
+        """
+        Get a client if it exists, otherwise return None
+
+        :param cli_id: netid of the client to get
+        :return: PastisClient object or None
+        """
         cli = self.clients.get(cli_id)
         if not cli:
             logging.warning(f"client '{cli_id}' unknown (send stop)")
-            if cli_id != self.PROXY_NETID:
+            if cli_id != PastisClient.PROXY_NETID:
                 self.send_stop(cli_id)
+        return cli
+
+    def get_client(self, cli_id: bytes) -> PastisClient:
+        cli = self.clients.get(cli_id)
+        assert cli is not None, f"Client {cli_id} not meant to be None"
         return cli
 
     def kick_client(self, cli_id: bytes) -> None:
@@ -212,62 +205,65 @@ class PastisBroker(BrokerAgent):
         self.send_stop(cli_id)
 
     def seed_received(self, cli_id: bytes, typ: SeedType, seed: bytes):
-        cli = self.get_client(cli_id)
+        """ Callback called by libpastis upon seed message reception"""
+        cli = self.maybe_get_client(cli_id)
         if not cli:
             return
+        
         is_new = seed not in self._seed_pool
         h = md5(seed).hexdigest()
 
         # Show log message and save seed to file
         cli.log(LogLevel.INFO, f"seed {h} [{cli.strid}][{self._colored_seed_type(typ)}][{self._colored_seed_newness(is_new)}]")
         cli.add_own_seed(seed)  # Add seed in client's seed
-        fname = self.write_seed(typ, cli.strid, seed) # Write seed to file
 
+        fname = self.mk_input_name(cli.strid, seed)
+        
         if is_new:
+            # Save it in the workspace
+            self.workspace.save_seed(typ, fname, seed)
+
             self.statmanager.update_seed_stat(cli, typ)  # Add info only if new
-            if self.is_proxied and not cli.strid == self.PROXY_ID:  # Directly forward to proxy if not proxy
+            if self.is_proxied and not cli.is_proxy():  # Directly forward to proxy if not proxy
                 self._clis_to_proxy.put((cli.netid, typ, seed))
 
-            if self._coverage_manager:  # True if filter_is_activated
-                self.push_input_filtering(cli.netid, cli.strid, fname, seed, typ)
+            # Send input to coverage manager for filtering/replay
+            cli_input = ClientInput.make(fname, seed, typ, cli.netid)
+            self.coverage_manager.push_input(cli_input)
 
-            if not self.filter_inputs:  # If seed are not filtered send it right away
-                self.seed_granted(cli, typ, seed)
         else:
             pass  # Ignore inputs already submitted
-            # logging.debug(f"receive duplicate seed {h} by {cli.strid}")
+            logging.debug(f"receive duplicate seed {h} by {cli.strid} (dropped..)")
 
-    def push_input_filtering(self, netid: bytes, id: str, fname: str, seed: bytes, typ: SeedType) -> None:
-        assert self._coverage_manager is not None, "Coverage manager not initialized"
-        sp = fname.split("_")
-        covi = ClientInput(seed, "", f"{sp[0]}_{sp[1]}", sp[2], md5(seed).hexdigest(),
-                           fname, typ, netid, id, "GRANTED", "", -1, [])
-        self._coverage_manager.push_input(covi)
 
-    def seed_granted(self, cli: PastisClient, typ: SeedType, seed: bytes):
+    def seed_granted(self, cli_input: ClientInput):
         # Update client stats
+        cli = self.get_client(cli_input.fuzzer_id)
+
         cli.input_coverage_accepted_count += 1
 
         # Copy it in the filtered coverage
-        if self.filter_inputs:
-            self.write_filtered_seed(cli.strid, seed)
+        if self.coverage_manager.filtering:
+            self.workspace.save_filtered_seed(cli_input.filename, cli_input.content)
 
         # Save it in the local pool
-        self._seed_pool[seed] = typ
-        if cli.netid == b"PROXY":
-            self._init_seed_pool[seed] = typ
+        self._seed_pool[cli_input.content] = cli_input.seed_status
+        if cli.is_proxy():
+            self._init_seed_pool[cli_input.content] = cli_input.seed_status
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
-            self.send_seed_to_all_others(cli.netid, typ, seed)
+            self.send_seed_to_all_others(cli.netid, cli_input.seed_status, cli_input.content)
+
 
     def send_seed_to_all_others(self, origin_id: bytes, typ: SeedType, seed: bytes) -> None:
         for c in self.iter_other_clients(origin_id):
             self.send_seed_to(c, typ, seed)
 
+
     def send_seed_to(self, cli: PastisClient, typ: SeedType, seed: bytes) -> None:
         if cli.is_new_seed(seed):
-            if cli.netid == self.PROXY_NETID:
+            if cli.is_proxy():
                 self._proxy.send_seed(typ, seed)
             else:
                 self.send_seed(cli.netid, typ, seed)  # send the seed to the client
@@ -278,28 +274,21 @@ class PastisBroker(BrokerAgent):
         logging.info(f"Add seed {p.name} in pool")
         # Save seed in the workspace
         self.workspace.save_seed_file(SeedType.INPUT, p, initial)
-
         seed = p.read_bytes()
-        self._seed_pool[seed] = SeedType.INPUT
+        
         if initial:
             self._init_seed_pool[seed] = SeedType.INPUT
-
-    def write_seed(self, typ: SeedType, cli_id: str, seed: bytes) -> str:
-        fname = self.mk_input_name(cli_id, seed)
-        self.workspace.save_seed(typ, fname, seed)
-        return fname
-
-    def write_filtered_seed(self, cli_id: str, seed: bytes) -> str:
-        fname = self.mk_input_name(cli_id, seed)
-        self.workspace.save_filtered_seed(fname, seed)
-        return fname
+        else:
+            self._seed_pool[seed] = SeedType.INPUT
 
     def mk_input_name(self, cli_id: str, seed: bytes) -> str:
         t = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         elapsed = str(datetime.timedelta(seconds=time.time() - self._start_time)).replace(" day, ", "d:").replace(" days, ", "d:")
-        return f"{t}_{elapsed}_{cli_id}_{md5(seed).hexdigest()}.cov"
+        h = md5(seed).hexdigest()
+        return f"{t}_{elapsed}_{cli_id}_{h}.cov"
 
     def hello_received(self, cli_id: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
+        """ Callback called by libpastis upon hello message reception """
         uid = self.new_uid()
         client = PastisClient(uid, cli_id, engines, arch, cpus, memory, hostname, platform)
         logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x.name for x in engines]} (cpu:{cpus}, mem:{memory})")
@@ -331,7 +320,8 @@ class PastisBroker(BrokerAgent):
             client.add_peer_seed(seed)  # Add it in its list of seed
 
     def log_received(self, cli_id: bytes, level: LogLevel, message: str):
-        client = self.get_client(cli_id)
+        """ Callback called by libpastis upon log message reception """
+        client = self.maybe_get_client(cli_id)
         if not client:
             return
         client.log(level, message)
@@ -346,7 +336,8 @@ class PastisBroker(BrokerAgent):
                            coverage_edge: int = None,
                            coverage_path: int = None,
                            last_cov_update: int = None):
-        client = self.get_client(cli_id)
+        """ Callback called by libpastis upon telemetry message reception """
+        client = self.maybe_get_client(cli_id)
         if not client:
             return
         # NOTE: ignore state (shall we do something of it?)
@@ -366,7 +357,8 @@ class PastisBroker(BrokerAgent):
         # NOTE: Send an update signal for future UI ?
 
     def stop_coverage_received(self, cli_id: bytes):
-        client = self.get_client(cli_id)
+        """ Callback called by libpastis upon stop coverage message reception """
+        client = self.maybe_get_client(cli_id)
         if not client:
             return
 
@@ -381,7 +373,8 @@ class PastisBroker(BrokerAgent):
             self.relaunch_clients([client])  # restart the client
 
     def data_received(self,  cli_id: bytes, data: str):
-        client = self.get_client(cli_id)
+        """ Callback called by libpastis upon data message reception """
+        client = self.maybe_get_client(cli_id)
         if not client:
             return
         first_cov, first_val = False, False
@@ -432,14 +425,13 @@ class PastisBroker(BrokerAgent):
 
     def stop_broker(self):
         for client in self.clients.values():
-            logging.info(f"Send stop to {client.strid}")
-            if client.netid != self.PROXY_NETID:
+            if not client.is_proxy() and not client.is_initial():
+                logging.info(f"Send stop to {client.strid}")
                 self.send_stop(client.netid)
         self._stop = True
 
         # Stop coverage manager if any
-        if self._coverage_manager:
-            self._coverage_manager.stop()
+        self.coverage_manager.stop()
 
         # Call the statmanager to wrap-up values
         self.statmanager.post_execution(list(self.clients.values()), self.workspace)
@@ -463,6 +455,8 @@ class PastisBroker(BrokerAgent):
                 self.start_client_and_send_corpus(c)
 
     def start_client_and_send_corpus(self, client: PastisClient) -> None:
+        if client.is_initial():
+            return
         self.start_client(client)
         # Iterate all the seed pool and send it to the client
         if self.broker_mode == BrokingMode.FULL:
@@ -612,30 +606,12 @@ class PastisBroker(BrokerAgent):
         self._start_time = time.time()
         self._running = running
         self.workspace.status = WorkspaceStatus.RUNNING
+        logging.info("load initial coverage")
+
+        # Blocking: Run the whole initial corpus before starting the clients
+        self.run_initial_corpus()
+
         logging.info("start broking")
-
-        if self._coverage_manager:  # if it has been instanciated start it
-            self._coverage_manager.start()
-            for seed in self._init_seed_pool.keys():  # Push initial corpus to set baseline coverage
-                fname = self.mk_input_name("INITIAL", seed)
-                sp = fname.split("_")
-                hash = sp[4].split(".")[0]
-                covi = ClientInput(
-                    content=seed,
-                    log_time="",
-                    recv_time=f"{sp[0]}_{sp[1]}",
-                    elapsed=sp[2],
-                    hash=hash,
-                    path=fname,
-                    seed_status=SeedType.INPUT,
-                    fuzzer_id=b"INITIAL",
-                    fuzzer_name="INITIAL",
-                    broker_status="GRANTED",  # Unless rejected (later)
-                    replay_status="",
-                    replay_time=-1,
-                    new_coverage=[])
-                self._coverage_manager.push_input(covi)
-
         if self.is_proxied and self._proxy_cli:
             self._running = False  # disable running wait start broker
             self._proxy.send_hello([self._proxy_cli])
@@ -677,13 +653,12 @@ class PastisBroker(BrokerAgent):
 
                 if self._running: # Perform following checks only if running
                     # if inputs are filtered. Get granted inputs and forward them to appropriate clients
-                    if self.filter_inputs:
-                        for item in self._coverage_manager.iter_granted_inputs():
-                            self.seed_granted(item.fuzzer_id, item.seed_status, item.content)
+                    for item in self.coverage_manager.iter_granted_inputs():
+                        self.seed_granted(item)
 
                     if self.is_proxied:
                         # Check if there are seed to forward to primary (proxy main)
-                        cli = self.clients[self.PROXY_NETID]
+                        cli = self.get_client(PastisClient.PROXY_NETID)
                         if not self._clis_to_proxy.empty():
                             try:
                                 while True:
@@ -709,6 +684,26 @@ class PastisBroker(BrokerAgent):
             logging.info("stop required (Ctrl+C)")
         self.workspace.status = WorkspaceStatus.FINISHED
         self.stop_broker()
+
+    def run_initial_corpus(self) -> None:
+        """
+        Run the initial corpus, i.e. all seeds that were in the workspace
+        when the broker was started.
+        """
+        init_cli = self.get_client(PastisClient.INITIAL_NETID)
+
+        # Add all initial seeds in to coverage manager
+        for seed in self._init_seed_pool.keys():  # Push initial corpus to set baseline coverage
+            fname = self.mk_input_name(init_cli.strid, seed)
+            covi = ClientInput.make_initial(fname, seed)
+            self.coverage_manager.push_input(covi)
+
+        # Now wait that all initial seeds are processed
+        while self.coverage_manager.has_pending_inputs():
+            time.sleep(0.1)
+            for item in self.coverage_manager.iter_granted_inputs():
+                self.seed_granted(item)
+
 
     def _find_binaries(self, binaries_dir) -> None:
         """
@@ -813,9 +808,11 @@ class PastisBroker(BrokerAgent):
         """
         return self._proxy is not None
 
-    @property
-    def is_filter_activated(self) -> bool:
-        return bool(self.filter_inputs)
+    def set_initial(self) -> None:
+        # Create "fake" client object for initial seeds
+        cli = PastisClient.make_initial(self.new_uid())
+        # cli.configure_logger(self.workspace.log_directory, random.choice(COLORS))
+        self.clients[cli.netid] = cli
 
     def set_proxy(self, ip: str, port: int, py_module: str) -> bool:
         self._proxy = ClientAgent()
@@ -837,10 +834,10 @@ class PastisBroker(BrokerAgent):
         self._proxy.start()
 
         # Create "fake" client object
-        cli = PastisClient(self.new_uid(), self.PROXY_NETID, [], Arch.X86_64, 0, 0, "proxy", Platform.LINUX)
+        cli = PastisClient.make_proxy(self.new_uid())
         cli.set_running("", desc, CoverageMode.AUTO, ExecMode.AUTO, self.ck_mode, "")
         cli.configure_logger(self.workspace.log_directory, random.choice(COLORS))
-        self.clients[self.PROXY_NETID] = cli
+        self.clients[cli.netid] = cli
 
     def _proxy_start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode,
                               fuzzmode: FuzzMode, chkmode: CheckMode, covmode: CoverageMode, seed_inj: SeedInjectLoc,
