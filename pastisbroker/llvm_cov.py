@@ -118,7 +118,16 @@ class CovSummary(object):
 
         In the "set" sense, it performs: self - other
         """
-        return json.dumps({k: getattr(self, k).__dict__ for k in self.__dataclass_fields__.keys()})
+        return json.dumps(self.to_dict())
+
+    def to_dict(self) -> dict:
+        """
+        Compute the difference between this summary and another one.
+        Returns a new CovSummary with the numeric differences.
+
+        In the "set" sense, it performs: self - other
+        """
+        return {k: getattr(self, k).__dict__ for k in self.__dataclass_fields__.keys()}
 
 
 @dataclass

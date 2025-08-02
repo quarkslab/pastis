@@ -55,7 +55,7 @@ class CoverageUpdateDiff(object):
         return json.dumps({
             "updated": self.updated,
             "type": self.type.name,
-            "summary": self.summary.to_json(),
+            "summary": self.summary.to_dict(),
             "input_file": self.input_file
         })
 
