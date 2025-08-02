@@ -37,7 +37,6 @@ class BrokerStatus(IntEnum):
 @dataclass
 class ClientInput:
     content: bytes          # Content of the input
-    log_time: str           # Time the log has been generated
     recv_time: str          # Time the input has been received
     elapsed: str            # Elapsed time since the begining
     hash: str               # Input hash
@@ -48,9 +47,7 @@ class ClientInput:
     broker_status: BrokerStatus # Status in: DUPLICATE, DROPPED, GRANTED
     replay_status: ReplayStatus # Status in: OK, TRACE_EXCEPTION, FAIL
     replay_time: float      # Time taken for the replay
-    new_coverage: list[tuple[int, int]]  # New items covered
-    # FIXME: check if keep it like this
-
+    
     def is_initial_input(self) -> bool:
         """
         Check if the input is part of the initial corpus
@@ -75,10 +72,9 @@ class ClientInput:
              seed: bytes,
              typ: SeedType,
              netid: bytes) -> 'ClientInput':
-        log_time = time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
         date, elapsed, client_id, hash = ClientInput.unpack_name(fname)
-        return ClientInput(seed, log_time, date, elapsed, hash, fname, typ, netid,
-                           client_id, BrokerStatus.UNSET, ReplayStatus.FAIL_EXCEPTION, -1, [])
+        return ClientInput(seed, date, elapsed, hash, fname, typ, netid,
+                           client_id, BrokerStatus.UNSET, ReplayStatus.FAIL_EXCEPTION, -1)
         
     @staticmethod
     def make_initial(fname: str, seed: bytes) -> 'ClientInput':
@@ -232,22 +228,41 @@ class CoverageManager(object):
         q.put_nowait(n)
         return n
 
-    def add_item_coverage_stream(self, item: ClientInput) -> None:
+    def add_item_coverage_stream(self, item: ClientInput, new_cov: bool,
+                                 covdiff: CoverageUpdateDiff | None, out_name: str) -> None:
+        
+        # retrieve covdiff data
+        if covdiff is None:
+            funs, regs, lines, insts, branches, mcdc = "", "", "", "", "", ""
+        else:
+            funs = covdiff.summary.functions.covered
+            regs = covdiff.summary.regions.covered
+            lines = covdiff.summary.lines.covered
+            insts = covdiff.summary.instantiations.covered
+            branches = covdiff.summary.branches.covered 
+            mcdc = covdiff.summary.mcdc.covered
+
         if self.enabled:  # Coverage enabled
             assert self.csv is not None, "CSV writer not initialized"
             assert self.cov_history is not None, "Coverage history file not initialized"
             self.csv.writerow([
-                item.log_time,
                 item.recv_time,
                 item.elapsed,
                 item.hash,
                 item.filename,
                 item.seed_status.name,
                 item.fuzzer_name,
-                item.broker_status.name,
                 item.replay_status.name,
+                new_cov,
+                item.broker_status.name,
                 f"{item.replay_time:.2f}",
-                len(item.new_coverage)
+                out_name,
+                funs,
+                regs,
+                lines,
+                insts,
+                branches,
+                mcdc
             ])
             self.cov_history.flush()
 
@@ -280,8 +295,10 @@ class CoverageManager(object):
         | Fail     | -         | No       | OK      |
         |----------|-----------|----------|---------|
         """
-        _print_new_items = []
+        new_edges = 0
         new_cov = False
+        covdiff = None
+        out_name = ""
 
         try:
             item, cov_file = self.cov_queue.get(timeout=0.5)
@@ -290,15 +307,19 @@ class CoverageManager(object):
                 case ReplayStatus.SUCCESS:
                     # Try loading the coverage file
                     try:
-                        covdiff: CoverageUpdateDiff = self._coverage.add_coverage_file(cov_file)
+                        covdiff = self._coverage.add_coverage_file(cov_file)
+                        covdiff.input_file = item.filename  # Set the input file that generated this diff
                         # Successfully loaded the coverage file
                         if covdiff.updated:
                             self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
 
-                            item.new_coverage = list(covdiff.new_items)
-
                             new_cov = True  # for printing
-                            _print_new_items = item.new_coverage
+                            new_edges = covdiff.summary.branches.covered
+
+                            # Save it in the workspace
+                            out_name = item.filename+".covdiff"
+                            data = covdiff.to_json()
+                            self.workspace.save_coverage_diff(out_name, data)
 
                             item.broker_status = BrokerStatus.GRANTED
                         else:
@@ -324,10 +345,10 @@ class CoverageManager(object):
                          f"[replay:{self.mk_rpl_status(item.replay_status)},"
                          f"cov:{self.mk_color_bool(new_cov, soft=True)} => "
                          f"{self.mk_broker_status(item.broker_status)}]"
-                         f"[{int(item.replay_time):}s] ({len(_print_new_items)} new edges)"
+                         f"[{int(item.replay_time):}s] ({new_edges} new edges)"
                          f" (pool: inp={self.input_queue.qsize()}, cov={self.cov_queue.qsize()})")
             # Regardless if it was a success or not log it
-            self.add_item_coverage_stream(item)
+            self.add_item_coverage_stream(item, new_cov, covdiff, out_name)
         except queue.Empty:
             pass
 

@@ -24,6 +24,7 @@ class Workspace(object):
     BINS_DIR = "binaries"
     ALERTS_DIR = "alerts_data"
     SEED_DIR = "seeds"
+    COVDIFF_DIR = "covdiffs"
 
     SAST_REPORT_COPY = "sast-report.bin"
     CSV_FILE = "results.csv"
@@ -45,7 +46,8 @@ class Workspace(object):
         if not self.root.exists():
             self.root.mkdir(parents=True, exist_ok=True)
         for s in [self.INPUT_DIR, self.CRASH_DIR, self.LOG_DIR,
-                  self.HANGS_DIR, self.BINS_DIR, self.SEED_DIR, self.FILTERED_CORPUS_DIR]:
+                  self.HANGS_DIR, self.BINS_DIR, self.SEED_DIR,
+                  self.FILTERED_CORPUS_DIR, self.COVDIFF_DIR]:
             p = self.root / s
             if not p.exists():
                 p.mkdir()
@@ -196,3 +198,17 @@ class Workspace(object):
         """
         out_file = self.root / self.FILTERED_CORPUS_DIR / name
         out_file.write_bytes(data)
+
+    def save_coverage_diff(self, name: str, data: bytes|str) -> None:
+        """
+        Save a coverage diff file.
+
+        :param name: Name of the coverage diff file
+        :param data: Data of the coverage diff
+        :return: Path to the saved coverage diff file
+        """
+        out_file = self.root / self.COVDIFF_DIR / name
+        if isinstance(data, str):
+            out_file.write_text(data)
+        else:
+            out_file.write_bytes(data)

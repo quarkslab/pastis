@@ -8,11 +8,13 @@ import subprocess
 import glob
 import hashlib 
 from enum import IntEnum
+import json
 
 # tritondse imports
 from tritondse import GlobalCoverage, CoverageSingleRun, CoverageStrategy, BranchSolvingStrategy
 from tritondse.trace import QBDITrace, TraceException
 
+from libpastis.types import ReplayType
 from pastisbroker.llvm_cov import ProfileCoverageFile, CovSummary, CovData, File, Function
 
 
@@ -31,8 +33,31 @@ class ReplayStatus(IntEnum):
 
 @dataclass
 class CoverageUpdateDiff(object):
-    updated: bool
-    new_items: list[tuple[int, int]]
+    """
+    Represent the Coverage delta after running an input file.
+    """
+    # General data
+    updated: bool     # Whether the coverage has been updated
+    type: ReplayType  # Type of replay used to generate this diff
+    
+    # Summary of the diff (encode differences in coverage)
+    summary: CovSummary
+
+    input_file: str = "" # Input file that generated this diff
+
+    # TODO: Detailed coverage data
+
+
+    def to_json(self) -> str:
+        """
+        Convert the CoverageUpdateDiff to a JSON string.
+        """
+        return json.dumps({
+            "updated": self.updated,
+            "type": self.type.name,
+            "summary": self.summary.to_json(),
+            "input_file": self.input_file
+        })
 
 
 class Coverage(ABC):
@@ -83,7 +108,13 @@ class QbdiCoverage(Coverage):
         # Update the global coverage
         self.coverage.merge(coverage)
 
-        return CoverageUpdateDiff(bool_improved, new_items)
+        summary = CovSummary()
+        # Set the count of new branches
+        summary.branches.covered = len(new_items)
+
+        return CoverageUpdateDiff(bool_improved,
+                                  ReplayType.qbdi,
+                                  summary)
 
     @staticmethod
     def run(program: Path,
@@ -128,11 +159,11 @@ class LlvmProfileCoverage(Coverage):
         return self.coverage.lines.covered == -1
 
     def add_coverage_file(self, cov_file: Path) -> CoverageUpdateDiff:
-        
+        dummy = CovSummary()
         # Merge the profraw with the current coverage (back in itself)
         if not LlvmProfileCoverage.merge_profdata(self.coverage_file, str(self.coverage_file), str(cov_file)):
             logging.error(f"Failed to merge profdata {cov_file} into {self.coverage_file}")
-            return CoverageUpdateDiff(False, [])
+            return CoverageUpdateDiff(False, ReplayType.llvm_profile, dummy)
 
         # Export the coverage to JSON
         json_file = self.coverage_file.with_suffix(".json")
@@ -141,20 +172,20 @@ class LlvmProfileCoverage(Coverage):
                                                    self.coverage_binary,
                                                    summary_only=True):
             logging.error("Failed to export coverage to JSON")
-            return CoverageUpdateDiff(False, [])
-        
+            return CoverageUpdateDiff(False, ReplayType.llvm_profile, dummy)
+
         # Load the updated coverage JSON file
         new_coverage = CovSummary.from_json(json_file)
         
         # Check if the coverage has been updated
         if self.coverage.improve_coverage(new_coverage):
-            # TODO: Compute proper diff !
-            diff = new_coverage.branches.covered - self.coverage.branches.covered
-            self.coverage = new_coverage
-            return CoverageUpdateDiff(True, [(1,1)]*diff)
+            # Compute the diff of every fields
+            diff = new_coverage.diff(self.coverage)
+            self.coverage = new_coverage  # Update the current coverage
+            return CoverageUpdateDiff(True, ReplayType.llvm_profile, diff)
         else:
             # logging.debug("No coverage update found")
-            return CoverageUpdateDiff(False, [])
+            return CoverageUpdateDiff(False, ReplayType.llvm_profile, dummy)
         
 
     @staticmethod

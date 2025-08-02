@@ -4,14 +4,15 @@ import sys
 import json
 from pathlib import Path
 from dataclasses import dataclass, field
-
+import copy
+import logging
 
 @dataclass
 class CovData(object):
-    count: int = -1        # Total number of items
-    covered: int = -1      # Number of covered items
-    not_covered: int = -1  # Number of not covered items
-    percent: int = -1      # Coverage percentage
+    count: int = 0         # Total number of items
+    covered: int = 0       # Number of covered items
+    not_covered: int = 0   # Number of not covered items
+    percent: int = 0       # Coverage percentage
     has_data: bool = False # Whether this data has been set or not
 
     def improved(self, other: 'CovData') -> bool:
@@ -23,6 +24,28 @@ class CovData(object):
         elif not self.has_data and other.has_data:
             return True
         return self.covered < other.covered
+
+    def diff(self, other: 'CovData') -> 'CovData':
+        """
+        Compute the difference between this CovData and another one.
+        Returns a new CovData with the numeric differences.
+
+        In the "set" sense, it performs: self - other
+        """
+        if self.has_data and not other.has_data:
+            return copy.copy(self)
+        elif not self.has_data and other.has_data:
+            return copy.copy(other)
+        elif self.has_data and other.has_data:
+            return CovData(
+                count=self.count,  # not meant to change
+                covered=self.covered - other.covered,
+                not_covered=self.not_covered - other.not_covered,
+                percent=self.percent - other.percent,
+                has_data=True
+            )
+        else:
+            assert False, "Both CovData objects have no data, cannot compute diff"
 
 @dataclass
 class File(object):
@@ -74,6 +97,28 @@ class CovSummary(object):
             setattr(summary, name, CovData(count, covered, not_covered, percent, has_data=True))
         return summary
 
+    def diff(self, other: 'CovSummary') -> 'CovSummary':
+        """
+        Compute the difference between this summary and another one.
+        Returns a new CovSummary with the numeric differences.
+
+        In the "set" sense, it performs: self - other
+        """
+        diff = CovSummary()
+        for attr in self.__dataclass_fields__.keys():
+            self_data = getattr(self, attr)
+            other_data = getattr(other, attr)
+            setattr(diff, attr, self_data.diff(other_data))
+        return diff
+
+    def to_json(self) -> str:
+        """
+        Compute the difference between this summary and another one.
+        Returns a new CovSummary with the numeric differences.
+
+        In the "set" sense, it performs: self - other
+        """
+        return json.dumps({k: getattr(self, k).__dict__ for k in self.__dataclass_fields__.keys()})
 
 
 @dataclass
