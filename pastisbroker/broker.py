@@ -10,6 +10,7 @@ from collections import Counter
 import datetime
 import random
 import queue
+import threading
 
 # Third-party imports
 import psutil
@@ -94,6 +95,7 @@ class PastisBroker(BrokerAgent):
         # Runtime infos
         self._running = False
         self._seed_pool = {}       # Seed bytes -> SeedType
+        self._pool_lock = threading.Lock()  # Lock for the seed pool
         self._init_seed_pool = {}  # Used for NO_TRANSMIT mode
         self._start_time = None
         self._stop = False
@@ -247,9 +249,11 @@ class PastisBroker(BrokerAgent):
             self.workspace.save_filtered_seed(cli_input.filename, cli_input.content)
 
         # Save it in the local pool
-        self._seed_pool[cli_input.content] = cli_input.seed_status
-        if cli.is_proxy():
-            self._init_seed_pool[cli_input.content] = cli_input.seed_status
+        with self._pool_lock:
+            self._seed_pool[cli_input.content] = cli_input.seed_status
+        
+            if cli.is_proxy():
+                self._init_seed_pool[cli_input.content] = cli_input.seed_status
 
         # Iterate on all clients and send it to whomever never received it
         if self.broker_mode == BrokingMode.FULL:
@@ -315,9 +319,10 @@ class PastisBroker(BrokerAgent):
             pass  # Client connection is kept in clients dict for later
 
     def _transmit_pool(self, client, pool) -> None:
-        for seed, typ in pool.items():
-            self.send_seed(client.netid, typ, seed)  # necessarily a new seed
-            client.add_peer_seed(seed)  # Add it in its list of seed
+        with self._pool_lock:  # lock pool access to make sure its not modified while we iterate it
+            for seed, typ in pool.items():
+                self.send_seed(client.netid, typ, seed)  # necessarily a new seed
+                client.add_peer_seed(seed)  # Add it in its list of seed
 
     def log_received(self, cli_id: bytes, level: LogLevel, message: str):
         """ Callback called by libpastis upon log message reception """
@@ -604,12 +609,14 @@ class PastisBroker(BrokerAgent):
     def start(self, running: bool = True):
         super(PastisBroker, self).start()  # Start the listening thread
         self._start_time = time.time()
-        self._running = running
-        self.workspace.status = WorkspaceStatus.RUNNING
         logging.info("load initial coverage")
 
         # Blocking: Run the whole initial corpus before starting the clients
         self.run_initial_corpus()
+
+        # Switch to running state
+        self._running = running
+        self.workspace.status = WorkspaceStatus.RUNNING
 
         logging.info("start broking")
         if self.is_proxied and self._proxy_cli:
