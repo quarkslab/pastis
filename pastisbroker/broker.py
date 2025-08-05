@@ -262,7 +262,8 @@ class PastisBroker(BrokerAgent):
 
     def send_seed_to_all_others(self, origin_id: bytes, typ: SeedType, seed: bytes) -> None:
         for c in self.iter_other_clients(origin_id):
-            self.send_seed_to(c, typ, seed)
+            if c.is_running():  # Only send to running clients (if not the case it will be sent later)
+                self.send_seed_to(c, typ, seed)
 
 
     def send_seed_to(self, cli: PastisClient, typ: SeedType, seed: bytes) -> None:
