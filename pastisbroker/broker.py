@@ -89,6 +89,7 @@ class PastisBroker(BrokerAgent):
             self.initialize_sast_report(sast_report)
 
         # Client infos
+        self._clients_lock = threading.Lock()  # Lock for clients access
         self.clients = {}   # bytes -> Client
         self._cur_id = 0
 
@@ -159,9 +160,10 @@ class PastisBroker(BrokerAgent):
         :param cli_id: netid of the client to ignore
         :return: Generator of PastisClient object
         """
-        for c in self.clients.values():
-            if c.netid != cli_id:
-                yield c
+        with self._clients_lock:  # Lock clients to avoid concurrent access
+            for c in self.clients.values():
+                if c.netid != cli_id:
+                    yield c
 
     def new_uid(self) -> int:
         """
@@ -239,6 +241,7 @@ class PastisBroker(BrokerAgent):
 
 
     def seed_granted(self, cli_input: ClientInput):
+        """ MAIN THREAD """
         # Update client stats
         cli = self.get_client(cli_input.fuzzer_id)
 
@@ -297,7 +300,8 @@ class PastisBroker(BrokerAgent):
         uid = self.new_uid()
         client = PastisClient(uid, cli_id, engines, arch, cpus, memory, hostname, platform)
         logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x.name for x in engines]} (cpu:{cpus}, mem:{memory})")
-        self.clients[client.netid] = client
+        with self._clients_lock:
+            self.clients[client.netid] = client
 
         # Load engines if they are not (lazy loading)
         for eng in engines:
@@ -430,10 +434,11 @@ class PastisBroker(BrokerAgent):
             self.start_client_and_send_corpus(cli)
 
     def stop_broker(self):
-        for client in self.clients.values():
-            if not client.is_proxy() and not client.is_initial():
-                logging.info(f"Send stop to {client.strid}")
-                self.send_stop(client.netid)
+        with self._clients_lock:  # Lock clients to avoid concurrent access
+            for client in self.clients.values():
+                if not client.is_proxy() and not client.is_initial():
+                    logging.info(f"Send stop to {client.strid}")
+                    self.send_stop(client.netid)
         self._stop = True
 
         # Stop coverage manager if any
@@ -456,9 +461,10 @@ class PastisBroker(BrokerAgent):
         Start clients that connected but for which we did not yet send a response.
         """
         # Send the start message to all clients (already connected)
-        for c in self.clients.values():
-            if not c.is_running():
-                self.start_client_and_send_corpus(c)
+        with self._clients_lock:  # Lock clients to avoid concurrent access
+            for c in self.clients.values():
+                if not c.is_running():
+                    self.start_client_and_send_corpus(c)
 
     def start_client_and_send_corpus(self, client: PastisClient) -> None:
         if client.is_initial():
@@ -649,9 +655,10 @@ class PastisBroker(BrokerAgent):
                     if not self._check_memory_usage():
                         # The machine starts being overloaded
                         # For security kill triton instance
-                        for cli in list(self.clients.values()):
-                            if cli.engine.SHORT_NAME == "TT":  # is triton
-                                self.kick_client(cli.netid)
+                        with self._clients_lock:  # Lock clients to avoid concurrent access
+                            for cli in list(self.clients.values()):
+                                if cli.engine.SHORT_NAME == "TT":  # is triton
+                                    self.kick_client(cli.netid)
 
                 # Check if we received the start signal from the proxy-master
                 if self._proxy_start_signal:
@@ -820,7 +827,8 @@ class PastisBroker(BrokerAgent):
         # Create "fake" client object for initial seeds
         cli = PastisClient.make_initial(self.new_uid())
         # cli.configure_logger(self.workspace.log_directory, random.choice(COLORS))
-        self.clients[cli.netid] = cli
+        with self._clients_lock:
+            self.clients[cli.netid] = cli
 
     def set_proxy(self, ip: str, port: int, py_module: str) -> bool:
         self._proxy = ClientAgent()
@@ -845,7 +853,8 @@ class PastisBroker(BrokerAgent):
         cli = PastisClient.make_proxy(self.new_uid())
         cli.set_running("", desc, CoverageMode.AUTO, ExecMode.AUTO, self.ck_mode, "")
         cli.configure_logger(self.workspace.log_directory, random.choice(COLORS))
-        self.clients[cli.netid] = cli
+        with self._clients_lock:
+            self.clients[cli.netid] = cli
 
     def _proxy_start_received(self, fname: str, binary: bytes, engine: FuzzingEngineInfo, exmode: ExecMode,
                               fuzzmode: FuzzMode, chkmode: CheckMode, covmode: CoverageMode, seed_inj: SeedInjectLoc,

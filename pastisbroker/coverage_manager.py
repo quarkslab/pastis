@@ -446,7 +446,7 @@ class CoverageManager(object):
         is_stdin = bool(seed_inj == SeedInjectLoc.STDIN)
         
         # Run the seed
-        logging.info(f"[replay-worker] running input into trace {cov_file}")
+        # logging.info(f"[replay-worker] running input into trace {cov_file}")
         Runner = QbdiCoverage if replay_type == ReplayType.qbdi else LlvmProfileCoverage
 
         # Run the given input on the coverage program
