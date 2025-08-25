@@ -305,7 +305,8 @@ class LlvmProfileCoverage(Coverage):
                 '-summary-only' if summary_only else '',
                 str(binary)
             ]
-            
+            command = list(filter(None, command))  # Remove empty strings
+
             try:
                 res = subprocess.run(command,
                                     stdout=out_file,
