@@ -282,7 +282,11 @@ class LlvmProfileCoverage(Coverage):
         return res.returncode == 0
 
     @staticmethod
-    def export_profdata(profdata_file: Path, output_file: Path, binary: Path, summary_only: bool=False) -> bool:
+    def export_profdata(profdata_file: Path,
+                        output_file: Path,
+                        binary: Path,
+                        summary_only: bool=False,
+                        file_filters: str = "") -> bool:
         """
         Exports the LLVM .profdata file to JSON.
         
@@ -290,12 +294,14 @@ class LlvmProfileCoverage(Coverage):
         :param output_file: Path where the output will be saved.
         :param binary: Path to the binary file.
         :param summary_only: If True, only the summary will be exported.
+        :param file_filters: Optional filters for files to exclude from the export.
         """
         with open(output_file, 'w') as out_file:
             command = [
                 'llvm-cov', 'export',
                 '-instr-profile', str(profdata_file),
                 '-format=text', # JSON
+                f"--ignore-filename-regex='{file_filters}'" if file_filters else '',
                 '-summary-only' if summary_only else '',
                 str(binary)
             ]
