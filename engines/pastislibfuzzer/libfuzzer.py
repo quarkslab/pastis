@@ -53,7 +53,9 @@ class LibfuzzerProcess:
               dictionary: Optional[str] = None):
         
         # Build target command line.
-        target_cmdline = f"{target} {' '.join(target_arguments)}"
+        if target_arguments:
+            logging.warning(f"Libfuzzer does accept binary arguments: {target_arguments}, (they are ignored)")
+        target_cmdline = f"{target}"
 
         # Build fuzzer arguments.
         libfuzzer_cmdline = ' '.join([
