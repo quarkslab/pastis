@@ -4,6 +4,8 @@ from typing import Iterator, Generator
 import shutil
 import stat
 from enum import Enum, auto
+import os
+import logging
 
 from libpastis.types import SeedType, PathLike
 from libpastis import SASTReport
@@ -36,6 +38,9 @@ class Workspace(object):
     COVERAGE_HISTORY = "coverage-history.csv"
     COVERAGE_FILE = "coverage.cov"
 
+    RAMDISK_DIR = "/mnt/ramdisk"
+
+
     def __init__(self, directory: Path, erase: bool = False):
         self.root = directory
 
@@ -59,6 +64,14 @@ class Workspace(object):
             status_file.write_text(self._status.name)
         else:
             self._status = WorkspaceStatus[status_file.read_text()]
+        
+        # Detect if a mounted ramdisk is available
+        p = Path(self.RAMDISK_DIR)
+        if p.exists() and p.is_dir() and os.access(p, os.W_OK):
+            logging.info(f"Ramdisk directory detected. Use it {p} for temporary files")
+            self.tmp_dir = p
+        else:
+            self.tmp_dir = Path("/tmp")
 
     def initialize_runtime(self, binaries_dir: PathLike, params: dict):
         # First copy binary files in workspace if different directories
