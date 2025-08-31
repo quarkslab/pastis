@@ -305,6 +305,7 @@ class BinaryPackage(object):
 
             # Extract the archive in the right directory
             shutil.unpack_archive(tmp_file.as_posix(), extract_dir)  # unpack it in dst directory
+            tmp_file.unlink() # remove the temporary archive file
             # Create the package object
             pkg = BinaryPackage.auto(Path(extract_dir) / name)
             if pkg is None:
