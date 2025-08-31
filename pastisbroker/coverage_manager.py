@@ -19,6 +19,7 @@ from enum import IntEnum
 from libpastis.types import SeedType, SeedInjectLoc, ReplayType
 
 from pastisbroker.coverage import QbdiCoverage, LlvmProfileCoverage, CoverageUpdateDiff, ReplayStatus
+from pastisbroker.llvm_cov import CovSummary
 from pastisbroker.utils import Bcolors, mk_color
 from pastisbroker.workspace import Workspace
 
@@ -47,7 +48,8 @@ class ClientInput:
     broker_status: BrokerStatus # Status in: DUPLICATE, DROPPED, GRANTED
     replay_status: ReplayStatus # Status in: OK, TRACE_EXCEPTION, FAIL
     replay_time: float      # Time taken for the replay
-    
+    new_coverage: bool|None # Whether the input generated new coverage (None if replay failed)
+
     def is_initial_input(self) -> bool:
         """
         Check if the input is part of the initial corpus
@@ -74,7 +76,7 @@ class ClientInput:
              netid: bytes) -> 'ClientInput':
         date, elapsed, client_id, hash = ClientInput.unpack_name(fname)
         return ClientInput(seed, date, elapsed, hash, fname, typ, netid,
-                           client_id, BrokerStatus.UNSET, ReplayStatus.FAIL_EXCEPTION, -1)
+                           client_id, BrokerStatus.UNSET, ReplayStatus.FAIL_EXCEPTION, -1, None)
         
     @staticmethod
     def make_initial(fname: str, seed: bytes) -> 'ClientInput':
@@ -167,9 +169,10 @@ class CoverageManager(object):
         logging.info("Starting coverage manager")
 
         for work_id in range(self.config.replay_thread):
-            self.pool.apply_async(self.replay_worker, (self.input_queue, self.cov_queue, self.config.replay_binary,
+            self.pool.apply_async(self.replay_worker, (work_id, self.input_queue, self.cov_queue, self.config.replay_binary,
                                                        self.args, self.inj_loc, self.config.replay_timeout,
-                                                       self.config.replay_type, self.env))
+                                                       self.config.replay_type, self.env, self.workspace.tmp_dir,
+                                                       self._coverage.coverage_file))
 
     def stop(self) -> None:
         if self._running:  # Only join if it was started
@@ -209,7 +212,7 @@ class CoverageManager(object):
                                        Path("/tmp/toto.txt"),
                                        os.getpid(),
                                        self.env)
-        self.read_one_coverage_in_queue()   
+        self.read_one_coverage_in_queue()
 
 
     def iter_granted_inputs(self) -> Generator[ClientInput, None, None]:
@@ -307,22 +310,28 @@ class CoverageManager(object):
                 case ReplayStatus.SUCCESS:
                     # Try loading the coverage file
                     try:
-                        covdiff = self._coverage.add_coverage_file(cov_file)
-                        covdiff.input_file = item.filename  # Set the input file that generated this diff
-                        # Successfully loaded the coverage file
-                        if covdiff.updated:
-                            self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
+                        if item.new_coverage:
+                            # Merge again to make sure it generated new coverage
+                            covdiff = self._coverage.add_coverage_file(cov_file)
+                            covdiff.input_file = item.filename  # Set the input file that generated this diff
+                            # Successfully loaded the coverage file
+                            if covdiff.updated:
+                                self.cli_stats[item.fuzzer_id][1] += 1  # input accepted
 
-                            new_cov = True  # for printing
-                            new_edges = covdiff.summary.branches.covered
+                                new_cov = True  # for printing
+                                new_edges = covdiff.summary.branches.covered
 
-                            # Save it in the workspace
-                            out_name = item.filename+".covdiff"
-                            data = covdiff.to_json()
-                            self.workspace.save_coverage_diff(out_name, data)
+                                # Save it in the workspace
+                                out_name = item.filename+".covdiff"
+                                data = covdiff.to_json()
+                                self.workspace.save_coverage_diff(out_name, data)
 
-                            item.broker_status = BrokerStatus.GRANTED
-                        else:
+                                item.broker_status = BrokerStatus.GRANTED
+                            else:  # No new coverage (can happen in case of race condition during replay phase)
+                                if not item.is_initial_input():
+                                    logging.warning(f"Finally {item.hash} did not generate new coverage")
+                                item.broker_status = BrokerStatus.DROPPED if self.filtering else BrokerStatus.GRANTED
+                        else:  # No new coverage (identified during replay)
                             item.broker_status = BrokerStatus.DROPPED if self.filtering else BrokerStatus.GRANTED
 
                     except json.JSONDecodeError:  # Failed to parse coverage file
@@ -386,48 +395,56 @@ class CoverageManager(object):
             return mk_color(status.name, Bcolors.WARNING)
 
     @staticmethod
-    def replay_worker(input_queue: Queue,
+    def replay_worker(work_id: int,
+                      input_queue: Queue,
                       cov_queue: Queue,
                       program: Path,
                       argv: list[str],
                       seed_inj: SeedInjectLoc,
                       timeout,
                       replay_type: ReplayType,
-                      env: dict[str, str]) -> None:
+                      env: dict[str, str],
+                      tmp_dir: Path,
+                      overall_coverage: Path) -> None:
         """
         worker thread that unstack inputs and replay them (in parrallel)
         """
-        tmpfile = Path(tempfile.mktemp(suffix=f"{os.getpid()}.input"))
+        tmp_input_file = Path(tempfile.mktemp(suffix=f"{os.getpid()}.input", dir=tmp_dir))
+        tmp_input_file.touch()
         pid = os.getpid()
-        Path(f"/tmp/replay_worker-{pid}").write_text("into !")
         
         try:
             while True:
-                CoverageManager.replay_one_input_in_queue(input_queue, cov_queue, program, argv, seed_inj, timeout, replay_type, tmpfile, pid, env)
+                CoverageManager.replay_one_input_in_queue(work_id, input_queue, cov_queue, program, argv, seed_inj, timeout,
+                                                          replay_type, tmp_input_file, pid, env, overall_coverage)
         except KeyboardInterrupt:
             pass
         except Exception as e:
             logging.exception(f"Exception in replay worker {e}")
             # logging.info(f"replay worker {os.getpid()}, stops (keyboard interrupt)")
+        finally:
+            tmp_input_file.unlink(missing_ok=True)
 
     @staticmethod
-    def replay_one_input_in_queue(input_queue: Queue,
+    def replay_one_input_in_queue(work_id: int,
+                                  input_queue: Queue,
                                   cov_queue: Queue,
                                   program: Path,
                                   argv: list[str],
                                   seed_inj: SeedInjectLoc,
                                   timeout: int,
                                   replay_type: ReplayType,
-                                  tmpfile: Path,
+                                  tmp_input_file: Path,
                                   pid: int,
-                                  env: dict[str, str]):
+                                  env: dict[str, str],
+                                  overall_coverage: Path) -> None:
         item: ClientInput = input_queue.get()
         # logging.debug(f"Worker {os.getpid()} fetch: {str(item)[:50]}")
         # Write inputs in our tempfile
-        tmpfile.write_bytes(item.content)
+        tmp_input_file.write_bytes(item.content)
 
         # Create to coverage file
-        cov_file = Path(tempfile.mktemp(f"_{item.hash}.cov"))
+        cov_file = Path(tempfile.mktemp(f"_{item.hash}.cov", dir=tmp_input_file.parent))
 
         # Adjust injection location before calling QBDITrace
         cur_argv = argv[:]
@@ -435,7 +452,7 @@ class CoverageManager(object):
             try:
                 # Replace 'input_file' in argv with the temporary file name created
                 idx = cur_argv.index(CoverageManager.ARGV_PLACEHOLDER)
-                cur_argv[idx] = str(tmpfile)
+                cur_argv[idx] = str(tmp_input_file)
             except ValueError as e:
                 logging.error(f"seed injection {seed_inj.name} but can't find '@@' on program argv: {argv}: {e}")
                 return
@@ -453,17 +470,50 @@ class CoverageManager(object):
         status = Runner.run(program,
                       cur_argv,
                       timeout,
-                      tmpfile,
+                      tmp_input_file,
                       cov_file,
                       is_stdin,
                       cwd,
                       env)
         
         if status == ReplayStatus.SUCCESS:
-            logging.info(f"[worker-{pid}] replaying {item.hash} sucessful")
+            pass
+            #logging.info(f"[worker-{pid}] replaying {item.hash} sucessful")
         else:
             logging.warning(f"[worker-{pid}] replay fail: {status.name.lower()}")
         item.replay_status = status
         item.replay_time = time.time() - t0
+
+        # Merge the coverage with the current overall coverage to check whether
+        # new locations have been covered
+        tmp_out_profdata = tmp_input_file.with_suffix(".profdata")
+        tmp_out_profjson = tmp_input_file.with_suffix(".json")
+        current_cov_json = overall_coverage.with_suffix(".json")
+        if not current_cov_json.exists():
+            # logging.debug(f"No current coverage JSON :{current_cov_json}, assuming first coverage")
+            new_coverage = True  # First coverage files thus necessarily going to generate new coverage
+        else:
+            current_cov = CovSummary.from_json(current_cov_json)
+            try:
+                new_cov = LlvmProfileCoverage.merge_and_export_coverage_file(tmp_out_profdata,
+                                                                            overall_coverage,
+                                                                            cov_file,
+                                                                            program)
+            except json.JSONDecodeError:
+                logging.error("Failed to decode JSON")
+                new_cov = None
+            finally:
+                tmp_out_profdata.unlink(missing_ok=True)
+                tmp_out_profjson.unlink(missing_ok=True)
+
+            if new_cov:
+                new_coverage = current_cov.improve_coverage(new_cov)
+            else:
+                logging.error("Failed to merge and to export coverage to JSON")
+                new_coverage = None
+
+        # logging.info(f"[worker-{pid}] replaying {item.hash} OK. New coverage: {new_coverage}")
+        item.new_coverage = new_coverage
+        
         # Add it to the coverage queue (even if it failed
         cov_queue.put((item, cov_file))

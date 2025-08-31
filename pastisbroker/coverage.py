@@ -152,41 +152,60 @@ class LlvmProfileCoverage(Coverage):
         # Keep coverage as a tritondse GlobalCoverage
         self.coverage_binary = coverage_binary
         self.coverage: CovSummary = CovSummary()
-        self.coverage_file = coverage_file
+        self.coverage_file: Path = coverage_file
 
     @property
     def is_first_coverage(self) -> bool:
         return self.coverage.lines.covered == -1
 
     def add_coverage_file(self, cov_file: Path) -> CoverageUpdateDiff:
-        dummy = CovSummary()
+        
+        tmp_out_profdata = self.coverage_file.with_suffix(".profdatatmp")
+        if new_coverage := LlvmProfileCoverage.merge_and_export_coverage_file(
+                tmp_out_profdata, self.coverage_file, cov_file, self.coverage_binary):
+        
+            # Safe replace profdata file (atomic operation)
+            os.replace(tmp_out_profdata, self.coverage_file)
+
+            # Check if the coverage has been updated
+            if self.coverage.improve_coverage(new_coverage):
+                # Compute the diff of every fields
+                diff = new_coverage.diff(self.coverage)
+                self.coverage = new_coverage  # Update the current coverage
+                return CoverageUpdateDiff(True, ReplayType.llvm_profile, diff)
+            else:
+                # logging.debug("No coverage update found")
+                return CoverageUpdateDiff(False, ReplayType.llvm_profile, CovSummary())
+
+        else:
+            logging.error("Failed to export coverage to JSON")
+            return CoverageUpdateDiff(False, ReplayType.llvm_profile, CovSummary())
+        
+ 
+    @staticmethod
+    def merge_and_export_coverage_file(out_profdata: Path, in_profdata: Path,
+                                       cov_file: Path, coverage_binary: Path) -> CovSummary|None:
+        
         # Merge the profraw with the current coverage (back in itself)
-        if not LlvmProfileCoverage.merge_profdata(self.coverage_file, str(self.coverage_file), str(cov_file)):
-            logging.error(f"Failed to merge profdata {cov_file} into {self.coverage_file}")
-            return CoverageUpdateDiff(False, ReplayType.llvm_profile, dummy)
+        if not LlvmProfileCoverage.merge_profdata(out_profdata, str(in_profdata), str(cov_file)):
+            logging.error(f"Failed to merge profdata {cov_file} into {out_profdata}")
+            return None
 
         # Export the coverage to JSON
-        json_file = self.coverage_file.with_suffix(".json")
-        if not LlvmProfileCoverage.export_profdata(self.coverage_file,
-                                                   json_file,
-                                                   self.coverage_binary,
+        json_file = out_profdata.with_suffix(".json")
+        json_tmp = out_profdata.with_suffix(".json.tmp")
+        if not LlvmProfileCoverage.export_profdata(out_profdata,
+                                                   json_tmp,
+                                                   coverage_binary,
                                                    summary_only=True):
             logging.error("Failed to export coverage to JSON")
-            return CoverageUpdateDiff(False, ReplayType.llvm_profile, dummy)
+            return None
 
-        # Load the updated coverage JSON file
-        new_coverage = CovSummary.from_json(json_file)
-        
-        # Check if the coverage has been updated
-        if self.coverage.improve_coverage(new_coverage):
-            # Compute the diff of every fields
-            diff = new_coverage.diff(self.coverage)
-            self.coverage = new_coverage  # Update the current coverage
-            return CoverageUpdateDiff(True, ReplayType.llvm_profile, diff)
-        else:
-            # logging.debug("No coverage update found")
-            return CoverageUpdateDiff(False, ReplayType.llvm_profile, dummy)
-        
+        # Safe replace JSON file (atomic operation)
+        os.replace(json_tmp, json_file)
+
+        return CovSummary.from_json(json_file)
+
 
     @staticmethod
     def get_fuzz_env() -> dict[str, str]:
