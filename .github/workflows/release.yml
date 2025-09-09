@@ -49,7 +49,7 @@ jobs:
           path: dist
 
       - name: Publish a Python distribution to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.2
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.PYPI_DEPLOY_TOKEN }}
 
