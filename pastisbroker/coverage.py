@@ -58,6 +58,20 @@ class CoverageUpdateDiff(object):
             "summary": self.summary.to_dict(),
             "input_file": self.input_file
         })
+    
+    @staticmethod
+    def from_file(json_file: Path) -> 'CoverageUpdateDiff':
+        """
+        Load the CoverageUpdateDiff from a JSON file.
+        """
+        with open(json_file, 'r') as f:
+            data = json.load(f)
+            return CoverageUpdateDiff(
+                updated = data["updated"],
+                type = ReplayType[data["type"]],
+                summary = CovSummary.from_dict(data["summary"]),
+                input_file = data["input_file"]
+            )
 
 
 class Coverage(ABC):
