@@ -22,7 +22,7 @@ class BinaryPackage(object):
     This object is received by fuzzing agents as part of the START message.
     """
 
-    EXTENSION_BLACKLIST = ['.gt', '.Quokka', '.quokka', '.cmplog']
+    EXTENSION_BLACKLIST = ['.gt', '.Quokka', '.quokka', '.cmplog', '.dict']
     #: specific extensions that will be ignored for the `other_files`
 
     def __init__(self, main_binary: Path):
@@ -40,6 +40,21 @@ class BinaryPackage(object):
         self._package_file = None
         self._arch = None
         self._platform = None
+
+    def __str__(self):
+        s = f"Package<{self.arch.name},{self.platform.name}>({self.executable_path.name}"
+        if self.quokka:
+            s += f", quokka={self.quokka.name}"
+        if self.callgraph:
+            s += f", callgraph={self.callgraph.name}"
+        if self.cmplog:
+            s += f", cmplog={self.cmplog.name}"
+        if self.dictionary:
+            s += f", dict={self.dictionary.name}"
+        if self.other_files:
+            s += f", other_files=[{', '.join(str(x) for x in self.other_files)}]"
+        s += ")"
+        return s
 
     @property
     def executable_path(self) -> Path:
@@ -222,7 +237,10 @@ class BinaryPackage(object):
             return None
 
         for file in bin_f.parent.iterdir():
-            if file not in [p._main_bin, p._callgraph, p._quokka, p._cmplog, p._dictionary]:
+            if file == p.executable_path:
+                continue
+            elif file.suffix not in BinaryPackage.EXTENSION_BLACKLIST and \
+                                    file.stem != p.executable_path.stem:    # prevent adding other variant of the binary
                 p.other_files.append(file)
 
         return p

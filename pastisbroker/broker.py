@@ -97,7 +97,7 @@ class PastisBroker(BrokerAgent):
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
 
         # Initialize availables binaries
-        self.programs = {}  # Tuple[(Platform, Arch)] -> List[BinaryPackage]
+        self.packages = {}  # Tuple[(Platform, Arch)] -> List[BinaryPackage]
         self._find_binaries(binaries_dir)
 
         # Klocwork informations
@@ -501,9 +501,9 @@ class PastisBroker(BrokerAgent):
     def start_client(self, client: PastisClient):
         engine = None
         exmode = ExecMode.SINGLE_EXEC
-        fuzzmode = FuzzMode.INSTRUMENTED
         engine_args = None
         package = covmode = fuzzmod = None
+
         engines = Counter({e: 0 for e in self.engines})
         engines.update(c.engine.NAME for c in self.clients.values() if c.is_running())  # Count instances of each engine running
         for eng, _ in engines.most_common()[::-1]:
@@ -513,11 +513,11 @@ class PastisBroker(BrokerAgent):
                 continue
 
             # Try finding a suitable binary for the current engine and the client arch
-            programs: List[BinaryPackage] = self.programs.get((client.platform, client.arch))
+            packages: List[BinaryPackage] = self.packages.get((client.platform, client.arch))
             package = None
             exmode = None
             fuzzmod = FuzzMode.AUTO
-            for p in programs:
+            for p in packages:
                 res, xmod, fmod = eng_desc.accept_file(p.executable_path)  # Iterate all files on that engine descriptor to check it accept it
                 if res:
                     if exmode:
@@ -776,17 +776,17 @@ class PastisBroker(BrokerAgent):
                         logging.warning(f"{file.name} executable found but no QBinExport file associated (ignores it)")
                         continue
 
-                logging.info(f"new binary detected [{pkg.platform.name}, {pkg.arch.name}]: {file}")
+                logging.info(f"new package detected: {pkg}")
 
                 # Add it in the internal structure
                 data = (pkg.platform, pkg.arch)
                 data2 = (Platform.ANY, pkg.arch)
-                if data not in self.programs:
-                    self.programs[data] = []
-                if data2 not in self.programs:
-                    self.programs[data2] = []
-                self.programs[data].append(pkg)
-                self.programs[data2].append(pkg)  # Also add an entry for any platform
+                if data not in self.packages:
+                    self.packages[data] = []
+                if data2 not in self.packages:
+                    self.packages[data2] = []
+                self.packages[data].append(pkg)
+                self.packages[data2].append(pkg)  # Also add an entry for any platform
 
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
