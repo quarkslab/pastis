@@ -14,6 +14,11 @@ import tritondse.logging
 from pastisbroker import PastisBroker, BrokingMode, __version__, CoverageConfig
 from libpastis.types import CheckMode, SeedInjectLoc, ReplayType
 import tritondse
+from pastisaflpp import AFLPPEngineDescriptor
+from pastishonggfuzz import HonggfuzzEngineDescriptor
+from pastislibfuzzer import LibfuzzerEngineDescriptor
+from pastistritondse import TritonEngineDescriptor
+
 
 tritondse.logging.enable(level=logging.DEBUG)
 
@@ -90,7 +95,6 @@ def coverage_binary_checks(binary: Path, type: ReplayType) -> bool:
               default=CheckMode.CHECK_ALL.name, help="Check mode (all or alert driven)", show_default=True)
 @click.option('-i', '--injloc', type=click.Choice([x.name for x in list(SeedInjectLoc)]),
               default=SeedInjectLoc.STDIN.name, help="Seed injection location", show_default=True)
-@click.option('-e', '--engine', type=str, help="Fuzzing engine module to load (python module)", multiple=True)
 @click.option("-E", "--env", type=str, help="Environment variable to forward to the target", multiple=True)
 @click.option('--tt-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
               help="Triton configuration file")
@@ -125,7 +129,6 @@ def main(workspace: str,
          mode: str,
          chkmode: str,
          injloc: str,
-         engine: Tuple[str],
          env: Tuple[str],
          tt_config: Optional[str],
          hf_config: Optional[str],
@@ -183,21 +186,17 @@ def main(workspace: str,
                           cov_conf,
                           env)
 
-    # Preload all Fuzzing engine if needed
-    for eng in engine:
-        broker.load_engine_addon(eng)
-
     # Add all the triton configuration if the parameter was a directory
     if tt_config:
         for conf in iterate_file(tt_config):
             logging.info(f"Add Triton configuration: {conf}")
-            broker.add_engine_configuration("TRITON", conf)
+            broker.add_engine_configuration(TritonEngineDescriptor.NAME, conf)
 
     # Add all the Honggfuzz configuration
     if hf_config:
         for conf in iterate_file(hf_config):
             logging.info(f"Add Honggfuzz configuration: {conf}")
-            broker.add_engine_configuration("HONGGFUZZ", conf)
+            broker.add_engine_configuration(HonggfuzzEngineDescriptor.NAME, conf)
 
     # Add all given seeds as initial seed
     for s_src in seed:

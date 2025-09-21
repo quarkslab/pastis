@@ -7,6 +7,7 @@ import logging
 from .driver import LibfuzzerDriver
 from .replay import Replay
 from .workspace import Workspace
+from .addon import LibfuzzerEngineDescriptor, LibfuzzerConfigurationInterface
 
 __version__ = "1.0.0"
 

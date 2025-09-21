@@ -28,6 +28,21 @@ from pastisbroker.workspace import Workspace, WorkspaceStatus
 from pastisbroker.utils import load_engine_descriptor, Bcolors, COLORS
 from pastisbroker.coverage_manager import CoverageManager, ClientInput, CoverageConfig
 
+# Supported engines
+from pastisaflpp import AFLPPEngineDescriptor
+from pastishonggfuzz import HonggfuzzEngineDescriptor
+from pastislibfuzzer import LibfuzzerEngineDescriptor
+from pastistritondse import TritonEngineDescriptor
+
+
+SUPPORTED_ENGINES = {
+    AFLPPEngineDescriptor.NAME: AFLPPEngineDescriptor,
+    HonggfuzzEngineDescriptor.NAME: HonggfuzzEngineDescriptor,
+    LibfuzzerEngineDescriptor.NAME: LibfuzzerEngineDescriptor,
+    TritonEngineDescriptor.NAME: TritonEngineDescriptor
+}
+
+
 
 lief.logging.disable()
 
@@ -72,9 +87,11 @@ class PastisBroker(BrokerAgent):
         self.ck_mode = check_mode
         self.inject = inject_loc
         self.argv = [] if p_argv is None else p_argv
+        self.env_variables = env if env is not None else []
+
         self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
-        self.env_variables = env if env is not None else []
+        self._load_engines()
 
         # for slicing mode (otherwise not used)
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
@@ -134,15 +151,11 @@ class PastisBroker(BrokerAgent):
                                                  self.inject,
                                                  env_dict)
 
-
-    def load_engine_addon(self, py_module: str) -> bool:
-        desc = load_engine_descriptor(py_module)
-        if desc is not None:
-            self.engines[desc.NAME] = desc
-            self.engines_args[desc.NAME] = []
-            return True
-        else:
-            return False
+    def _load_engines(self):
+        """ Pre-load all supported engines """
+        for e in SUPPORTED_ENGINES.values():
+            self.engines[e.NAME] = e
+            self.engines_args[e.NAME] = []
 
     def initialize_sast_report(self, report: PathLike):
         self.sast_report = SASTReport.from_file(report)
@@ -298,15 +311,24 @@ class PastisBroker(BrokerAgent):
     def hello_received(self, cli_id: bytes, engines: List[FuzzingEngineInfo], arch: Arch, cpus: int, memory: int, hostname: str, platform: Platform):
         """ Callback called by libpastis upon hello message reception """
         uid = self.new_uid()
-        client = PastisClient(uid, cli_id, engines, arch, cpus, memory, hostname, platform)
-        logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x.name for x in engines]} (cpu:{cpus}, mem:{memory})")
-        with self._clients_lock:
-            self.clients[client.netid] = client
 
-        # Load engines if they are not (lazy loading)
+        # Check that that we support client's engines
+        accepted_engines = []
         for eng in engines:
             if eng.name not in self.engines:
-                self.load_engine_addon(eng.pymodule)
+                logging.warning(f"Engine {eng.name} unknown, ignore it")
+            else:
+                accepted_engines.append(eng)
+        # No supported engine, kick it
+        if not accepted_engines:
+            logging.error(f"[{hostname}] No supported engine found, stop it")
+            self.send_stop(cli_id)
+            return
+
+        client = PastisClient(uid, cli_id, accepted_engines, arch, cpus, memory, hostname, platform)
+        logging.info(f"[{client.strid}] [HELLO] Name:{hostname} Arch:{arch.name} engines:{[x.name for x in accepted_engines]} (cpu:{cpus}, mem:{memory})")
+        with self._clients_lock:
+            self.clients[client.netid] = client
 
         if self.running:  # A client is coming in the middle of a session
             if self._startup_quorum:
@@ -777,8 +799,7 @@ class PastisBroker(BrokerAgent):
         # TODO: of exit. And being able to reload it. (not to resend all seeds to clients)
 
     def add_engine_configuration(self, name: str, config_file: PathLike):
-        if name in self.engines_args:
-            engine = self.engines[name]
+        if engine := self.engines_args.get(name):
             conf = engine.config_class.from_file(config_file)
             self.engines_args[name].append(conf)
         else:

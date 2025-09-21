@@ -253,7 +253,6 @@ def run(workspace: str, bins: str, seeds: str, mode: str, injloc: str, aflpp: bo
     if not tt_confs.exists():  # if folder is empty
         logging.info(f"{tt_confs} not found fall back current workdir")
         tt_confs = Path("triton_confs")
-    broker.load_engine_addon("pastistritondse.addon")
     if tt_confs.exists():
         for i, conf in enumerate(sorted(tt_confs.iterdir())):
             with open(conf, "r+") as fd:

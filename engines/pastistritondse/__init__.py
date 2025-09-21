@@ -2,6 +2,7 @@ from typing import Tuple
 import subprocess
 
 from .driver import TritonDSEDriver
+from .addon import TritonConfigurationInterface, TritonEngineDescriptor
 
 # Expose triton version
 import tritondse
