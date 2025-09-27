@@ -64,6 +64,7 @@ class PastisBroker(BrokerAgent):
                  sast_report: PathLike | None = None,
                  memory_threshold: int = 85,
                  start_quorum: int = 0,
+                 exec_timeout: int = 0,
                  coverage_conf: CoverageConfig = CoverageConfig(),
                  env: list[str]|None = None):
         super(PastisBroker, self).__init__()
@@ -88,9 +89,11 @@ class PastisBroker(BrokerAgent):
         self.inject = inject_loc
         self.argv = [] if p_argv is None else p_argv
         self.env_variables = env if env is not None else []
+        self.exec_timeout = exec_timeout  # in seconds
 
-        self.engines_args = {}
         self.engines = {}  # name->FuzzingEngineDescriptor
+        self.engines_args = {}
+        self.engines_threads = {}  # name->int
         self._load_engines()
 
         # for slicing mode (otherwise not used)
@@ -573,7 +576,8 @@ class PastisBroker(BrokerAgent):
 
         # Update internal client info and send him the message
         engine_args_str = engine_args.to_str() if engine_args else ""
-        logging.info(f"send start client {client.strid}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}]")
+        threads = self.engines_threads.get(engine.NAME, 1)
+        logging.info(f"send start client {client.strid}: {package.name} [{engine.NAME}, {covmode.name}, {fuzzmod.name}, {exmode.name}] with {threads} threads")
         client.set_running(package.name, engine, covmode, exmode, self.ck_mode, engine_args_str)
         client.configure_logger(self.workspace.log_directory, random.choice(COLORS))  # Assign custom color client
 
@@ -589,7 +593,9 @@ class PastisBroker(BrokerAgent):
                         engine_args_str,
                         self.inject,
                         self.env_variables,
-                        self.sast_report.to_json() if self.sast_report else b"")
+                        self.sast_report.to_json() if self.sast_report else b"",
+                        threads,
+                        self.exec_timeout)
 
     def _find_configuration(self, engine: FuzzingEngineDescriptor) -> Optional[EngineConfiguration]:
         """
@@ -745,6 +751,8 @@ class PastisBroker(BrokerAgent):
             for item in self.coverage_manager.iter_granted_inputs():
                 self.seed_granted(item)
 
+    def set_engine_threads(self, engine_name: str, threads: int) -> None:
+        self.engines_threads[engine_name] = threads
 
     def _find_binaries(self, binaries_dir) -> None:
         """

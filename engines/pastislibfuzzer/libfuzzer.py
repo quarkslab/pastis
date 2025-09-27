@@ -34,7 +34,7 @@ class LibfuzzerProcess:
     def __init__(self):
         self.__process = None
         self.__logfile = None
-        self._threads = os.environ.get(self.LIBFUZZER_THREADS_VAR, "1")
+        self._threads = os.environ.get(self.LIBFUZZER_THREADS_VAR, None)
         self.status = LibfuzzerState.IDLE
 
         # Runtime data for restart
@@ -50,7 +50,9 @@ class LibfuzzerProcess:
               engine_args: str,
               env_variables: list[str],
               cmplog: Optional[str] = None,
-              dictionary: Optional[str] = None):
+              dictionary: Optional[str] = None,
+              threads: int = 1,
+              exec_timeout: int = 1) -> None:
         
         # Build target command line.
         if target_arguments:
@@ -61,13 +63,14 @@ class LibfuzzerProcess:
         libfuzzer_cmdline = ' '.join([
             target_cmdline,  # The fuzzer is the target itself
             re.sub(r"\s", " ", engine_args),  # Any arguments coming right from the broker (remove \r\n)
-            f"-fork={self._threads}",  # Enable fork-mode
+            f"-fork={self._threads if self._threads else threads}",  # Enable fork-mode
             f"-ignore_crashes=1",  # Ignore crashes (to fuzz indefinitely)
             f"-rss_limit_mb=4096", # Limit memory usage to 4GB
             f"-workers=1",  # Number of workers (threads within a fork) (if was set to threads we would have: threads=fork x workers)
             # f"-jobs={self._threads}",  # Number of jobs (sequential tasks)
             f"-dict={dictionary}" if dictionary is not None else "",
             f"-artifact_prefix={workspace.crash_dir}/",
+            f"-timeout={exec_timeout*1000}" if exec_timeout > 0 else "",
             f"{workspace.input_dir}"  # Last argument is the input directory
         ])
 

@@ -239,47 +239,50 @@ class NetworkAgent(object):
         return getattr(message, typ), MessageType(typ)
 
     def _message_args(self, topic: MessageType, msg: Message):
-        if topic == MessageType.INPUT_SEED:
-            return [SeedType(msg.type),
-                    msg.seed]
-        elif topic == MessageType.LOG:
-            return [LogLevel(msg.level),
-                    msg.message]
-        elif topic == MessageType.TELEMETRY:
-            return [msg.state, 
-                    msg.exec_per_sec,
-                    msg.total_exec,
-                    msg.cycle,
-                    msg.timeout,
-                    msg.coverage_block,
-                    msg.coverage_edge,
-                    msg.coverage_path,
-                    msg.last_cov_update]
-        elif topic == MessageType.HELLO:
-            engs = [(FuzzingEngineInfo.from_pb(x)) for x in msg.engines]
-            return [engs,
-                    Arch(msg.architecture),
-                    msg.cpus,
-                    msg.memory,
-                    msg.hostname,
-                    Platform(msg.platform)]
-        elif topic == MessageType.START:
-            return [msg.binary_filename,
-                    msg.binary,
-                    FuzzingEngineInfo.from_pb(msg.engine),
-                    ExecMode(msg.exec_mode),
-                    FuzzMode(msg.fuzz_mode),
-                    CheckMode(msg.check_mode),
-                    CoverageMode(msg.coverage_mode),
-                    SeedInjectLoc(msg.seed_location),
-                    msg.engine_args,
-                    [x for x in msg.program_argv],
-                    [x for x in msg.environ],
-                    msg.sast_report]
-        elif topic == MessageType.DATA:
-            return [msg.data]
-        else:  # for stop and store_coverage_done nothing to unpack
-            return []
+        match topic:
+            case MessageType.INPUT_SEED:
+                return [SeedType(msg.type),
+                        msg.seed]
+            case MessageType.LOG:
+                return [LogLevel(msg.level),
+                        msg.message]
+            case MessageType.TELEMETRY:
+                return [msg.state,
+                        msg.exec_per_sec,
+                        msg.total_exec,
+                        msg.cycle,
+                        msg.timeout,
+                        msg.coverage_block,
+                        msg.coverage_edge,
+                        msg.coverage_path,
+                        msg.last_cov_update]
+            case MessageType.HELLO:
+                engs = [(FuzzingEngineInfo.from_pb(x)) for x in msg.engines]
+                return [engs,
+                        Arch(msg.architecture),
+                        msg.cpus,
+                        msg.memory,
+                        msg.hostname,
+                        Platform(msg.platform)]
+            case MessageType.START:
+                return [msg.binary_filename,
+                        msg.binary,
+                        FuzzingEngineInfo.from_pb(msg.engine),
+                        ExecMode(msg.exec_mode),
+                        FuzzMode(msg.fuzz_mode),
+                        CheckMode(msg.check_mode),
+                        CoverageMode(msg.coverage_mode),
+                        SeedInjectLoc(msg.seed_location),
+                        msg.engine_args,
+                        [x for x in msg.program_argv],
+                        [x for x in msg.environ],
+                        msg.sast_report,
+                        msg.threads,
+                        msg.exec_timeout]
+            case MessageType.DATA:
+                return [msg.data]
+            case _:  # for stop and store_coverage_done nothing to unpack
+                return []
 
 
 class BrokerAgent(NetworkAgent):
@@ -310,7 +313,9 @@ class BrokerAgent(NetworkAgent):
                    engine_args: str,
                    seed_loc: SeedInjectLoc,
                    env_variables: list[str],
-                   sast_report: bytes = None) -> None:
+                   sast_report: bytes|None = None,
+                   threads: int = 1,
+                   exec_timeout: int = 0) -> None:
         """
         Send a START message to a fuzzing agent with all the parameters it is meant to run with.
 
@@ -327,6 +332,7 @@ class BrokerAgent(NetworkAgent):
         :param seed_loc: location where to provide inputs (stdin or argv)
         :param env_variables: list of environment variables to forward to the target
         :param sast_report: SAST report if applicable
+        :param exec_timeout: Timeout for each execution (in s)
         """
         msg = StartMsg()
         if isinstance(package, str):
@@ -347,6 +353,8 @@ class BrokerAgent(NetworkAgent):
             msg.program_argv.append(arg)
         for env in env_variables:
             msg.environ.append(env)
+        msg.threads = threads
+        msg.exec_timeout = exec_timeout
         self.send_to(id, msg, msg_type=MessageType.START)
 
     def send_stop(self, id: bytes) -> None:

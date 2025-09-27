@@ -80,7 +80,9 @@ class LibfuzzerDriver:
               fuzzmode: FuzzMode,
               seed_inj: SeedInjectLoc,
               engine_args: str,
-              envp: list[str]):
+              envp: list[str],
+              threads: int,
+              exec_timeout: int):
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
@@ -97,7 +99,9 @@ class LibfuzzerDriver:
                          engine_args,
                          envp,
                          str(package.cmplog.absolute()) if package.cmplog else None,
-                         str(package.dictionary.absolute()) if package.dictionary else None)
+                         str(package.dictionary.absolute()) if package.dictionary else None,
+                         threads,
+                         exec_timeout)
         self._started = True
         self._last_start = time.time()
 
@@ -270,7 +274,9 @@ class LibfuzzerDriver:
                        engine_args: str,
                        argv: List[str],
                        envp: list[str],
-                       sast_report: str = ""):
+                       sast_report: str|None,
+                       threads: int,
+                       exec_timeout: int):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}") # type: ignore
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!") # type: ignore
@@ -301,7 +307,7 @@ class LibfuzzerDriver:
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
-        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args, envp)
+        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args, envp, threads, exec_timeout)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
         h = self.hash_seed(seed)

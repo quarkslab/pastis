@@ -76,7 +76,9 @@ class HonggfuzzDriver:
               fuzzmode: FuzzMode,
               seed_inj: SeedInjectLoc,
               engine_args: str,
-              envp: list[str]):
+              envp: list[str],
+              threads: int,
+              exec_timeout: int):
         # Write target to disk.
         self.__package = package
         self.__target_args = argv
@@ -92,6 +94,8 @@ class HonggfuzzDriver:
                              seed_inj == SeedInjectLoc.STDIN,
                              engine_args,
                              envp,
+                             threads,
+                             exec_timeout,
                              str(package.dictionary.absolute()) if package.dictionary else None):
             self._agent.send_log(LogLevel.ERROR, "Cannot start target")
         self._started = True
@@ -246,7 +250,9 @@ class HonggfuzzDriver:
                        engine_args: str,
                        argv: List[str],
                        envp: list[str],
-                       sast_report: str = None):
+                       sast_report: str|None,
+                       threads: int,
+                       exec_timeout: int):
         logging.info(f"[START] bin:{fname} engine:{engine.name} exmode:{exmode.name} fuzzmode:{fuzzmode.name} seedloc:{seed_inj.name} chk:{chkmode.name}")
         if self.started:
             self._agent.send_log(LogLevel.CRITICAL, "Instance already started!")
@@ -274,7 +280,7 @@ class HonggfuzzDriver:
 
         self.__check_mode = chkmode  # CHECK_ALL, ALERT_ONLY
 
-        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args, envp)
+        self.start(package, argv, exmode, fuzzmode, seed_inj, engine_args, envp, threads, exec_timeout)
 
     def __seed_received(self, typ: SeedType, seed: bytes):
         h = self.hash_seed(seed)

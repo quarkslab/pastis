@@ -284,7 +284,9 @@ class TritonDSEDriver(object):
                        engine_args: str,
                        argv: List[str],
                        envp: list[str],
-                       sast_report: str = None):
+                       sast_report: str|None,
+                       threads: int,
+                       exec_timeout: int):
         """
         This function is called when the broker says to start the fuzzing session. Here, we receive all information
         about the program to fuzz and the configuration.

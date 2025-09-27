@@ -69,6 +69,8 @@ message StartMsg {
     string engine_args           = 10; // Serialized JSON of engine parameters
     repeated string program_argv = 11;  // Arguments (without program name (argv[0]))
     repeated string environ      = 12;  // Environment variables to provide to the target
+    uint32 threads               = 13; // Number of threads to use (if supported by the engine)
+    uint32 exec_timeout          = 14; // Timeout for each execution (in ms)
 }
 
 message StopMsg {

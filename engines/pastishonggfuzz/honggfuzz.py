@@ -53,6 +53,8 @@ class HonggfuzzProcess:
               stdin: bool,
               engine_args: str,
               env_variables: list[str],
+              threads: int,
+              exec_timeout: int,
               dictionary: Optional[str] = None) -> bool:
         if not stdin:
             if "@@" in target_arguments:  # Change '@@' for ___FILE___
@@ -88,7 +90,8 @@ class HonggfuzzProcess:
             f"--output {workspace.corpus_dir}",
             f"--crashdir {workspace.crash_dir}",
             f"--workspace {workspace.root_dir}",
-            f"--threads {self._threads}" if self._threads else "",
+            f"--threads {self._threads}" if self._threads else (f"--threads {threads}" if threads > 0 else ""),"",
+            f"--timeout {exec_timeout}" if exec_timeout > 0 else "",
             f"--dict {dictionary}" if dictionary is not None else ""
         ]
 

@@ -100,10 +100,18 @@ def coverage_binary_checks(binary: Path, type: ReplayType) -> bool:
               help="Triton configuration file")
 @click.option('--hf-config', type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
               help="Honggfuzz configuration file")
+@click.option('--hf-threads', type=int, default=0,
+              help="Number of threads to use for Honggfuzz engine (0 is auto)", show_default=True)
+@click.option('--afl-threads', type=int, default=1,
+              help="Number of threads to use for AFL++ engine", show_default=True)
+@click.option('--libfuzzer-threads', type=int, default=1,
+              help="Number of threads to use for LibFuzzer engine", show_default=True)
 @click.option('-s', "--seed", type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
               help="Initial seed or directory of seeds to give as initial corpus", multiple=True)
 @click.option('-t', "--timeout", type=int, default=None,
               help="Whole campaign timeout (in s). Time after which stopping the campaign")
+@click.option('-T', "--exec-timeout", type=int, default=1,
+              help="Execution timeout (in seconds). Time after which stopping the execution of a single test case")
 @click.option('-p', '--port', type=int, default=5555, help="Port to bind to",
               multiple=False, show_default=True)
 @click.option('--mem-threshold', type=int, default=85, help="RAM consumption limit",
@@ -132,8 +140,12 @@ def main(workspace: str,
          env: Tuple[str],
          tt_config: Optional[str],
          hf_config: Optional[str],
+         hf_threads: int,
+         afl_threads: int,
+         libfuzzer_threads: int,
          seed: Tuple[str],
          timeout: Optional[int],
+         exec_timeout: int,
          port: int,
          pargvs: Tuple[str],
          mem_threshold: int,
@@ -183,6 +195,7 @@ def main(workspace: str,
                           sast_report,
                           mem_threshold,
                           start_quorum,
+                          exec_timeout,
                           cov_conf,
                           env)
 
@@ -197,6 +210,11 @@ def main(workspace: str,
         for conf in iterate_file(hf_config):
             logging.info(f"Add Honggfuzz configuration: {conf}")
             broker.add_engine_configuration(HonggfuzzEngineDescriptor.NAME, conf)
+
+    # Set the number of threads for each engine
+    broker.set_engine_threads(HonggfuzzEngineDescriptor.NAME, hf_threads)
+    broker.set_engine_threads(AFLPPEngineDescriptor.NAME, afl_threads)
+    broker.set_engine_threads(LibfuzzerEngineDescriptor.NAME, libfuzzer_threads)
 
     # Add all given seeds as initial seed
     for s_src in seed:

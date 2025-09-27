@@ -36,6 +36,7 @@ class AFLPPProcess:
 
         self.__process = None
         self.__logfile = None
+        self.__secondary_processes = []
 
     @staticmethod
     def find_alfpp_binary(root_dir: Union[Path, str]) -> Optional[Path]:
@@ -56,7 +57,9 @@ class AFLPPProcess:
               engine_args: str,
               env_variables: list[str],
               cmplog: Optional[str] = None,
-              dictionary: Optional[str] = None):
+              dictionary: Optional[str] = None,
+              threads: int = 1,
+              exec_timeout: int = 1) -> None:
         # Check that we have '@@' if input provided via argv
         if not stdin:
             if "@@" not in target_arguments:
@@ -67,16 +70,18 @@ class AFLPPProcess:
 
         # Build fuzzer arguments.
         # NOTE: Assuming the target receives inputs from stdin.
-        aflpp_arguments = ' '.join([
+        base_arguments = [
             re.sub(r"\s", " ", engine_args),  # Any arguments coming right from the broker (remove \r\n)
             f"-Q" if fuzzmode == FuzzMode.BINARY_ONLY else "",
-            f"-M main", # Master MODE, seed distribution is ensured by the broker
             f"-i {workspace.input_dir}",
-            f"-F {workspace.dynamic_input_dir}",
             f"-o {workspace.output_dir}",
             f"-c {cmplog}" if cmplog is not None else "",
-            f"-x {dictionary}" if dictionary is not None else ""
-        ])
+            f"-x {dictionary}" if dictionary is not None else "",
+            f"-t {exec_timeout * 1000}" if exec_timeout > 0 else "",
+        ]
+        aflpp_arguments = ' '.join(
+            ["-M main",
+             f"-F {workspace.dynamic_input_dir}"] + base_arguments)
 
         # Export environmental variables.
         os.environ["AFL_NO_UI"] = "1"
@@ -119,6 +124,22 @@ class AFLPPProcess:
                                           env=os.environ)
 
         logging.debug(f'Process pid: {self.__process.pid}')
+        import time
+        time.sleep(4)  # Give some time to afl++ to create its output directory
+
+        # Start all secondary processes
+        for i in range(threads - 1):
+            aflpp_secondary_cmdline = f"{self.__path} -S secondary{i+1} {' '.join(base_arguments)} -- {target_cmdline}"
+            logging.info(f"Run AFL++ secondary{i+1} ")
+            command = list(filter(None, aflpp_secondary_cmdline.split(' ')))
+            p = subprocess.Popen(command,
+                                 cwd=str(workspace.root_dir),
+                                 preexec_fn=os.setsid,
+                                 stdout=subprocess.DEVNULL,
+                                 shell=False,
+                                 env=os.environ)
+            self.__secondary_processes.append(p)
+            logging.debug(f'Run AFL++ secondary{i+1} [pid: {p.pid}]')
 
     @property
     def instanciated(self):
@@ -127,6 +148,10 @@ class AFLPPProcess:
     def stop(self):
         if self.__process:
             logging.debug(f'Stopping process with pid: {self.__process.pid}')
+            for p in self.__secondary_processes:
+                logging.debug(f'Stopping secondary process with pid: {p.pid}')
+                os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+
             os.killpg(os.getpgid(self.__process.pid), signal.SIGTERM)
         else:
             logging.debug(f"AFL++ process seems already killed")
