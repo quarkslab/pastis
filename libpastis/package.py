@@ -22,7 +22,7 @@ class BinaryPackage(object):
     This object is received by fuzzing agents as part of the START message.
     """
 
-    EXTENSION_BLACKLIST = ['.gt', '.Quokka', '.quokka', '.cmplog', '.dict']
+    EXTENSION_BLACKLIST = ['.gt', '.Quokka', '.quokka', '.cmplog', '.dict', '.cov', '.profdata', '.json']
     #: specific extensions that will be ignored for the `other_files`
 
     def __init__(self, main_binary: Path):
@@ -52,7 +52,8 @@ class BinaryPackage(object):
         if self.dictionary:
             s += f", dict={self.dictionary.name}"
         if self.other_files:
-            s += f", other_files=[{', '.join(str(x) for x in self.other_files)}]"
+            # s += f", other_files=[{', '.join(str(x) for x in self.other_files)}]"
+            s += f", other_files=[{len(self.other_files)}]"
         s += ")"
         return s
 

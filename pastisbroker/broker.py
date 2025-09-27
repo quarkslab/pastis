@@ -97,7 +97,7 @@ class PastisBroker(BrokerAgent):
         self._slicing_ongoing = {}  # Program -> {Addr -> [cli]}
 
         # Initialize availables binaries
-        self.packages = {}  # Tuple[(Platform, Arch)] -> List[BinaryPackage]
+        self.packages = {}  # Tuple[(Platform, Arch, Fuzzer)] -> Tuple[ExecMode, FuzzMode] -> BinaryPackage
         self._find_binaries(binaries_dir)
 
         # Klocwork informations
@@ -513,23 +513,27 @@ class PastisBroker(BrokerAgent):
                 continue
 
             # Try finding a suitable binary for the current engine and the client arch
-            packages: List[BinaryPackage] = self.packages.get((client.platform, client.arch))
+            packages = self.packages.get((client.platform, client.arch, eng))
+
+            if not packages:
+                logging.warning(f"No packages found for {client.strid} with engine {eng_desc.NAME}")
+                continue
+
             package = None
             exmode = None
             fuzzmod = FuzzMode.AUTO
-            for p in packages:
-                res, xmod, fmod = eng_desc.accept_file(p.executable_path)  # Iterate all files on that engine descriptor to check it accept it
-                if res:
-                    if exmode:
-                        if exmode == ExecMode.SINGLE_EXEC and xmod == ExecMode.PERSISTENT:  # persistent supersede single_exec
-                            package, exmode, fuzzmod = p, xmod, fmod
-                        else:
-                            if fuzzmod == FuzzMode.BINARY_ONLY and fmod == FuzzMode.INSTRUMENTED:  # instrumented supersede binary only
-                                package, exmode, fuzzmod = p, xmod, fmod
-                            else:
-                                pass  # Program is suitable but we already had found a PERSISTENT one
-                    else:
-                        package, exmode, fuzzmod = p, xmod, fmod  # first suitable program found
+            
+            for typ in packages.keys():
+                match typ:
+                    case (_, FuzzMode.INSTRUMENTED):  # If has an instrumented package take it!
+                        package = packages[typ]
+                        exmode, fuzzmod = typ
+                    case (ExecMode.PERSISTENT, _):  # Otherwise if has a persistent take it
+                        package = packages[typ] if package is None else package
+                        exmode, fuzzmod = typ if package is None else (exmode, fuzzmod)
+                    case _:
+                        package = packages[typ] if package is None else package
+                        exmode, fuzzmod = typ if package is None else (exmode, fuzzmod)
 
             if not package:  # If still no program was found continue iterating engines
                 continue
@@ -776,17 +780,24 @@ class PastisBroker(BrokerAgent):
                         logging.warning(f"{file.name} executable found but no QBinExport file associated (ignores it)")
                         continue
 
-                logging.info(f"new package detected: {pkg}")
+                # Iterate all engines to check if they support that binary
+                pp_engine = ""
+                for eng_desc in self.engines.values():
+                    accepted, exmode, fuzzmode = eng_desc.accept_file(pkg.executable_path)
+                    tup = (pkg.platform, pkg.arch, eng_desc.NAME)
+                    if accepted:  # If the engine accept the file
 
-                # Add it in the internal structure
-                data = (pkg.platform, pkg.arch)
-                data2 = (Platform.ANY, pkg.arch)
-                if data not in self.packages:
-                    self.packages[data] = []
-                if data2 not in self.packages:
-                    self.packages[data2] = []
-                self.packages[data].append(pkg)
-                self.packages[data2].append(pkg)  # Also add an entry for any platform
+                        # If the combination does not exists yet create it
+                        if tup not in self.packages:
+                            self.packages[tup] = {}
+
+                        # Add new entry for the fuzzer
+                        self.packages[tup][(exmode, fuzzmode)] = pkg
+
+                        pp_engine += f"[{eng_desc.NAME}-{exmode.name[0]}-{fuzzmode.name[0]}]"
+
+                logging.info(f"new package detected: {pkg} {pp_engine}")
+
 
     def _load_workspace(self):
         """ Load all the seeds in the workspace"""
