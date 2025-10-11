@@ -25,21 +25,9 @@ class HonggfuzzProcess:
     STAT_FILE = "statsfile.log"
     VERSION = "2.1"
 
-    def __init__(self, path: str = None):
-        path = os.environ.get(self.HFUZZ_ENV_VAR) if path is None else path
-        if path is None:
-            raise Exception("Invalid Honggfuzz path provided")
-
-        path = Path(path)
-        if not path.exists():
-            raise Exception('Invalid HFUZZ_PATH path!')
-        elif path.is_file() and path.name == self.BINARY:
-            self.__path = path
-        elif path.is_dir():
-            self.__path = Path(path) / self.BINARY
-            if not path.exists():
-                raise Exception("Can't find honggfuzz in HFUZZ_PATH path!")
-
+    def __init__(self, path: Path):
+        self.__path = path
+    
         self._threads = os.environ.get(self.HFUZZ_THREADS_VAR)
 
         self.__process = None

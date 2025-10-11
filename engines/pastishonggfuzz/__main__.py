@@ -81,13 +81,12 @@ def offline(program: str, sast_report: Optional[str], seed: Tuple[str], exmode, 
     # Create a dummy FileAgent
     agent = FileAgent(level=logging.DEBUG, log_file=logfile)
 
-    # Check the HFUZZ_PATH variable is found
-    if not HonggfuzzDriver.honggfuzz_available():
-        logging.error("Cannot find HFUZZ_PATH environment variable or invalid value")
-        return
-
     # Instanciate the pastis that will register the appropriate callbacks
-    honggfuzz = HonggfuzzDriver(agent)
+    try:
+        honggfuzz = HonggfuzzDriver(agent)
+    except FileNotFoundError as e:
+        logging.error(f"Cannot find honggfuzz binary: {e}")
+        return
 
     # Load the report if anyone provided
     report = Path(sast_report).read_text() if sast_report else ""

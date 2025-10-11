@@ -6,6 +6,8 @@ import threading
 import time
 import tempfile
 import hashlib
+import os
+import shutil
 from typing import List, Union
 
 
@@ -19,6 +21,7 @@ import pastishonggfuzz
 from pastishonggfuzz.replay import Replay
 from pastishonggfuzz.honggfuzz import HonggfuzzProcess
 from pastishonggfuzz.workspace import Workspace
+from subprocess import run, PIPE
 
 
 # Inotify logs are very talkative, set them to ERROR
@@ -33,7 +36,11 @@ class HonggfuzzDriver:
         # Internal objects
         self._agent = agent
         self.workspace = Workspace()
-        self.honggfuzz = HonggfuzzProcess()
+
+        hf_path = self._find_honggfuzz()
+        if not hf_path:
+            raise FileNotFoundError("Cannot find honggfuzz binary")
+        self.honggfuzz = HonggfuzzProcess(hf_path)
 
         # Parameters received through start_received
         self.__exec_mode = None   # SINGLE_RUN, PERSISTENT
@@ -50,11 +57,13 @@ class HonggfuzzDriver:
         # Configure hookds on workspace
         self.workspace.add_creation_hook(self.workspace.corpus_dir, self.__send_seed)
         self.workspace.add_creation_hook(self.workspace.crash_dir, self.__send_crash)
-        self.workspace.add_file_modification_hook(self.workspace.stats_dir, self.__send_telemetry)
+        if self._has_statsfile(hf_path):
+            self.workspace.add_file_modification_hook(self.workspace.stats_dir, self.__send_telemetry)
 
         # Telemetry frequency
         self._tel_frequency = telemetry_frequency
         self._tel_last = time.time()
+
 
         # Runtime data
         self._tot_seeds = 0
@@ -65,6 +74,23 @@ class HonggfuzzDriver:
         self._queue_to_send = []
         self._started = False
 
+    def _find_honggfuzz(self) -> Path|None:
+        if path := os.environ.get(HonggfuzzProcess.HFUZZ_ENV_VAR, None):
+            path = Path(path)
+            if not path.exists():
+                raise Exception("honggfuzz provided in HFUZZ_PATH but file does not exists")
+            if path.is_dir():
+                return (path / HonggfuzzProcess.BINARY).absolute()
+            return path.absolute()
+        elif path := shutil.which(HonggfuzzProcess.BINARY):
+            return Path(path).absolute()
+        else:
+            return None
+
+    def _has_statsfile(self, path: Path) -> bool:
+        result = run([str(path), "--help"], stdout=PIPE, stderr=PIPE, text=True, timeout=10)
+        return "--statsfile" in result.stdout or "--statsfile" in result.stderr
+    
     @staticmethod
     def hash_seed(seed: bytes):
         return hashlib.md5(seed).hexdigest()
