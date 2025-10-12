@@ -42,19 +42,20 @@ def cli():
 def online(host: str, port: int, telemetry_frequency: int):
     agent = ClientAgent()
 
-    if not HonggfuzzDriver.honggfuzz_available():
-        logging.error("Cannot find HFUZZ_PATH environment variable or invalid value")
+    # Instanciate the pastis that will register the appropriate callbacks
+    try:
+        honggfuzz = HonggfuzzDriver(agent, telemetry_frequency=telemetry_frequency)
+    except FileNotFoundError as e:
+        logging.error(f"Cannot find honggfuzz binary: {e}")
         return
 
-    hfuzz = HonggfuzzDriver(agent, telemetry_frequency=telemetry_frequency)
-
-    hfuzz.init_agent(host, port)
+    honggfuzz.init_agent(host, port)
     try:
         logging.info(f'Starting fuzzer...')
-        hfuzz.run()
+        honggfuzz.run()
     except KeyboardInterrupt:
         logging.info(f'Stopping fuzzer... (Ctrl+C)')
-        hfuzz.stop()
+        honggfuzz.stop()
 
 
 @cli.command()
